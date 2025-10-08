@@ -88,22 +88,22 @@ export default function DealsPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Deal Flow</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Deal Flow</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Manage and track all deals through the pipeline
           </p>
         </div>
-        <Button data-testid="button-new-deal">
+        <Button data-testid="button-new-deal" className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           New Deal
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="relative flex-1 min-w-[300px]">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
+        <div className="relative flex-1 sm:min-w-[300px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search deals by fund name..."
@@ -114,7 +114,7 @@ export default function DealsPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]" data-testid="select-status-filter">
+          <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-status-filter">
             <Filter className="mr-2 h-4 w-4" />
             <SelectValue />
           </SelectTrigger>
@@ -127,7 +127,7 @@ export default function DealsPage() {
             <SelectItem value="closed">Closed</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground sm:ml-auto">
           <span className="font-mono font-medium">{filteredDeals.length}</span>
           <span>deals</span>
         </div>
