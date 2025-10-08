@@ -1,4 +1,4 @@
-import { LayoutDashboard, Table2, FileText, Scale, TrendingUp, Activity, Settings } from "lucide-react";
+import { LayoutDashboard, Table2, FileText, Scale, TrendingUp, Activity, Target, GraduationCap, Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -45,6 +45,19 @@ const navItems = [
   },
 ];
 
+const externalNavItems = [
+  {
+    title: "Origination",
+    url: "/origination",
+    icon: Target,
+  },
+  {
+    title: "LP Enablement",
+    url: "/lp-enablement",
+    icon: GraduationCap,
+  },
+];
+
 export function AppSidebar() {
   const [location] = useLocation();
 
@@ -67,6 +80,23 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={location === item.url}>
+                    <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>External</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {externalNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={location === item.url}>
                     <Link href={item.url} data-testid={`link-${item.title.toLowerCase().replace(' ', '-')}`}>

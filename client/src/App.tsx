@@ -13,6 +13,8 @@ import UnderwritingPage from "@/pages/underwriting";
 import MonitoringPage from "@/pages/monitoring";
 import ReportsPage from "@/pages/reports";
 import LegalPage from "@/pages/legal";
+import OriginationPage from "@/pages/origination";
+import LPEnablementPage from "@/pages/lp-enablement";
 import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
@@ -25,6 +27,8 @@ function Router() {
       <Route path="/monitoring" component={MonitoringPage} />
       <Route path="/reports" component={ReportsPage} />
       <Route path="/legal" component={LegalPage} />
+      <Route path="/origination" component={OriginationPage} />
+      <Route path="/lp-enablement" component={LPEnablementPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
