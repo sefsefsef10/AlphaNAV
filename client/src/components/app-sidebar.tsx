@@ -1,4 +1,4 @@
-import { LayoutDashboard, Table2, FileText, Scale, TrendingUp, Settings } from "lucide-react";
+import { LayoutDashboard, Table2, FileText, Scale, TrendingUp, Activity, Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -27,6 +27,11 @@ const navItems = [
     title: "Underwriting",
     url: "/underwriting",
     icon: FileText,
+  },
+  {
+    title: "Monitoring",
+    url: "/monitoring",
+    icon: Activity,
   },
   {
     title: "Reports",

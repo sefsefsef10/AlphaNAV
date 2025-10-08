@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import DashboardPage from "@/pages/dashboard";
 import DealsPage from "@/pages/deals";
 import UnderwritingPage from "@/pages/underwriting";
+import MonitoringPage from "@/pages/monitoring";
 import ReportsPage from "@/pages/reports";
 import LegalPage from "@/pages/legal";
 import SettingsPage from "@/pages/settings";
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/" component={DashboardPage} />
       <Route path="/deals" component={DealsPage} />
       <Route path="/underwriting" component={UnderwritingPage} />
+      <Route path="/monitoring" component={MonitoringPage} />
       <Route path="/reports" component={ReportsPage} />
       <Route path="/legal" component={LegalPage} />
       <Route path="/settings" component={SettingsPage} />
