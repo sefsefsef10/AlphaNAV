@@ -51,7 +51,7 @@ interface FundScoringTableProps {
 
 export function FundScoringTable({ funds, onEngage, onViewLinkedIn }: FundScoringTableProps) {
   return (
-    <div className="rounded-lg border border-border">
+    <div className="rounded-lg border border-border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">

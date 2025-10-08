@@ -14,10 +14,10 @@ import { Badge } from "@/components/ui/badge";
 
 export default function ReportsPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Reports</h1>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1">
           Generate quarterly reports for LPs and investment committees
         </p>
       </div>
@@ -93,7 +93,7 @@ export default function ReportsPage() {
 
             <Separator />
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <Button variant="outline" className="flex-1" data-testid="button-preview-report">
                 <FileText className="mr-2 h-4 w-4" />
                 Preview

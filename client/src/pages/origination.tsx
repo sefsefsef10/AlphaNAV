@@ -106,15 +106,15 @@ export default function OriginationPage() {
   const mediumPriorityCount = mockFunds.filter(f => f.recommendation === "medium-priority").length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Deal Origination</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Deal Origination</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Predictive fund identification and engagement pipeline
           </p>
         </div>
-        <Button onClick={handleRunAnalysis} disabled={isAnalyzing} data-testid="button-run-analysis">
+        <Button onClick={handleRunAnalysis} disabled={isAnalyzing} data-testid="button-run-analysis" className="w-full sm:w-auto">
           {isAnalyzing ? (
             <>
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -178,11 +178,11 @@ export default function OriginationPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <CardTitle>Fund Scoring & Prioritization</CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                <SelectTrigger className="w-[180px]" data-testid="select-priority-filter">
+                <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-priority-filter">
                   <Filter className="mr-2 h-4 w-4" />
                   <SelectValue />
                 </SelectTrigger>
@@ -194,7 +194,7 @@ export default function OriginationPage() {
                   <SelectItem value="monitor">Monitor</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" data-testid="button-export-list">
+              <Button variant="outline" data-testid="button-export-list" className="w-full sm:w-auto">
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>

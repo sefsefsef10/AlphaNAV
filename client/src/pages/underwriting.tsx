@@ -50,10 +50,10 @@ Proceed to IC approval with standard covenant package. Recommend monitoring quar
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Underwriting</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Underwriting</h1>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1">
           Automated deal analysis and IC memo generation
         </p>
       </div>
@@ -154,7 +154,7 @@ Proceed to IC approval with standard covenant package. Recommend monitoring quar
                     data-testid="textarea-memo"
                   />
                   <Separator />
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Button variant="outline" className="flex-1" data-testid="button-regenerate">
                       <Sparkles className="mr-2 h-4 w-4" />
                       Regenerate

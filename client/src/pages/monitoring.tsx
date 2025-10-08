@@ -126,17 +126,17 @@ export default function MonitoringPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Portfolio Monitoring</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Portfolio Monitoring</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Quarterly health checks and covenant compliance tracking
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Select defaultValue="q2-2024">
-            <SelectTrigger className="w-[180px]" data-testid="select-monitoring-period">
+            <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-monitoring-period">
               <Calendar className="mr-2 h-4 w-4" />
               <SelectValue />
             </SelectTrigger>
@@ -150,12 +150,12 @@ export default function MonitoringPage() {
             {isRunning ? (
               <>
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Running...
+                <span className="hidden sm:inline">Running...</span>
               </>
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                Run Checks
+                <span className="hidden sm:inline">Run Checks</span>
               </>
             )}
           </Button>
