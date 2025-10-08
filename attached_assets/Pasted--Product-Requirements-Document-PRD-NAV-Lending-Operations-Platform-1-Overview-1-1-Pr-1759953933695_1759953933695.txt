@@ -1,0 +1,171 @@
+# Product Requirements Document (PRD): NAV Lending Operations Platform
+
+## 1. Overview
+### 1.1 Product Name
+NAV Lending Operations Platform (tentative: "AlphaNAV" – emphasizing operational alpha in NAV lending).
+
+### 1.2 Product Description
+This platform is designed to streamline and automate key operations in NAV (Net Asset Value) lending for private equity (PE) funds and lenders. The core goal is to achieve 100 basis points (bps) in operational alpha by reducing manual processes, enhancing efficiency, and enabling scalable origination and management. It positions the company as the "LP-friendly Chick-fil-A of NAV lending" – reliable, efficient, and investor-aligned.
+
+The platform targets internal operations (underwriting, monitoring, reporting, and legal templating) while laying the foundation for external features like origination and LP enablement. It focuses on automating 90%+ of human-involved tasks in underwriting and providing predictive tools for deal sourcing.
+
+### 1.3 Target Audience
+- **Internal Users**: Operations teams, underwriters, compliance officers, legal teams, and investment committees (ICs) within the lending firm.
+- **External Users (Future Phases)**: PE fund managers, limited partners (LPs), and potential borrowers for origination and education tools.
+- **Key Stakeholders**: LPs, ICs, and fundraisers seeking efficient reporting and compliance.
+
+### 1.4 Business Goals
+- Achieve 100bps operational alpha through automation and efficiency gains.
+- Reduce human involvement in underwriting from data/doc dump to IC memo by 90%+.
+- Enable quarterly monitoring and reporting with minimal manual effort.
+- Support fundraising by providing high-quality, trackable metrics and reports.
+- Identify and engage 200-500+ potential funds annually via predictive analytics.
+- Promote ILPA-aligned (Institutional Limited Partners Association) practices for NAV readiness among PE funds.
+
+### 1.5 Success Metrics
+- **Operational Efficiency**: Time saved per deal (target: 90% automation in underwriting); quarterly monitoring/reporting cycle reduced to <1 week.
+- **Deal Flow**: Increase in qualified leads from origination tools (target: 20% conversion from predictive analysis).
+- **User Adoption**: 80%+ internal team usage within first quarter; positive NPS from external users.
+- **Financial Impact**: Contribution to fundraising (e.g., track additional $$$ raised via reports); reduction in operational costs by 50bps+.
+
+## 2. Scope
+### 2.1 In-Scope
+- Core dashboard, table interface, and reporting tools.
+- Internal operations modules: Underwriting, Monitoring, Reporting, Legal Templating.
+- Phase 2 external features: Origination identification and engagement.
+- Phase 3 external features: LP enablement and education tools.
+- Integration with CRMs (e.g., Folk), LinkedIn APIs, and document upload portals.
+
+### 2.2 Out-of-Scope
+- Full CRM development (leverage integrations instead).
+- Advanced AI/ML models beyond basic predictive analysis (e.g., no real-time trading integrations).
+- Compliance with non-US regulations (focus on US/ILPA standards initially).
+- Mobile app (web-based platform first).
+
+### 2.3 Assumptions and Dependencies
+- Access to existing data sources (e.g., fund databases, LinkedIn APIs).
+- Team resources: Each internal module may require 1 quarter of development.
+- External phases depend on internal rollout success.
+- Legal templates assume standard NAV lending terms; custom legal advice not provided.
+- Data privacy: Compliance with GDPR/CCPA for document uploads.
+
+## 3. Features and Requirements
+The platform is divided into high-level components and phased modules. Prioritization is based on internal needs first, with external expansions.
+
+### 3.1 High-Level Components
+These form the foundational UI/UX of the platform.
+
+1. **Dashboard with Customizable Metrics**
+   - **Description**: A central hub for real-time visibility into key performance indicators (KPIs).
+   - **Requirements**:
+     - Users can select and pin metrics (e.g., portfolio health, deal pipeline stages, compliance status, fundraising progress).
+     - Visualizations: Charts, graphs, and alerts (e.g., red flags for covenant breaches).
+     - Customization: Drag-and-drop widgets; role-based views (e.g., underwriter vs. IC).
+     - Data Sources: Integrate with internal databases and uploaded docs.
+   - **User Stories**:
+     - As an operations manager, I want to customize my dashboard so I can monitor quarterly loan health at a glance.
+
+2. **Clay-like Table Interface for Deal Flow Stages**
+   - **Description**: A flexible, spreadsheet-like interface (inspired by Clay or Airtable) to manage both sides of the funnel (inbound leads and outbound origination).
+   - **Requirements**:
+     - Columns map to stages: Lead Identification → Underwriting → Approval → Monitoring → Reporting.
+     - Features: Drag-and-drop rows, filters, automations (e.g., auto-advance on doc upload).
+     - Bi-directional funnel: Track lender-side (e.g., IC memos) and borrower-side (e.g., fund applications).
+     - Integration: Link to CRM for engagement tracking.
+   - **User Stories**:
+     - As an underwriter, I want a table view of deals so I can map docs to stages without switching tools.
+
+3. **Custom Reporting Interface**
+   - **Description**: Tool for generating tailored reports for LPs, ICs, and internal use.
+   - **Requirements**:
+     - Templates for quarterly reports; export to PDF/Excel.
+     - Metrics tracking: Loan performance, portfolio compliance, fundraising support.
+     - Automation: Pull data from dashboard and monitoring modules.
+   - **User Stories**:
+     - As a fundraiser, I want custom reports so I can showcase metrics to raise additional capital.
+
+### 3.2 Internal Operations Modules (Phase 1: Each ~1 Quarter Development)
+Focus on automation to achieve operational alpha.
+
+1. **Underwriting Module**
+   - **Description**: Automate 90%+ of the process from data/document dump to IC memo generation.
+   - **Requirements**:
+     - Portal for borrowers: Forms/applications for structured data input; secure document uploads (e.g., financials, covenants).
+     - AI-assisted processing: OCR/extraction from docs; auto-generate memos with key insights (e.g., risk scores).
+     - Human oversight: Flags for anomalies requiring review.
+     - Integration: With legal templates for term incorporation.
+   - **User Stories**:
+     - As an underwriter, I want automated memo generation so I can focus on the 10% edge cases.
+
+2. **Monitoring Module**
+   - **Description**: Quarterly aggregation and health checks for loans and portfolios.
+   - **Requirements**:
+     - Automated data pulls: From uploaded reports, APIs, or integrations.
+     - Metrics: Compliance (e.g., covenant adherence), health scores, predictive alerts (e.g., default risks).
+     - Cadence: Scheduled quarterly runs with ad-hoc options.
+     - Dashboard integration: Real-time updates.
+   - **User Stories**:
+     - As a compliance officer, I want quarterly health reports so I can ensure portfolio stability.
+
+3. **Reporting Module**
+   - **Description**: Generate LP/IC quarterly reports with metrics and fundraising aids.
+   - **Requirements**:
+     - Templates: Customizable with tracked KPIs (e.g., returns, alpha metrics).
+     - Automation: Link to monitoring data; include visuals.
+     - Fundraising support: Sections for investor pitches (e.g., "LP-friendly" highlights).
+   - **User Stories**:
+     - As an IC member, I want quarterly reports so I can track performance and support raises.
+
+4. **Legal Module**
+   - **Description**: Templated documents with configurable toggles.
+   - **Requirements**:
+     - Base templates for NAV lending agreements.
+     - Toggles: Interest rate (fixed/variable), term length, OID (Original Issue Discount)/PIK (Payment-In-Kind), covenants (on/off, thresholds like debt/EBITDA ratios).
+     - Additional toggles: Amortization schedules, prepayment penalties, security interests.
+     - Generation: Auto-populate from underwriting data; version control.
+   - **User Stories**:
+     - As a legal team member, I want togglable templates so I can customize deals quickly.
+
+### 3.3 External Features (Phase 2: ~1 Quarter)
+1. **Origination: Identification Module**
+   - **Description**: Predictive analysis for 200-500+ funds entering the "strike zone" annually.
+   - **Requirements**:
+     - Data sources: Fund databases, public filings, LinkedIn.
+     - Predictive models: Score funds on A) loan need (e.g., based on fund stage, capital needs), B) borrower ideality (e.g., creditworthiness, ILPA alignment), C) engagement strategy.
+     - Integration: With CRMs (e.g., Folk) for outreach; LinkedIn for connections.
+     - Output: Prioritized lists with action recommendations.
+   - **User Stories**:
+     - As a business development lead, I want predictive leads so I can engage ideal borrowers proactively.
+
+### 3.4 External Features (Phase 3: Timeline TBD)
+1. **Origination: LP Enablement Module**
+   - **Description**: Educate PE funds on ILPA-aligned NAV readiness.
+   - **Requirements**:
+     - Resources: Guides, templates, webinars on integrating NAV lending into business plans.
+     - Tools: Self-assessment quizzes; investor education modules.
+     - Integration: Portal for funds to upload plans and get feedback.
+     - Branding: Emphasize "LP-friendly" approach.
+   - **User Stories**:
+     - As a PE fund manager, I want education tools so I can prepare my fund for NAV lending from the outset.
+
+## 4. Technical Requirements
+- **Architecture**: Web-based (e.g., React frontend, Python/Django backend).
+- **Security**: Encryption for docs; role-based access control (RBAC).
+- **Integrations**: APIs for CRMs, LinkedIn, document storage (e.g., AWS S3).
+- **Scalability**: Handle 500+ funds/year; quarterly data volumes.
+- **Tech Stack**: AI/ML for predictions (e.g., using available libraries like scikit-learn if needed); no new installs required.
+
+## 5. Prioritization and Roadmap
+- **Phase 1 (Q1-Q4 2026)**: Internal modules (one per quarter).
+- **Phase 2 (Q1 2027)**: Origination identification.
+- **Phase 3 (Q2+ 2027)**: LP enablement.
+- **MVP Release**: Dashboard + Underwriting module by end of Q1 2026.
+
+## 6. Risks and Mitigations
+- **Risk**: Data accuracy in predictions – Mitigation: Validate with historical data.
+- **Risk**: Regulatory changes – Mitigation: Modular design for updates.
+- **Risk**: Adoption resistance – Mitigation: User training and iterative feedback.
+
+## 7. Appendices
+- **Contacts**: Jonah Hescock (shaneefitch@gmail.com) for underwriting insights.
+- **Glossary**: NAV (Net Asset Value), ILPA (Institutional Limited Partners Association), bps (basis points), IC (Investment Committee), LP (Limited Partner), PE (Private Equity), OID (Original Issue Discount), PIK (Payment-In-Kind).
