@@ -45,7 +45,7 @@ interface DealTableProps {
 
 export function DealTable({ deals, onViewDeal, onEditDeal }: DealTableProps) {
   return (
-    <div className="rounded-lg border border-border">
+    <div className="rounded-lg border border-border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
