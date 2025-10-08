@@ -134,7 +134,7 @@ export default function MonitoringPage() {
             Quarterly health checks and covenant compliance tracking
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <Select defaultValue="q2-2024">
             <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-monitoring-period">
               <Calendar className="mr-2 h-4 w-4" />
@@ -146,16 +146,16 @@ export default function MonitoringPage() {
               <SelectItem value="q4-2023">Q4 2023</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={handleRunMonitoring} disabled={isRunning} data-testid="button-run-monitoring">
+          <Button onClick={handleRunMonitoring} disabled={isRunning} data-testid="button-run-monitoring" className="w-full sm:w-auto">
             {isRunning ? (
               <>
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                <span className="hidden sm:inline">Running...</span>
+                Running...
               </>
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Run Checks</span>
+                Run Checks
               </>
             )}
           </Button>
