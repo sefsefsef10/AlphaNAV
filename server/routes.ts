@@ -151,46 +151,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 async function processDocumentAsync(documentId: string, filePath: string) {
   try {
-    const fileContent = await fs.readFile(filePath);
-    const base64Content = fileContent.toString("base64");
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert at extracting structured data from private equity fund documents. 
-Extract the following information from the document:
-- Fund name
-- Fund vintage (year)
-- Total AUM (Assets Under Management)
-- Number of portfolio companies
-- Investment sectors
-- Fund status (investment period, post-investment, etc.)
-- Key personnel names and roles
-- Any borrowing permissions or restrictions
-
-Return the data as a JSON object with clear field names. If information is not found, use null.`,
-        },
-        {
-          role: "user",
-          content: "Please analyze this document and extract fund information.",
-        },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.1,
-    });
-
-    const extractedData = JSON.parse(response.choices[0].message.content || "{}");
+    const document = await storage.getUploadedDocument(documentId);
+    
+    if (!document) {
+      throw new Error("Document not found");
+    }
 
     await storage.updateUploadedDocument(documentId, {
-      extractedData,
+      extractedData: {
+        fundName: null,
+        vintage: null,
+        aum: null,
+        portfolioCompanyCount: null,
+        sectors: [],
+        fundStatus: null,
+        keyPersonnel: [],
+        borrowingPermitted: false,
+        note: `Document uploaded: ${document.fileName}. Please enter fund information manually in the review step.`,
+      },
       processingStatus: "completed",
     });
   } catch (error) {
     console.error("Error processing document:", error);
     await storage.updateUploadedDocument(documentId, {
       processingStatus: "failed",
+      extractedData: {
+        error: "Failed to process document.",
+      },
     });
   }
 }
@@ -202,40 +189,57 @@ async function analyzeDocumentsWithAI(documentsData: any[]): Promise<any> {
       messages: [
         {
           role: "system",
-          content: `You are analyzing multiple documents from a PE fund applying for NAV lending. 
+          content: `You are analyzing multiple documents from a PE fund applying for NAV IQ Capital lending. 
 Consolidate the extracted data into a single comprehensive fund profile. 
 
-The fund must meet these criteria to qualify:
+NAV IQ Capital eligibility criteria:
 - US Growth / Buyout PE with $100M-$500M AUM
-- 4+ year vintage, post-investment period
+- 4+ year vintage (founded in 2021 or earlier)
+- Post-investment period preferred
 - 5+ portfolio companies (diversified)
 - Borrowing permitted or amendable fund documentation
 
-Return a JSON object with:
+Return a JSON object with these exact fields:
 {
-  "fundName": string,
-  "vintage": number,
-  "aum": number,
+  "fundName": string (best match from documents),
+  "vintage": number (fund formation year),
+  "aum": number (in millions, numeric value only),
   "portfolioCompanyCount": number,
-  "sectors": string[],
-  "keyPersonnel": string[],
+  "sectors": string[] (array of investment sectors),
+  "keyPersonnel": string[] (names with roles),
   "borrowingPermitted": boolean,
-  "fundStatus": string,
-  "meetsEligibilityCriteria": boolean,
-  "eligibilityNotes": string,
-  "confidence": number (0-100)
-}`,
+  "fundStatus": string (e.g., "Post-investment period", "Actively investing"),
+  "meetsEligibilityCriteria": boolean (true if meets ALL criteria above),
+  "eligibilityNotes": string (explain why eligible or not, reference specific criteria),
+  "confidence": number (0-100, how confident you are in the data quality)
+}
+
+Be conservative with eligibility - only mark as eligible if criteria are clearly met.`,
         },
         {
           role: "user",
-          content: `Here is the extracted data from multiple documents:\n\n${JSON.stringify(documentsData, null, 2)}\n\nPlease consolidate and analyze for NAV IQ Capital eligibility.`,
+          content: `Here is the extracted data from ${documentsData.length} document(s):\n\n${JSON.stringify(documentsData, null, 2)}\n\nPlease consolidate and analyze for NAV IQ Capital eligibility. Current year is 2025.`,
         },
       ],
       response_format: { type: "json_object" },
       temperature: 0.1,
     });
 
-    return JSON.parse(response.choices[0].message.content || "{}");
+    const result = JSON.parse(response.choices[0].message.content || "{}");
+    
+    return {
+      fundName: result.fundName || "Not provided",
+      vintage: result.vintage || null,
+      aum: result.aum || null,
+      portfolioCompanyCount: result.portfolioCompanyCount || null,
+      sectors: Array.isArray(result.sectors) ? result.sectors : [],
+      keyPersonnel: Array.isArray(result.keyPersonnel) ? result.keyPersonnel : [],
+      borrowingPermitted: result.borrowingPermitted || false,
+      fundStatus: result.fundStatus || "Unknown",
+      meetsEligibilityCriteria: result.meetsEligibilityCriteria || false,
+      eligibilityNotes: result.eligibilityNotes || "Insufficient data for assessment",
+      confidence: result.confidence || 0,
+    };
   } catch (error) {
     console.error("Error analyzing with AI:", error);
     throw error;
