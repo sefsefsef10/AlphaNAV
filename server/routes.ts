@@ -124,6 +124,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/prospects", async (req, res) => {
+    try {
+      const prospects = await storage.listProspects();
+      res.json(prospects);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/deals", async (req, res) => {
+    try {
+      const deals = await storage.listDeals();
+      res.json(deals);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/onboarding/sessions/:id/confirm", async (req, res) => {
     try {
       const sessionId = req.params.id;
@@ -139,7 +157,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Session not found" });
       }
 
-      res.json(session);
+      const data = confirmedData || {};
+      const aum = typeof data.aum === 'string' 
+        ? parseInt(data.aum.replace(/[^0-9]/g, '')) 
+        : data.aum;
+      const vintage = data.vintage;
+      const portfolioCount = data.portfolioCompanyCount;
+      const borrowingPermitted = data.borrowingPermitted;
+      
+      let eligibilityStatus = "needs-review";
+      let eligibilityNotes = "";
+      const scoreFactors: string[] = [];
+      
+      if (aum >= 100_000_000 && aum <= 500_000_000) {
+        scoreFactors.push("AUM in target range ($100M-$500M)");
+      } else if (aum) {
+        eligibilityNotes += `AUM ${aum < 100_000_000 ? 'below' : 'above'} target range. `;
+      }
+      
+      if (vintage && vintage <= 2021) {
+        scoreFactors.push("4+ year vintage (mature fund)");
+      } else if (vintage) {
+        eligibilityNotes += "Fund vintage too recent. ";
+      }
+      
+      if (portfolioCount && portfolioCount >= 5) {
+        scoreFactors.push("Diversified portfolio (5+ companies)");
+      } else if (portfolioCount) {
+        eligibilityNotes += "Portfolio not sufficiently diversified. ";
+      }
+      
+      if (borrowingPermitted) {
+        scoreFactors.push("Borrowing permitted in LPA");
+      } else {
+        eligibilityNotes += "Borrowing may require LP consent. ";
+      }
+      
+      const meetsAllCriteria = scoreFactors.length === 4;
+      if (meetsAllCriteria) {
+        eligibilityStatus = "eligible";
+        eligibilityNotes = scoreFactors.join("; ");
+      }
+      
+      const loanNeedScore = (portfolioCount && portfolioCount >= 5) ? 8 : 5;
+      const borrowerQualityScore = meetsAllCriteria ? 9 : 6;
+      const engagementScore = 7;
+      const overallScore = Math.round((loanNeedScore + borrowerQualityScore + engagementScore) / 3);
+      
+      let recommendation: "high-priority" | "medium-priority" | "low-priority" | "monitor" = "medium-priority";
+      if (meetsAllCriteria && overallScore >= 8) {
+        recommendation = "high-priority";
+      } else if (!meetsAllCriteria || overallScore < 6) {
+        recommendation = "low-priority";
+      }
+
+      const prospect = await storage.createProspect({
+        onboardingSessionId: sessionId,
+        fundName: session.fundName,
+        fundSize: aum || null,
+        vintage: vintage || null,
+        portfolioCount: portfolioCount || null,
+        sectors: data.sectors || null,
+        stage: data.fundStatus || null,
+        loanNeedScore,
+        borrowerQualityScore,
+        engagementScore,
+        overallScore,
+        recommendation,
+        contactName: session.contactName,
+        contactEmail: session.contactEmail,
+        contactPhone: session.contactPhone || null,
+        eligibilityStatus,
+        eligibilityNotes: eligibilityNotes || scoreFactors.join("; "),
+        source: "gp-onboarding",
+      });
+
+      res.json({ session, prospect });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
