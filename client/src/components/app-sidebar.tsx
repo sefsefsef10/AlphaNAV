@@ -1,4 +1,4 @@
-import { LayoutDashboard, Table2, FileText, Scale, TrendingUp, Activity, Target, GraduationCap, Settings } from "lucide-react";
+import { LayoutDashboard, GitBranch, FileText, Scale, TrendingUp, Activity, DollarSign, GraduationCap, Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -19,9 +19,9 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Deal Flow",
-    url: "/deals",
-    icon: Table2,
+    title: "Deal Pipeline",
+    url: "/deal-pipeline",
+    icon: GitBranch,
   },
   {
     title: "Underwriting",
@@ -32,6 +32,11 @@ const navItems = [
     title: "Monitoring",
     url: "/monitoring",
     icon: Activity,
+  },
+  {
+    title: "Portfolio",
+    url: "/portfolio",
+    icon: DollarSign,
   },
   {
     title: "Reports",
@@ -46,11 +51,6 @@ const navItems = [
 ];
 
 const externalNavItems = [
-  {
-    title: "Origination",
-    url: "/origination",
-    icon: Target,
-  },
   {
     title: "LP Enablement",
     url: "/lp-enablement",

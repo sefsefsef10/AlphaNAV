@@ -12,7 +12,9 @@ import {
 import { CovenantTracker, Covenant } from "@/components/covenant-tracker";
 import { HealthScoreCard, HealthMetric } from "@/components/health-score-card";
 import { RiskAlertPanel, RiskAlert } from "@/components/risk-alert-panel";
+import { PredictiveBreachPanel, BreachPrediction } from "@/components/predictive-breach-panel";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 // TODO: Remove mock data
 const mockCovenants: Covenant[] = [
@@ -107,14 +109,78 @@ const mockAlerts: RiskAlert[] = [
   },
 ];
 
+const mockPredictions: BreachPrediction[] = [
+  {
+    id: "pred-1",
+    dealName: "Tiger Global Private Investment",
+    covenantType: "Interest Coverage Ratio",
+    currentValue: "1.8x",
+    threshold: "≥ 2.0x",
+    predictedValue: "1.6x",
+    breachProbability: 78,
+    timeframe: "Q3 2024",
+    riskLevel: "high",
+    notificationSent: false,
+  },
+  {
+    id: "pred-2",
+    dealName: "Benchmark Capital Growth VI",
+    covenantType: "Debt/EBITDA Ratio",
+    currentValue: "3.8x",
+    threshold: "≤ 4.0x",
+    predictedValue: "4.2x",
+    breachProbability: 65,
+    timeframe: "Q4 2024",
+    riskLevel: "medium",
+    notificationSent: false,
+  },
+  {
+    id: "pred-3",
+    dealName: "Greylock Partners XIV",
+    covenantType: "Minimum Cash Balance",
+    currentValue: "$15.2M",
+    threshold: "≥ $12M",
+    predictedValue: "$11.5M",
+    breachProbability: 42,
+    timeframe: "Q3 2024",
+    riskLevel: "medium",
+    notificationSent: false,
+  },
+];
+
 export default function MonitoringPage() {
   const [alerts, setAlerts] = useState(mockAlerts);
+  const [predictions, setPredictions] = useState(mockPredictions);
   const [isRunning, setIsRunning] = useState(false);
+  const { toast } = useToast();
 
   const handleAcknowledge = (id: string) => {
     setAlerts(prev => prev.map(alert => 
       alert.id === id ? { ...alert, acknowledged: true } : alert
     ));
+  };
+
+  const handleSendWarning = (id: string) => {
+    const prediction = predictions.find(p => p.id === id);
+    if (!prediction) return;
+
+    setPredictions(prev => prev.map(p => 
+      p.id === id ? { ...p, notificationSent: true } : p
+    ));
+
+    toast({
+      title: "Warning Sent Successfully",
+      description: (
+        <div className="space-y-1">
+          <p className="font-medium">{prediction.dealName}</p>
+          <p className="text-sm">✓ Internal team notified</p>
+          <p className="text-sm">✓ Fund GP/CFO notified</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Automated email with predictive analysis and recommended actions sent
+          </p>
+        </div>
+      ),
+    });
   };
 
   const handleRunMonitoring = () => {
@@ -203,6 +269,11 @@ export default function MonitoringPage() {
           </CardContent>
         </Card>
       </div>
+
+      <PredictiveBreachPanel
+        predictions={predictions}
+        onSendWarning={handleSendWarning}
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">

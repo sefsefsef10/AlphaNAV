@@ -8,12 +8,12 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AppSidebar } from "@/components/app-sidebar";
 import DashboardPage from "@/pages/dashboard";
-import DealsPage from "@/pages/deals";
+import DealPipelinePage from "@/pages/deal-pipeline";
 import UnderwritingPage from "@/pages/underwriting";
 import MonitoringPage from "@/pages/monitoring";
+import PortfolioPage from "@/pages/portfolio";
 import ReportsPage from "@/pages/reports";
 import LegalPage from "@/pages/legal";
-import OriginationPage from "@/pages/origination";
 import LPEnablementPage from "@/pages/lp-enablement";
 import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -22,12 +22,12 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={DashboardPage} />
-      <Route path="/deals" component={DealsPage} />
+      <Route path="/deal-pipeline" component={DealPipelinePage} />
       <Route path="/underwriting" component={UnderwritingPage} />
       <Route path="/monitoring" component={MonitoringPage} />
+      <Route path="/portfolio" component={PortfolioPage} />
       <Route path="/reports" component={ReportsPage} />
       <Route path="/legal" component={LegalPage} />
-      <Route path="/origination" component={OriginationPage} />
       <Route path="/lp-enablement" component={LPEnablementPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
