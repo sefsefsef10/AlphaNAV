@@ -101,17 +101,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/onboarding/sessions/:id/analyze", async (req, res) => {
     try {
       const sessionId = req.params.id;
-      const documents = await storage.getDocumentsBySessionId(sessionId);
+      const session = await storage.getOnboardingSession(sessionId);
       
-      if (documents.length === 0) {
-        return res.status(400).json({ error: "No documents to analyze" });
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
       }
 
-      const allExtractedData = documents
-        .filter(doc => doc.processingStatus === "completed" && doc.extractedData)
-        .map(doc => doc.extractedData);
-
-      const extractedData = await analyzeDocumentsWithAI(allExtractedData);
+      const extractedData = {
+        fundName: session.fundName,
+        vintage: null,
+        aum: null,
+        portfolioCompanyCount: null,
+        sectors: [],
+        fundStatus: null,
+        keyPersonnel: [],
+        borrowingPermitted: false,
+        meetsEligibilityCriteria: false,
+        eligibilityNotes: "Please enter your fund information below for review.",
+        confidence: 0,
+      };
       
       await storage.updateOnboardingSession(sessionId, {
         extractedData,
@@ -158,12 +166,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const data = confirmedData || {};
+      
       const aum = typeof data.aum === 'string' 
         ? parseInt(data.aum.replace(/[^0-9]/g, '')) 
-        : data.aum;
-      const vintage = data.vintage;
-      const portfolioCount = data.portfolioCompanyCount;
-      const borrowingPermitted = data.borrowingPermitted;
+        : typeof data.aum === 'number' ? data.aum : 0;
+      
+      const vintage = typeof data.vintage === 'string'
+        ? parseInt(data.vintage)
+        : typeof data.vintage === 'number' ? data.vintage : null;
+      
+      const portfolioCount = typeof data.portfolioCompanyCount === 'string'
+        ? parseInt(data.portfolioCompanyCount)
+        : typeof data.portfolioCompanyCount === 'number' ? data.portfolioCompanyCount : 0;
+      
+      const borrowingPermitted = data.borrowingPermitted === true || 
+        data.borrowingPermitted === 'true' || 
+        data.borrowingPermitted === 1;
       
       let eligibilityStatus = "needs-review";
       let eligibilityNotes = "";

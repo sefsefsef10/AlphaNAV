@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Target, Search, Filter, Plus, RefreshCw, Download } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Target, Search, Filter, Plus, RefreshCw, Download, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { Prospect, Deal as DealType } from "@shared/schema";
 
 // TODO: Remove mock data
 const mockProspects: FundScore[] = [
@@ -151,11 +153,64 @@ const mockDeals: Deal[] = [
   },
 ];
 
+function prospectToFundScore(prospect: Prospect): FundScore {
+  return {
+    id: prospect.id,
+    fundName: prospect.fundName,
+    fundSize: prospect.fundSize || 0,
+    stage: prospect.stage || "Unknown",
+    loanNeedScore: prospect.loanNeedScore || 0,
+    borrowerQualityScore: prospect.borrowerQualityScore || 0,
+    engagementScore: prospect.engagementScore || 0,
+    overallScore: prospect.overallScore || 0,
+    recommendation: (prospect.recommendation as FundScore["recommendation"]) || "monitor",
+    linkedInUrl: prospect.linkedInUrl || undefined,
+  };
+}
+
+function dealTypeToDeal(deal: DealType): Deal {
+  const lastUpdateDate = new Date(deal.lastUpdate);
+  const now = new Date();
+  const diffMs = now.getTime() - lastUpdateDate.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+  
+  let lastUpdateText = "";
+  if (diffHours < 1) {
+    lastUpdateText = "Just now";
+  } else if (diffHours < 24) {
+    lastUpdateText = `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  } else if (diffDays < 7) {
+    lastUpdateText = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  } else {
+    const weeks = Math.floor(diffDays / 7);
+    lastUpdateText = `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+  }
+
+  return {
+    id: deal.id,
+    fundName: deal.fundName,
+    status: deal.status as Deal["status"],
+    amount: deal.amount || 0,
+    stage: deal.stage,
+    lastUpdate: lastUpdateText,
+    riskScore: deal.riskScore || undefined,
+  };
+}
+
 export default function DealPipelinePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const { data: prospectsData = [], isLoading: prospectsLoading } = useQuery<Prospect[]>({
+    queryKey: ["/api/prospects"],
+  });
+
+  const { data: dealsData = [], isLoading: dealsLoading } = useQuery<DealType[]>({
+    queryKey: ["/api/deals"],
+  });
 
   const handleRunAnalysis = () => {
     setIsAnalyzing(true);
@@ -165,26 +220,37 @@ export default function DealPipelinePage() {
     }, 2000);
   };
 
-  const filteredDeals = mockDeals.filter((deal) => {
+  const prospects = prospectsData.map(prospectToFundScore);
+  const deals = dealsData.map(dealTypeToDeal);
+
+  const filteredDeals = deals.filter((deal) => {
     const matchesSearch = deal.fundName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || deal.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const filteredProspects = mockProspects.filter((fund) => {
+  const filteredProspects = prospects.filter((fund) => {
     if (priorityFilter === "all") return true;
     return fund.recommendation === priorityFilter;
   });
 
-  const highPriorityCount = mockProspects.filter(f => f.recommendation === "high-priority").length;
-  const mediumPriorityCount = mockProspects.filter(f => f.recommendation === "medium-priority").length;
+  const highPriorityCount = prospects.filter(f => f.recommendation === "high-priority").length;
+  const mediumPriorityCount = prospects.filter(f => f.recommendation === "medium-priority").length;
 
   const statusCounts = {
-    lead: mockDeals.filter(d => d.status === "lead").length,
-    underwriting: mockDeals.filter(d => d.status === "underwriting").length,
-    approved: mockDeals.filter(d => d.status === "approved").length,
-    monitoring: mockDeals.filter(d => d.status === "monitoring").length,
+    lead: deals.filter(d => d.status === "lead").length,
+    underwriting: deals.filter(d => d.status === "underwriting").length,
+    approved: deals.filter(d => d.status === "approved").length,
+    monitoring: deals.filter(d => d.status === "monitoring").length,
   };
+
+  if (prospectsLoading || dealsLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -268,19 +269,32 @@ export default function OnboardingReview() {
 
                 <div className="space-y-2">
                   <Label>Borrowing Permitted</Label>
-                  <div className="flex items-center space-x-2">
-                    {editedData.borrowingPermitted ? (
-                      <>
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        <span className="text-sm text-green-600 dark:text-green-400">Yes</span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="h-5 w-5 text-yellow-500" />
-                        <span className="text-sm text-yellow-600 dark:text-yellow-400">Not confirmed</span>
-                      </>
-                    )}
-                  </div>
+                  {isEditing ? (
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={editedData.borrowingPermitted || false}
+                        onCheckedChange={(checked) => setEditedData({ ...editedData, borrowingPermitted: checked })}
+                        data-testid="switch-borrowing-permitted"
+                      />
+                      <span className="text-sm text-foreground">
+                        {editedData.borrowingPermitted ? "Yes" : "No"}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      {editedData.borrowingPermitted ? (
+                        <>
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          <span className="text-sm text-green-600 dark:text-green-400">Yes</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-5 w-5 text-yellow-500" />
+                          <span className="text-sm text-yellow-600 dark:text-yellow-400">Not confirmed</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {Array.isArray(editedData.keyPersonnel) && editedData.keyPersonnel.length > 0 && (
