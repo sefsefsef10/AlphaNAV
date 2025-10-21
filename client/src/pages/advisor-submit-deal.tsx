@@ -444,7 +444,7 @@ export default function AdvisorSubmitDeal() {
           </Card>
         )}
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-8">
           <Button
             type="button"
             variant="outline"
