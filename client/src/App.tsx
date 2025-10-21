@@ -20,6 +20,8 @@ import OnboardingStart from "@/pages/onboarding-start";
 import OnboardingUpload from "@/pages/onboarding-upload";
 import OnboardingReview from "@/pages/onboarding-review";
 import OnboardingComplete from "@/pages/onboarding-complete";
+import AdvisorDashboard from "@/pages/advisor-dashboard";
+import AdvisorSubmitDeal from "@/pages/advisor-submit-deal";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
@@ -65,6 +67,8 @@ function AppContent() {
               <Route path="/legal" component={LegalPage} />
               <Route path="/lp-enablement" component={LPEnablementPage} />
               <Route path="/settings" component={SettingsPage} />
+              <Route path="/advisor" component={AdvisorDashboard} />
+              <Route path="/advisor/submit-deal" component={AdvisorSubmitDeal} />
               <Route component={NotFound} />
             </Switch>
           </main>
