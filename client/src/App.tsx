@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
+import { Home } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import ProfileSelection from "@/pages/profile-selection";
 import DashboardPage from "@/pages/dashboard";
@@ -71,6 +73,18 @@ function AppContent() {
           <header className="flex items-center justify-between gap-4 p-3 sm:p-4 border-b border-border">
             <div className="flex items-center gap-2">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  localStorage.removeItem("userRole");
+                  window.location.href = "/";
+                }}
+                data-testid="button-change-profile"
+              >
+                <Home className="h-4 w-4 mr-2" />
+                Change Profile
+              </Button>
             </div>
             <ThemeToggle />
           </header>
