@@ -19,7 +19,7 @@ import { z } from "zod";
 
 const dealFormSchema = insertAdvisorDealSchema.extend({
   gpFundName: z.string().min(1, "Fund name is required"),
-  loanAmount: z.number({ required_error: "Loan amount is required" }).min(1, "Loan amount must be greater than 0"),
+  loanAmount: z.number().nullable(),
   fundAum: z.number().nullable(),
   fundVintage: z.number().nullable(),
   fundPortfolioCount: z.number().nullable(),
@@ -53,7 +53,7 @@ export default function AdvisorSubmitDeal() {
       gpContactEmail: "",
       gpContactPhone: "",
       isAnonymized: true,
-      loanAmount: 0,
+      loanAmount: null,
       fundAum: null,
       fundVintage: null,
       fundPortfolioCount: null,
@@ -66,16 +66,16 @@ export default function AdvisorSubmitDeal() {
     },
   });
 
-  const createDealMutation = useMutation<any, Error, InsertAdvisorDeal>({
-    mutationFn: async (data: InsertAdvisorDeal) => {
-      const response = await apiRequest("POST", "/api/advisor-deals", data);
-      return response.json();
+  const createDealMutation = useMutation<any, Error, { dealData: InsertAdvisorDeal; lenders: string[] }>({
+    mutationFn: async ({ dealData, lenders }) => {
+      const response = await apiRequest("POST", "/api/advisor-deals", dealData);
+      const deal = await response.json();
+      return { deal, lenders };
     },
-    onSuccess: async (deal) => {
+    onSuccess: async ({ deal, lenders }) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/advisor-deals"] });
       
-      const selectedLenders = form.getValues("selectedLenders") || [];
-      for (const lenderName of selectedLenders) {
+      for (const lenderName of lenders) {
         await apiRequest("POST", "/api/lender-invitations", {
           advisorDealId: deal.id,
           lenderName,
@@ -84,7 +84,7 @@ export default function AdvisorSubmitDeal() {
 
       toast({
         title: "Deal Submitted Successfully",
-        description: `RFP for ${deal.gpFundName} has been sent to ${selectedLenders.length} lender(s).`,
+        description: `RFP for ${deal.gpFundName} has been sent to ${lenders.length} lender(s).`,
       });
 
       navigate("/advisor");
@@ -99,11 +99,24 @@ export default function AdvisorSubmitDeal() {
   });
 
   const onSubmit = (data: DealFormData) => {
+    // Only submit if we're on step 3 (final step)
+    if (step !== 3) {
+      console.log("Form submitted but not on step 3, ignoring");
+      return;
+    }
+    
     const { selectedLenders, ...dealData } = data;
+    console.log("onSubmit - selectedLenders:", selectedLenders);
+    console.log("onSubmit - full data:", data);
+    
     createDealMutation.mutate({
-      ...dealData,
-      fundSectors: data.fundSectors || null,
-    } as InsertAdvisorDeal);
+      dealData: {
+        ...dealData,
+        fundSectors: data.fundSectors || null,
+        submissionDeadline: dealData.submissionDeadline || null,
+      } as InsertAdvisorDeal,
+      lenders: selectedLenders || [],
+    });
   };
 
   const nextStep = () => {
@@ -120,7 +133,7 @@ export default function AdvisorSubmitDeal() {
       case 1:
         return values.gpFundName.trim().length > 0;
       case 2:
-        return values.loanAmount && values.loanAmount > 0;
+        return true;
       case 3:
         return (values.selectedLenders?.length || 0) > 0;
       default:
@@ -314,12 +327,14 @@ export default function AdvisorSubmitDeal() {
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="loanAmount">Loan Amount ($M) *</Label>
+                  <Label htmlFor="loanAmount">Loan Amount ($M)</Label>
                   <Input
                     id="loanAmount"
                     data-testid="input-loan-amount"
                     type="number"
-                    {...form.register("loanAmount", { valueAsNumber: true })}
+                    {...form.register("loanAmount", { 
+                      setValueAs: (value) => value === "" ? null : Number(value)
+                    })}
                     placeholder="15"
                   />
                   {form.formState.errors.loanAmount && (
@@ -350,9 +365,7 @@ export default function AdvisorSubmitDeal() {
                     id="submissionDeadline"
                     data-testid="input-deadline"
                     type="date"
-                    {...form.register("submissionDeadline", {
-                      setValueAs: (value) => value ? new Date(value) : null
-                    })}
+                    {...form.register("submissionDeadline")}
                   />
                 </div>
               </div>
@@ -395,12 +408,14 @@ export default function AdvisorSubmitDeal() {
                         id={`lender-${lender}`}
                         checked={isSelected}
                         onCheckedChange={(checked) => {
+                          console.log(`Checkbox ${lender} changed to:`, checked);
                           const current = form.getValues("selectedLenders") || [];
-                          if (checked) {
-                            form.setValue("selectedLenders", [...current, lender]);
-                          } else {
-                            form.setValue("selectedLenders", current.filter(l => l !== lender));
-                          }
+                          console.log("Current selectedLenders before update:", current);
+                          const newValue = checked 
+                            ? [...current, lender] 
+                            : current.filter((l) => l !== lender);
+                          console.log("Setting selectedLenders to:", newValue);
+                          form.setValue("selectedLenders", newValue, { shouldDirty: true, shouldTouch: true, shouldValidate: true });
                         }}
                         data-testid={`checkbox-lender-${lender.toLowerCase().replace(/\s+/g, "-")}`}
                       />

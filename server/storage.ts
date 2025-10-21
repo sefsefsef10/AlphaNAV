@@ -86,6 +86,24 @@ export class MemStorage implements IStorage {
     this.advisorDeals = new Map();
     this.lenderInvitations = new Map();
     this.termSheets = new Map();
+    
+    // Seed default advisor for demo/dev purposes
+    const defaultAdvisor: Advisor = {
+      id: "mock-advisor-1",
+      firmName: "Wheelahan Capital Advisors",
+      advisorName: "Richard Wheelahan",
+      email: "richard@wheelahancapital.com",
+      phone: "+1 (415) 555-0199",
+      linkedInUrl: "https://linkedin.com/in/richardwheel",
+      commissionRate: 75,
+      status: "active",
+      dealsSubmitted: 8,
+      dealsWon: 3,
+      totalVolume: 45000000,
+      createdAt: new Date("2024-01-15"),
+      updatedAt: new Date(),
+    };
+    this.advisors.set(defaultAdvisor.id, defaultAdvisor);
   }
 
   async getUser(id: string): Promise<User | undefined> {

@@ -308,7 +308,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/advisor-deals", async (req, res) => {
     try {
-      const validatedData = insertAdvisorDealSchema.parse(req.body);
+      // Convert submissionDeadline string to Date if present
+      const data = {
+        ...req.body,
+        submissionDeadline: req.body.submissionDeadline 
+          ? new Date(req.body.submissionDeadline) 
+          : null
+      };
+      const validatedData = insertAdvisorDealSchema.parse(data);
       const deal = await storage.createAdvisorDeal(validatedData);
       res.json(deal);
     } catch (error: any) {
