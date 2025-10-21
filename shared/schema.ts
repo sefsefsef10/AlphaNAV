@@ -116,3 +116,108 @@ export const insertDealSchema = createInsertSchema(deals).omit({
 
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Deal = typeof deals.$inferSelect;
+
+export const advisors = pgTable("advisors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  firmName: text("firm_name").notNull(),
+  advisorName: text("advisor_name").notNull(),
+  email: text("email").notNull().unique(),
+  phone: text("phone"),
+  linkedInUrl: text("linkedin_url"),
+  commissionRate: integer("commission_rate").notNull().default(50),
+  status: text("status").notNull().default("active"),
+  dealsSubmitted: integer("deals_submitted").notNull().default(0),
+  dealsWon: integer("deals_won").notNull().default(0),
+  totalVolume: integer("total_volume").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertAdvisorSchema = createInsertSchema(advisors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAdvisor = z.infer<typeof insertAdvisorSchema>;
+export type Advisor = typeof advisors.$inferSelect;
+
+export const advisorDeals = pgTable("advisor_deals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advisorId: varchar("advisor_id").notNull(),
+  gpFundName: text("gp_fund_name").notNull(),
+  gpContactName: text("gp_contact_name"),
+  gpContactEmail: text("gp_contact_email"),
+  gpContactPhone: text("gp_contact_phone"),
+  isAnonymized: text("is_anonymized").notNull().default("true"),
+  status: text("status").notNull().default("draft"),
+  loanAmount: integer("loan_amount"),
+  urgency: text("urgency").notNull().default("standard"),
+  submissionDeadline: timestamp("submission_deadline"),
+  fundAum: integer("fund_aum"),
+  fundVintage: integer("fund_vintage"),
+  fundPortfolioCount: integer("fund_portfolio_count"),
+  fundSectors: jsonb("fund_sectors"),
+  borrowingPermitted: text("borrowing_permitted"),
+  navIqStatus: text("nav_iq_status").notNull().default("pending"),
+  navIqPricing: jsonb("nav_iq_pricing"),
+  navIqTermSheetDate: timestamp("nav_iq_term_sheet_date"),
+  winner: text("winner"),
+  commissionEarned: integer("commission_earned"),
+  closeDate: timestamp("close_date"),
+  daysToClose: integer("days_to_close"),
+  advisorNotes: text("advisor_notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertAdvisorDealSchema = createInsertSchema(advisorDeals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertAdvisorDeal = z.infer<typeof insertAdvisorDealSchema>;
+export type AdvisorDeal = typeof advisorDeals.$inferSelect;
+
+export const lenderInvitations = pgTable("lender_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advisorDealId: varchar("advisor_deal_id").notNull(),
+  lenderName: text("lender_name").notNull(),
+  invitedAt: timestamp("invited_at").notNull().defaultNow(),
+  respondedAt: timestamp("responded_at"),
+  response: text("response"),
+  termSheetSubmitted: text("term_sheet_submitted").notNull().default("false"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertLenderInvitationSchema = createInsertSchema(lenderInvitations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertLenderInvitation = z.infer<typeof insertLenderInvitationSchema>;
+export type LenderInvitation = typeof lenderInvitations.$inferSelect;
+
+export const termSheets = pgTable("term_sheets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  advisorDealId: varchar("advisor_deal_id").notNull(),
+  lenderName: text("lender_name").notNull(),
+  pricingRange: text("pricing_range"),
+  loanAmount: integer("loan_amount"),
+  ltvRatio: integer("ltv_ratio"),
+  timelineToTermSheet: integer("timeline_to_term_sheet"),
+  timelineToClose: integer("timeline_to_close"),
+  keyCovenants: jsonb("key_covenants"),
+  otherTerms: text("other_terms"),
+  submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertTermSheetSchema = createInsertSchema(termSheets).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTermSheet = z.infer<typeof insertTermSheetSchema>;
+export type TermSheet = typeof termSheets.$inferSelect;

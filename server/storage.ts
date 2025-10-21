@@ -8,7 +8,15 @@ import {
   type Prospect,
   type InsertProspect,
   type Deal,
-  type InsertDeal
+  type InsertDeal,
+  type Advisor,
+  type InsertAdvisor,
+  type AdvisorDeal,
+  type InsertAdvisorDeal,
+  type LenderInvitation,
+  type InsertLenderInvitation,
+  type TermSheet,
+  type InsertTermSheet
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -36,6 +44,25 @@ export interface IStorage {
   getDeal(id: string): Promise<Deal | undefined>;
   listDeals(): Promise<Deal[]>;
   updateDeal(id: string, updates: Partial<Deal>): Promise<Deal | undefined>;
+  
+  createAdvisor(advisor: InsertAdvisor): Promise<Advisor>;
+  getAdvisor(id: string): Promise<Advisor | undefined>;
+  getAdvisorByEmail(email: string): Promise<Advisor | undefined>;
+  listAdvisors(): Promise<Advisor[]>;
+  updateAdvisor(id: string, updates: Partial<Advisor>): Promise<Advisor | undefined>;
+  
+  createAdvisorDeal(deal: InsertAdvisorDeal): Promise<AdvisorDeal>;
+  getAdvisorDeal(id: string): Promise<AdvisorDeal | undefined>;
+  listAdvisorDeals(advisorId?: string): Promise<AdvisorDeal[]>;
+  updateAdvisorDeal(id: string, updates: Partial<AdvisorDeal>): Promise<AdvisorDeal | undefined>;
+  
+  createLenderInvitation(invitation: InsertLenderInvitation): Promise<LenderInvitation>;
+  getLenderInvitationsByDeal(advisorDealId: string): Promise<LenderInvitation[]>;
+  updateLenderInvitation(id: string, updates: Partial<LenderInvitation>): Promise<LenderInvitation | undefined>;
+  
+  createTermSheet(termSheet: InsertTermSheet): Promise<TermSheet>;
+  getTermSheetsByDeal(advisorDealId: string): Promise<TermSheet[]>;
+  updateTermSheet(id: string, updates: Partial<TermSheet>): Promise<TermSheet | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -44,6 +71,10 @@ export class MemStorage implements IStorage {
   private uploadedDocuments: Map<string, UploadedDocument>;
   private prospects: Map<string, Prospect>;
   private deals: Map<string, Deal>;
+  private advisors: Map<string, Advisor>;
+  private advisorDeals: Map<string, AdvisorDeal>;
+  private lenderInvitations: Map<string, LenderInvitation>;
+  private termSheets: Map<string, TermSheet>;
 
   constructor() {
     this.users = new Map();
@@ -51,6 +82,10 @@ export class MemStorage implements IStorage {
     this.uploadedDocuments = new Map();
     this.prospects = new Map();
     this.deals = new Map();
+    this.advisors = new Map();
+    this.advisorDeals = new Map();
+    this.lenderInvitations = new Map();
+    this.termSheets = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -244,6 +279,193 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
     };
     this.deals.set(id, updated);
+    return updated;
+  }
+
+  async createAdvisor(insertAdvisor: InsertAdvisor): Promise<Advisor> {
+    const id = randomUUID();
+    const now = new Date();
+    const advisor: Advisor = {
+      id,
+      firmName: insertAdvisor.firmName,
+      advisorName: insertAdvisor.advisorName,
+      email: insertAdvisor.email,
+      phone: insertAdvisor.phone ?? null,
+      linkedInUrl: insertAdvisor.linkedInUrl ?? null,
+      commissionRate: insertAdvisor.commissionRate ?? 50,
+      status: insertAdvisor.status ?? "active",
+      dealsSubmitted: insertAdvisor.dealsSubmitted ?? 0,
+      dealsWon: insertAdvisor.dealsWon ?? 0,
+      totalVolume: insertAdvisor.totalVolume ?? 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.advisors.set(id, advisor);
+    return advisor;
+  }
+
+  async getAdvisor(id: string): Promise<Advisor | undefined> {
+    return this.advisors.get(id);
+  }
+
+  async getAdvisorByEmail(email: string): Promise<Advisor | undefined> {
+    return Array.from(this.advisors.values()).find(
+      (advisor) => advisor.email === email,
+    );
+  }
+
+  async listAdvisors(): Promise<Advisor[]> {
+    return Array.from(this.advisors.values());
+  }
+
+  async updateAdvisor(id: string, updates: Partial<Advisor>): Promise<Advisor | undefined> {
+    const advisor = this.advisors.get(id);
+    if (!advisor) return undefined;
+    
+    const updated: Advisor = {
+      ...advisor,
+      ...updates,
+      id: advisor.id,
+      updatedAt: new Date(),
+    };
+    this.advisors.set(id, updated);
+    return updated;
+  }
+
+  async createAdvisorDeal(insertDeal: InsertAdvisorDeal): Promise<AdvisorDeal> {
+    const id = randomUUID();
+    const now = new Date();
+    const deal: AdvisorDeal = {
+      id,
+      advisorId: insertDeal.advisorId,
+      gpFundName: insertDeal.gpFundName,
+      gpContactName: insertDeal.gpContactName ?? null,
+      gpContactEmail: insertDeal.gpContactEmail ?? null,
+      gpContactPhone: insertDeal.gpContactPhone ?? null,
+      isAnonymized: insertDeal.isAnonymized ?? "true",
+      status: insertDeal.status ?? "draft",
+      loanAmount: insertDeal.loanAmount ?? null,
+      urgency: insertDeal.urgency ?? "standard",
+      submissionDeadline: insertDeal.submissionDeadline ?? null,
+      fundAum: insertDeal.fundAum ?? null,
+      fundVintage: insertDeal.fundVintage ?? null,
+      fundPortfolioCount: insertDeal.fundPortfolioCount ?? null,
+      fundSectors: insertDeal.fundSectors ?? null,
+      borrowingPermitted: insertDeal.borrowingPermitted ?? null,
+      navIqStatus: insertDeal.navIqStatus ?? "pending",
+      navIqPricing: insertDeal.navIqPricing ?? null,
+      navIqTermSheetDate: insertDeal.navIqTermSheetDate ?? null,
+      winner: insertDeal.winner ?? null,
+      commissionEarned: insertDeal.commissionEarned ?? null,
+      closeDate: insertDeal.closeDate ?? null,
+      daysToClose: insertDeal.daysToClose ?? null,
+      advisorNotes: insertDeal.advisorNotes ?? null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.advisorDeals.set(id, deal);
+    return deal;
+  }
+
+  async getAdvisorDeal(id: string): Promise<AdvisorDeal | undefined> {
+    return this.advisorDeals.get(id);
+  }
+
+  async listAdvisorDeals(advisorId?: string): Promise<AdvisorDeal[]> {
+    const deals = Array.from(this.advisorDeals.values());
+    if (advisorId) {
+      return deals.filter(deal => deal.advisorId === advisorId);
+    }
+    return deals;
+  }
+
+  async updateAdvisorDeal(id: string, updates: Partial<AdvisorDeal>): Promise<AdvisorDeal | undefined> {
+    const deal = this.advisorDeals.get(id);
+    if (!deal) return undefined;
+    
+    const updated: AdvisorDeal = {
+      ...deal,
+      ...updates,
+      id: deal.id,
+      updatedAt: new Date(),
+    };
+    this.advisorDeals.set(id, updated);
+    return updated;
+  }
+
+  async createLenderInvitation(insertInvitation: InsertLenderInvitation): Promise<LenderInvitation> {
+    const id = randomUUID();
+    const now = new Date();
+    const invitation: LenderInvitation = {
+      id,
+      advisorDealId: insertInvitation.advisorDealId,
+      lenderName: insertInvitation.lenderName,
+      invitedAt: insertInvitation.invitedAt ?? now,
+      respondedAt: insertInvitation.respondedAt ?? null,
+      response: insertInvitation.response ?? null,
+      termSheetSubmitted: insertInvitation.termSheetSubmitted ?? "false",
+      createdAt: now,
+    };
+    this.lenderInvitations.set(id, invitation);
+    return invitation;
+  }
+
+  async getLenderInvitationsByDeal(advisorDealId: string): Promise<LenderInvitation[]> {
+    return Array.from(this.lenderInvitations.values()).filter(
+      (inv) => inv.advisorDealId === advisorDealId,
+    );
+  }
+
+  async updateLenderInvitation(id: string, updates: Partial<LenderInvitation>): Promise<LenderInvitation | undefined> {
+    const invitation = this.lenderInvitations.get(id);
+    if (!invitation) return undefined;
+    
+    const updated: LenderInvitation = {
+      ...invitation,
+      ...updates,
+      id: invitation.id,
+    };
+    this.lenderInvitations.set(id, updated);
+    return updated;
+  }
+
+  async createTermSheet(insertTermSheet: InsertTermSheet): Promise<TermSheet> {
+    const id = randomUUID();
+    const now = new Date();
+    const termSheet: TermSheet = {
+      id,
+      advisorDealId: insertTermSheet.advisorDealId,
+      lenderName: insertTermSheet.lenderName,
+      pricingRange: insertTermSheet.pricingRange ?? null,
+      loanAmount: insertTermSheet.loanAmount ?? null,
+      ltvRatio: insertTermSheet.ltvRatio ?? null,
+      timelineToTermSheet: insertTermSheet.timelineToTermSheet ?? null,
+      timelineToClose: insertTermSheet.timelineToClose ?? null,
+      keyCovenants: insertTermSheet.keyCovenants ?? null,
+      otherTerms: insertTermSheet.otherTerms ?? null,
+      submittedAt: insertTermSheet.submittedAt ?? now,
+      createdAt: now,
+    };
+    this.termSheets.set(id, termSheet);
+    return termSheet;
+  }
+
+  async getTermSheetsByDeal(advisorDealId: string): Promise<TermSheet[]> {
+    return Array.from(this.termSheets.values()).filter(
+      (ts) => ts.advisorDealId === advisorDealId,
+    );
+  }
+
+  async updateTermSheet(id: string, updates: Partial<TermSheet>): Promise<TermSheet | undefined> {
+    const termSheet = this.termSheets.get(id);
+    if (!termSheet) return undefined;
+    
+    const updated: TermSheet = {
+      ...termSheet,
+      ...updates,
+      id: termSheet.id,
+    };
+    this.termSheets.set(id, updated);
     return updated;
   }
 }
