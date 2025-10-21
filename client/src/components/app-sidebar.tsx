@@ -1,4 +1,4 @@
-import { LayoutDashboard, GitBranch, FileText, Scale, TrendingUp, Activity, DollarSign, GraduationCap, Settings } from "lucide-react";
+import { LayoutDashboard, GitBranch, FileText, Scale, TrendingUp, Activity, DollarSign, GraduationCap, Settings, Users, Target } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -12,10 +12,10 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 
-const navItems = [
+const operationsNavItems = [
   {
     title: "Dashboard",
-    url: "/",
+    url: "/dashboard",
     icon: LayoutDashboard,
   },
   {
@@ -50,6 +50,24 @@ const navItems = [
   },
 ];
 
+const advisorNavItems = [
+  {
+    title: "Dashboard",
+    url: "/advisor",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Active RFPs",
+    url: "/advisor/active-rfps",
+    icon: Target,
+  },
+  {
+    title: "My Clients",
+    url: "/advisor/clients",
+    icon: Users,
+  },
+];
+
 const externalNavItems = [
   {
     title: "LP Enablement",
@@ -60,6 +78,9 @@ const externalNavItems = [
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const isAdvisorFlow = location.startsWith("/advisor");
+  
+  const navItems = isAdvisorFlow ? advisorNavItems : operationsNavItems;
 
   return (
     <Sidebar>
@@ -70,13 +91,17 @@ export function AppSidebar() {
           </div>
           <div>
             <h2 className="text-sm font-semibold">AlphaNAV</h2>
-            <p className="text-xs text-muted-foreground">NAV Lending</p>
+            <p className="text-xs text-muted-foreground">
+              {isAdvisorFlow ? "Advisor Portal" : "NAV Lending"}
+            </p>
           </div>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Operations</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {isAdvisorFlow ? "Advisor" : "Operations"}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (

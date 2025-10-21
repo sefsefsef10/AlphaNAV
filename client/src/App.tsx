@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -25,10 +26,12 @@ import OnboardingReview from "@/pages/onboarding-review";
 import OnboardingComplete from "@/pages/onboarding-complete";
 import AdvisorDashboard from "@/pages/advisor-dashboard";
 import AdvisorSubmitDeal from "@/pages/advisor-submit-deal";
+import AdvisorActiveRFPs from "@/pages/advisor-active-rfps";
+import AdvisorClients from "@/pages/advisor-clients";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const isOnboardingPage = location.startsWith("/onboarding");
   const isAdvisorPage = location.startsWith("/advisor");
   const isProfileSelection = location === "/";
@@ -37,6 +40,24 @@ function AppContent() {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
+
+  // Auto-route returning users based on stored role (in useEffect to avoid render-time state updates)
+  useEffect(() => {
+    if (isProfileSelection) {
+      const storedRole = localStorage.getItem("userRole");
+      if (storedRole) {
+        const roleRoutes: Record<string, string> = {
+          advisor: "/advisor",
+          gp: "/onboarding",
+          lender: "/deal-pipeline",
+        };
+        const targetRoute = roleRoutes[storedRole];
+        if (targetRoute) {
+          setLocation(targetRoute);
+        }
+      }
+    }
+  }, [isProfileSelection, setLocation]);
 
   // Profile selection page (no sidebar, no header)
   if (isProfileSelection) {
@@ -78,7 +99,7 @@ function AppContent() {
                 size="sm"
                 onClick={() => {
                   localStorage.removeItem("userRole");
-                  window.location.href = "/";
+                  setLocation("/");
                 }}
                 data-testid="button-change-profile"
               >
@@ -101,6 +122,8 @@ function AppContent() {
               <Route path="/settings" component={SettingsPage} />
               <Route path="/advisor" component={AdvisorDashboard} />
               <Route path="/advisor/submit-deal" component={AdvisorSubmitDeal} />
+              <Route path="/advisor/active-rfps" component={AdvisorActiveRFPs} />
+              <Route path="/advisor/clients" component={AdvisorClients} />
               <Route component={NotFound} />
             </Switch>
           </main>

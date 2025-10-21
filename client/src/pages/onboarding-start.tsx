@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { OnboardingProgress } from "@/components/onboarding-progress";
-import { Building2, Clock, TrendingUp, Shield } from "lucide-react";
+import { Building2, Clock, TrendingUp, Shield, Home } from "lucide-react";
 
 export default function OnboardingStart() {
   const [, setLocation] = useLocation();
@@ -53,6 +53,20 @@ export default function OnboardingStart() {
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
+        <div className="flex justify-end mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              localStorage.removeItem("userRole");
+              setLocation("/");
+            }}
+            data-testid="button-change-profile"
+          >
+            <Home className="h-4 w-4 mr-2" />
+            Change Profile
+          </Button>
+        </div>
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
             Apply for Growth Capital
