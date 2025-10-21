@@ -1,7 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertOnboardingSessionSchema, insertUploadedDocumentSchema } from "@shared/schema";
+import { 
+  insertOnboardingSessionSchema, 
+  insertUploadedDocumentSchema,
+  insertAdvisorSchema,
+  insertAdvisorDealSchema,
+  insertLenderInvitationSchema,
+  insertTermSheetSchema
+} from "@shared/schema";
 import multer from "multer";
 import OpenAI from "openai";
 import path from "path";
@@ -251,6 +258,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json({ session, prospect });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/advisors", async (req, res) => {
+    try {
+      const validatedData = insertAdvisorSchema.parse(req.body);
+      const advisor = await storage.createAdvisor(validatedData);
+      res.json(advisor);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/advisors", async (req, res) => {
+    try {
+      const advisors = await storage.listAdvisors();
+      res.json(advisors);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/advisors/:id", async (req, res) => {
+    try {
+      const advisor = await storage.getAdvisor(req.params.id);
+      if (!advisor) {
+        return res.status(404).json({ error: "Advisor not found" });
+      }
+      res.json(advisor);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/advisors/:id", async (req, res) => {
+    try {
+      const advisor = await storage.updateAdvisor(req.params.id, req.body);
+      if (!advisor) {
+        return res.status(404).json({ error: "Advisor not found" });
+      }
+      res.json(advisor);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/advisor-deals", async (req, res) => {
+    try {
+      const validatedData = insertAdvisorDealSchema.parse(req.body);
+      const deal = await storage.createAdvisorDeal(validatedData);
+      res.json(deal);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/advisor-deals", async (req, res) => {
+    try {
+      const advisorId = req.query.advisorId as string | undefined;
+      const deals = await storage.listAdvisorDeals(advisorId);
+      res.json(deals);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/advisor-deals/:id", async (req, res) => {
+    try {
+      const deal = await storage.getAdvisorDeal(req.params.id);
+      if (!deal) {
+        return res.status(404).json({ error: "Advisor deal not found" });
+      }
+      res.json(deal);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/advisor-deals/:id", async (req, res) => {
+    try {
+      const deal = await storage.updateAdvisorDeal(req.params.id, req.body);
+      if (!deal) {
+        return res.status(404).json({ error: "Advisor deal not found" });
+      }
+      res.json(deal);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/lender-invitations", async (req, res) => {
+    try {
+      const validatedData = insertLenderInvitationSchema.parse(req.body);
+      const invitation = await storage.createLenderInvitation(validatedData);
+      res.json(invitation);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/lender-invitations", async (req, res) => {
+    try {
+      const advisorDealId = req.query.advisorDealId as string;
+      if (!advisorDealId) {
+        return res.status(400).json({ error: "advisorDealId query parameter required" });
+      }
+      const invitations = await storage.getLenderInvitationsByDeal(advisorDealId);
+      res.json(invitations);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/lender-invitations/:id", async (req, res) => {
+    try {
+      const invitation = await storage.updateLenderInvitation(req.params.id, req.body);
+      if (!invitation) {
+        return res.status(404).json({ error: "Lender invitation not found" });
+      }
+      res.json(invitation);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/term-sheets", async (req, res) => {
+    try {
+      const validatedData = insertTermSheetSchema.parse(req.body);
+      const termSheet = await storage.createTermSheet(validatedData);
+      res.json(termSheet);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/term-sheets", async (req, res) => {
+    try {
+      const advisorDealId = req.query.advisorDealId as string;
+      if (!advisorDealId) {
+        return res.status(400).json({ error: "advisorDealId query parameter required" });
+      }
+      const termSheets = await storage.getTermSheetsByDeal(advisorDealId);
+      res.json(termSheets);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/term-sheets/:id", async (req, res) => {
+    try {
+      const termSheet = await storage.updateTermSheet(req.params.id, req.body);
+      if (!termSheet) {
+        return res.status(404).json({ error: "Term sheet not found" });
+      }
+      res.json(termSheet);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

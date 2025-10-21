@@ -342,7 +342,7 @@ export class MemStorage implements IStorage {
       gpContactName: insertDeal.gpContactName ?? null,
       gpContactEmail: insertDeal.gpContactEmail ?? null,
       gpContactPhone: insertDeal.gpContactPhone ?? null,
-      isAnonymized: insertDeal.isAnonymized ?? "true",
+      isAnonymized: insertDeal.isAnonymized ?? true,
       status: insertDeal.status ?? "draft",
       loanAmount: insertDeal.loanAmount ?? null,
       urgency: insertDeal.urgency ?? "standard",
@@ -403,7 +403,7 @@ export class MemStorage implements IStorage {
       invitedAt: insertInvitation.invitedAt ?? now,
       respondedAt: insertInvitation.respondedAt ?? null,
       response: insertInvitation.response ?? null,
-      termSheetSubmitted: insertInvitation.termSheetSubmitted ?? "false",
+      termSheetSubmitted: insertInvitation.termSheetSubmitted ?? false,
       createdAt: now,
     };
     this.lenderInvitations.set(id, invitation);

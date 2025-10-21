@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, jsonb, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -149,7 +149,7 @@ export const advisorDeals = pgTable("advisor_deals", {
   gpContactName: text("gp_contact_name"),
   gpContactEmail: text("gp_contact_email"),
   gpContactPhone: text("gp_contact_phone"),
-  isAnonymized: text("is_anonymized").notNull().default("true"),
+  isAnonymized: boolean("is_anonymized").notNull().default(true),
   status: text("status").notNull().default("draft"),
   loanAmount: integer("loan_amount"),
   urgency: text("urgency").notNull().default("standard"),
@@ -158,7 +158,7 @@ export const advisorDeals = pgTable("advisor_deals", {
   fundVintage: integer("fund_vintage"),
   fundPortfolioCount: integer("fund_portfolio_count"),
   fundSectors: jsonb("fund_sectors"),
-  borrowingPermitted: text("borrowing_permitted"),
+  borrowingPermitted: boolean("borrowing_permitted"),
   navIqStatus: text("nav_iq_status").notNull().default("pending"),
   navIqPricing: jsonb("nav_iq_pricing"),
   navIqTermSheetDate: timestamp("nav_iq_term_sheet_date"),
@@ -187,7 +187,7 @@ export const lenderInvitations = pgTable("lender_invitations", {
   invitedAt: timestamp("invited_at").notNull().defaultNow(),
   respondedAt: timestamp("responded_at"),
   response: text("response"),
-  termSheetSubmitted: text("term_sheet_submitted").notNull().default("false"),
+  termSheetSubmitted: boolean("term_sheet_submitted").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
