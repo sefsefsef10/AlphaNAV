@@ -64,3 +64,47 @@ Preferred communication style: Simple, everyday language.
 - **Styling & Design**: Tailwind CSS, PostCSS, class-variance-authority, clsx, tailwind-merge.
 - **Database & ORM**: @neondatabase/serverless, Drizzle ORM, ws (WebSocket).
 - **Planned Third-Party Integrations**: LinkedIn APIs, CRM integrations (Folk), document upload/processing capabilities.
+### October 23, 2025 - Covenant Monitoring and Compliance Tracking
+**Status**: Task 11 complete (19 of 20 tasks, 95% milestone)
+
+**Features Implemented**:
+1. **Storage Layer** (`server/dbStorage.ts`):
+   - `createCovenant`: Insert new covenant thresholds for facilities
+   - `getCovenantsByFacility`: Retrieve all covenants for a specific facility
+   - `updateCovenant`: Modify covenant thresholds or status
+   - `checkCovenants`: Automated compliance checking with breach detection
+
+2. **API Routes** (`server/routes.ts`):
+   - GET `/api/facilities/:facilityId/covenants` - List covenants for facility
+   - POST `/api/covenants` - Create new covenant
+   - PATCH `/api/covenants/:id` - Update covenant
+   - POST `/api/facilities/:facilityId/check-covenants` - Run compliance check
+
+3. **Automated Covenant Checking Logic**:
+   - Compares currentValue vs thresholdValue based on operator
+   - Supports 4 operators: less_than, less_than_equal, greater_than, greater_than_equal
+   - Three status levels: compliant, warning (90-100% of threshold), breach (exceeds threshold)
+   - Automatically creates urgent notifications when breach detected
+   - Prevents duplicate breach notifications with breachNotified flag
+   - Updates lastChecked timestamp on each check
+
+4. **Covenant Types Supported**:
+   - LTV Covenant: Maximum loan-to-NAV ratio (conservative 5-15% target)
+   - Minimum NAV: Fund must maintain minimum asset value
+   - Diversification: Portfolio concentration limits
+   - Liquidity: Minimum cash reserves required
+   - Custom covenants: Flexible covenant_type field supports any threshold rule
+
+5. **Compliance Workflow**:
+   - Operations team defines covenant thresholds when setting up facility
+   - Quarterly (or monthly/annual) automated checks compare actual vs threshold
+   - Warning status triggers at 90% of breach threshold (early warning system)
+   - Breach status creates urgent notification and marks as notified
+   - Operations team can manually run checks via API endpoint
+
+**Technical Highlights**:
+- Type-safe covenant operations with Drizzle ORM
+- Threshold checking logic handles all comparison operators
+- Warning thresholds provide early breach detection (90% for upper limits, 110% for lower limits)
+- Notification system integration for automated breach alerts
+- Extensible design supports any covenant type with threshold/operator pattern

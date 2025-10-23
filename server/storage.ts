@@ -95,6 +95,11 @@ export interface IStorage {
   upsertNotificationPreferences(userId: string, preferences: any): Promise<any>;
   
   globalSearch(query: string): Promise<any[]>;
+  
+  createCovenant(covenant: any): Promise<any>;
+  getCovenantsByFacility(facilityId: string): Promise<any[]>;
+  updateCovenant(id: string, updates: any): Promise<any | undefined>;
+  checkCovenants(facilityId: string): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {

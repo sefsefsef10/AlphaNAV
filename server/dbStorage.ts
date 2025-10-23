@@ -16,6 +16,7 @@ import {
   messages,
   notifications,
   notificationPreferences,
+  covenants,
   type User,
   type UpsertUser,
   type OnboardingSession,
@@ -42,6 +43,8 @@ import {
   type Message,
   type InsertMessage,
   type NotificationPreferences,
+  type Covenant,
+  type InsertCovenant,
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 
@@ -689,5 +692,110 @@ export class DatabaseStorage implements IStorage {
       console.error('Global search error:', error);
       return [];
     }
+  }
+
+  // Covenant methods
+  async createCovenant(covenantData: InsertCovenant): Promise<Covenant> {
+    const [covenant] = await db
+      .insert(covenants)
+      .values(covenantData)
+      .returning();
+    return covenant;
+  }
+
+  async getCovenantsByFacility(facilityId: string): Promise<Covenant[]> {
+    return await db
+      .select()
+      .from(covenants)
+      .where(eq(covenants.facilityId, facilityId))
+      .orderBy(desc(covenants.createdAt));
+  }
+
+  async updateCovenant(id: string, updates: Partial<Covenant>): Promise<Covenant | undefined> {
+    const [covenant] = await db
+      .update(covenants)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(covenants.id, id))
+      .returning();
+    return covenant;
+  }
+
+  async checkCovenants(facilityId: string): Promise<Covenant[]> {
+    // Get all covenants for the facility
+    const facilityCovenants = await this.getCovenantsByFacility(facilityId);
+    
+    // Check each covenant and update status
+    const checkedCovenants: Covenant[] = [];
+    
+    for (const covenant of facilityCovenants) {
+      // Skip only if currentValue is null or undefined (not zero)
+      if (covenant.currentValue === null || covenant.currentValue === undefined) {
+        checkedCovenants.push(covenant);
+        continue;
+      }
+
+      let status: 'compliant' | 'warning' | 'breach' = 'compliant';
+      const current = covenant.currentValue;
+      const threshold = covenant.thresholdValue;
+      
+      // Check based on operator
+      switch (covenant.thresholdOperator) {
+        case 'less_than':
+          if (current >= threshold) status = 'breach';
+          else if (current >= threshold * 0.9) status = 'warning';
+          break;
+        case 'less_than_equal':
+          if (current > threshold) status = 'breach';
+          else if (current >= threshold * 0.9) status = 'warning';
+          break;
+        case 'greater_than':
+          if (current <= threshold) status = 'breach';
+          else if (current <= threshold * 1.1) status = 'warning';
+          break;
+        case 'greater_than_equal':
+          if (current < threshold) status = 'breach';
+          else if (current <= threshold * 1.1) status = 'warning';
+          break;
+      }
+
+      // Update covenant status
+      const updated = await this.updateCovenant(covenant.id, {
+        status,
+        lastChecked: new Date(),
+      });
+
+      if (updated) {
+        checkedCovenants.push(updated);
+        
+        // Create notification if breach detected and not already notified
+        if (status === 'breach' && !covenant.breachNotified) {
+          // Get facility to find owner (skip notification if no owner found)
+          const [facility] = await db.select().from(facilities).where(eq(facilities.id, facilityId)).limit(1);
+          
+          if (facility && facility.gpUserId) {
+            await db.insert(notifications).values({
+              userId: facility.gpUserId,
+              type: 'covenant_breach',
+              title: 'Covenant Breach Detected',
+              message: `Covenant ${covenant.covenantType} has breached threshold: ${current} vs ${threshold}`,
+              relatedEntityType: 'covenant',
+              relatedEntityId: covenant.id,
+              priority: 'urgent',
+            });
+
+            // Mark as notified only after successful notification
+            const updatedCovenant = await this.updateCovenant(covenant.id, { breachNotified: true });
+            if (updatedCovenant) {
+              checkedCovenants[checkedCovenants.length - 1] = updatedCovenant;
+            }
+          } else {
+            // Log missing owner for operations team to fix
+            console.warn(`Covenant ${covenant.id} breached but no gpUserId on facility ${facilityId} - notification not sent`);
+          }
+        }
+      }
+    }
+
+    return checkedCovenants;
   }
 }

@@ -11,7 +11,8 @@ import {
   insertAdvisorDealSchema,
   insertLenderInvitationSchema,
   insertTermSheetSchema,
-  insertMessageSchema
+  insertMessageSchema,
+  insertCovenantSchema
 } from "@shared/schema";
 import {
   createNotification,
@@ -942,6 +943,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const results = await storage.globalSearch(query);
       res.json({ results });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Covenant endpoints
+  app.get("/api/facilities/:facilityId/covenants", async (req, res) => {
+    try {
+      const covenants = await storage.getCovenantsByFacility(req.params.facilityId);
+      res.json(covenants);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/covenants", async (req, res) => {
+    try {
+      // Validate request body with insert schema
+      const validated = insertCovenantSchema.parse(req.body);
+      const covenant = await storage.createCovenant(validated);
+      res.json(covenant);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: "Invalid covenant data", details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/covenants/:id", async (req, res) => {
+    try {
+      // Basic validation - only allow updating specific fields
+      const allowedUpdates = ['thresholdValue', 'currentValue', 'status', 'checkFrequency', 'nextCheckDate'];
+      const updates: any = {};
+      for (const key of allowedUpdates) {
+        if (key in req.body) {
+          updates[key] = req.body[key];
+        }
+      }
+      
+      const covenant = await storage.updateCovenant(req.params.id, updates);
+      if (!covenant) {
+        return res.status(404).json({ error: "Covenant not found" });
+      }
+      res.json(covenant);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/facilities/:facilityId/check-covenants", async (req, res) => {
+    try {
+      const covenants = await storage.checkCovenants(req.params.facilityId);
+      res.json(covenants);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
