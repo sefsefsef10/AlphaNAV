@@ -1,6 +1,6 @@
 import { 
   type User, 
-  type InsertUser, 
+  type UpsertUser, 
   type OnboardingSession, 
   type InsertOnboardingSession,
   type UploadedDocument,
@@ -22,8 +22,8 @@ import { randomUUID } from "crypto";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
   
   createOnboardingSession(session: InsertOnboardingSession): Promise<OnboardingSession>;
   getOnboardingSession(id: string): Promise<OnboardingSession | undefined>;
@@ -110,16 +110,35 @@ export class MemStorage implements IStorage {
     return this.users.get(id);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
-      (user) => user.username === username,
+      (user) => user.email === email,
     );
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const existing = Array.from(this.users.values()).find(u => u.id === userData.id);
+    if (existing) {
+      const updated: User = {
+        ...existing,
+        ...userData,
+        updatedAt: new Date(),
+      };
+      this.users.set(updated.id, updated);
+      return updated;
+    }
+    const user: User = {
+      id: userData.id || randomUUID(),
+      email: userData.email || null,
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      profileImageUrl: userData.profileImageUrl || null,
+      role: userData.role || "gp",
+      advisorId: userData.advisorId || null,
+      createdAt: userData.createdAt || new Date(),
+      updatedAt: userData.updatedAt || new Date(),
+    };
+    this.users.set(user.id, user);
     return user;
   }
 
