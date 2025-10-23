@@ -25,6 +25,7 @@ import multer from "multer";
 import OpenAI from "openai";
 import path from "path";
 import fs from "fs/promises";
+import { extractFundData, analyzeCovenantBreach } from "./geminiAI";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -171,19 +172,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Session not found" });
       }
 
-      const extractedData = {
-        fundName: session.fundName,
-        vintage: null,
-        aum: null,
-        portfolioCompanyCount: null,
-        sectors: [],
-        fundStatus: null,
-        keyPersonnel: [],
-        borrowingPermitted: false,
-        meetsEligibilityCriteria: false,
-        eligibilityNotes: "Please enter your fund information below for review.",
-        confidence: 0,
-      };
+      // Get all uploaded documents for this session
+      const documents = await storage.getDocumentsBySessionId(sessionId);
+      
+      let extractedData;
+      
+      if (documents.length > 0) {
+        // Use Gemini AI to analyze uploaded documents
+        try {
+          const documentsData = documents.map(doc => doc.extractedData || { fileName: doc.fileName });
+          extractedData = await extractFundData(documentsData);
+          
+          console.log("✅ Gemini AI extraction completed:", extractedData);
+        } catch (aiError) {
+          console.error("❌ Gemini AI extraction failed:", aiError);
+          // Fallback to manual entry
+          extractedData = {
+            fundName: session.fundName,
+            vintage: null,
+            aum: null,
+            portfolioCompanyCount: null,
+            sectors: [],
+            fundStatus: null,
+            keyPersonnel: [],
+            borrowingPermitted: false,
+            meetsEligibilityCriteria: false,
+            eligibilityNotes: "AI extraction failed. Please enter fund information manually.",
+            confidence: 0,
+          };
+        }
+      } else {
+        // No documents uploaded - manual entry required
+        extractedData = {
+          fundName: session.fundName,
+          vintage: null,
+          aum: null,
+          portfolioCompanyCount: null,
+          sectors: [],
+          fundStatus: null,
+          keyPersonnel: [],
+          borrowingPermitted: false,
+          meetsEligibilityCriteria: false,
+          eligibilityNotes: "No documents uploaded. Please enter fund information manually for review.",
+          confidence: 0,
+        };
+      }
       
       await storage.updateOnboardingSession(sessionId, {
         extractedData,
@@ -192,6 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ extractedData });
     } catch (error: any) {
+      console.error("Error in analyze endpoint:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -998,6 +1032,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const covenants = await storage.checkCovenants(req.params.facilityId);
       res.json(covenants);
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // AI-enhanced covenant breach risk analysis
+  app.post("/api/facilities/:facilityId/analyze-breach-risk", async (req, res) => {
+    try {
+      const facilityId = req.params.facilityId;
+      const facility = await storage.getFacility(facilityId);
+      
+      if (!facility) {
+        return res.status(404).json({ error: "Facility not found" });
+      }
+
+      const covenants = await storage.getCovenantsByFacility(facilityId);
+      
+      if (covenants.length === 0) {
+        return res.status(400).json({ error: "No covenants found for this facility" });
+      }
+
+      // Use Gemini AI to analyze breach risk
+      try {
+        const facilityData = {
+          fundName: facility.fundName,
+          principalAmount: facility.principalAmount,
+          outstandingBalance: facility.outstandingBalance,
+          interestRate: facility.interestRate,
+          ltvRatio: facility.ltvRatio,
+          status: facility.status,
+          maturityDate: facility.maturityDate,
+          paymentSchedule: facility.paymentSchedule,
+        };
+
+        const financialMetrics = {
+          covenants: covenants.map(c => ({
+            type: c.covenantType,
+            threshold: c.thresholdValue,
+            current: c.currentValue,
+            operator: c.thresholdOperator,
+            status: c.status,
+          })),
+        };
+
+        const analysis = await analyzeCovenantBreach(facilityData, financialMetrics);
+        
+        console.log("✅ Gemini AI breach analysis completed:", analysis);
+        
+        res.json({
+          facilityId,
+          analysis,
+          covenants,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (aiError) {
+        console.error("❌ Gemini AI breach analysis failed:", aiError);
+        res.status(500).json({ error: "AI analysis failed. Please try again later." });
+      }
+    } catch (error: any) {
+      console.error("Error in breach risk analysis:", error);
       res.status(500).json({ error: error.message });
     }
   });
