@@ -1,0 +1,167 @@
+🚨 CRITICAL GAPS (Blocking Core Use Cases)
+1. Authentication & User Management
+Affects: All users | Impact: Cannot go live without this
+
+❌ No signup/login system
+❌ No password hashing or secure authentication
+❌ No role-based access control (profiles aren't real users)
+❌ No multi-factor authentication
+❌ No tenant isolation between advisors/GPs/lenders
+❌ No audit logging
+2. Data Persistence
+Affects: All users | Impact: All data lost on restart
+
+❌ Currently using in-memory storage only
+❌ Need PostgreSQL implementation for all tables
+❌ No migration strategy
+3. Operations Team Workflow Automation
+Affects: NAV IQ Capital Team | Impact: Cannot execute lending operations
+
+❌ Underwriting page is just a mock - no real workflow engine
+❌ Monitoring page is static - no covenant tracking automation
+❌ Portfolio page shows fake data - no real loan management
+❌ Legal page has no document generation capability
+❌ Reports page cannot generate actual IC/LP reports
+These gaps prevent the 90% effort reduction and 100 bps operational alpha goals
+🔴 HIGH PRIORITY GAPS
+Advisor Portal - Cannot Fully Manage Competitive RFPs
+Missing Core Features:
+❌ Active RFPs page is placeholder - needs full deal tracking interface
+❌ My Clients page is placeholder - cannot manage GP portfolio
+❌ No lender matchmaking - advisors can select lenders but can't send invitations
+❌ No term sheet comparison - cannot collect/compare competing offers
+❌ No commission tracking/settlement - can see metrics but can't confirm payments
+❌ No deal anonymization controls - cannot toggle GP identity disclosure
+❌ No messaging/clarifications - cannot manage Q&A between GPs and lenders
+❌ No document sharing - cannot send data packs to lenders securely
+Specific Workflow Gaps:
+After RFP submission: No way to invite lenders or track their responses
+Term sheet collection: Lenders can't submit term sheets through the platform
+Side-by-side comparison: No interface to compare multiple lender offers
+Winner selection: No workflow to select winning lender and close RFP
+Commission calculation: Metrics show but can't confirm actual payments
+GP Portal - Journey Ends After Onboarding
+Affects: GP/Fund Managers | Impact: Cannot use platform beyond initial application
+
+Missing Features:
+❌ No GP dashboard - GPs have no place to return to after onboarding
+❌ No application status tracking - cannot see underwriting progress
+❌ No facility dashboard - if approved, no way to manage their loan
+❌ No covenant compliance view - cannot track their own performance
+❌ No draw requests - cannot request capital drawdowns
+❌ No document vault - cannot access loan documents, term sheets
+❌ No repayment tracking - cannot see amortization schedule
+❌ No messaging - cannot communicate with NAV IQ Capital team
+❌ No reporting access - cannot get quarterly reports for LPs
+Current State: GP applies → onboarding completes → dead end (nowhere to go)
+
+Operations Team - All Pages Are Mock Data
+Affects: NAV IQ Capital internal team
+
+Underwriting Workflow
+❌ No credit memo builder with AI assistance
+❌ No IC approval workflow
+❌ No document checklist tracking
+❌ No pricing calculator
+❌ No covenant template library
+Monitoring System
+❌ No automated data ingestion (covenant ratios, financials)
+❌ No breach detection/alerting
+❌ No predictive analytics (currently just mock UI)
+❌ No automated quarterly reporting triggers
+Portfolio Management
+❌ No real loan amortization calculations
+❌ No cash flow projections
+❌ No draw tracking
+❌ No prepayment/default handling
+Legal Document Generation
+❌ No template engine
+❌ No automated term sheet generation
+❌ No loan agreement builder
+❌ No e-signature integration
+🟡 MEDIUM PRIORITY GAPS
+Integration & Data Flow
+Disconnected Workflows
+
+❌ GP onboarding → prospect conversion works, but no status updates back to GP
+❌ Advisor deals → operations pipeline not linked
+❌ Term sheets submitted by advisors don't create real deals
+❌ No shared view between advisor RFP and operations underwriting
+Missing Database Models
+
+❌ Facilities (actual loans issued)
+❌ Covenants (monitoring rules)
+❌ Cash flows (payment schedules)
+❌ Draw requests (capital deployment)
+❌ Tasks/notifications
+❌ Audit logs
+❌ Messages/communications
+Missing API Endpoints
+
+❌ Status transition workflows
+❌ Analytics/reporting endpoints
+❌ Real-time notifications
+❌ Document download/upload with object storage
+Document Processing & AI
+❌ Document upload works but AI extraction is stubbed
+❌ No OCR for scanned documents
+❌ No data normalization
+❌ No human-in-the-loop review workflow
+❌ No secure object storage integration
+❌ No version control for documents
+Reporting & Analytics
+❌ No IC memo generator (PDF export)
+❌ No LP quarterly reports
+❌ No compliance reports
+❌ No portfolio benchmarking
+❌ No scheduled report generation
+❌ Dashboards show mock KPIs only
+User Experience
+❌ No notification system (email/in-app)
+❌ No task queues for pending actions
+❌ No real-time status updates
+❌ No in-app messaging
+❌ No KPI drill-downs (metrics aren't clickable)
+❌ No export to Excel/CSV
+❌ No search across deals/prospects
+📊 Gap Summary by User Type
+Advisors - 60% Complete
+✅ Can submit competitive RFPs
+❌ Cannot manage full RFP lifecycle
+❌ Cannot collect/compare term sheets
+❌ Cannot track commissions
+
+GPs - 30% Complete
+✅ Can complete onboarding
+❌ Cannot track application status
+❌ Cannot manage approved facilities
+❌ No post-approval functionality
+
+Operations Team - 20% Complete
+✅ Can view prospects from GP onboarding
+✅ Has UI mockups for all workflows
+❌ No real underwriting automation
+❌ No monitoring automation
+❌ No legal doc generation
+❌ No reporting capabilities
+
+🎯 Recommended Implementation Priority
+Phase 1: Foundation (Critical)
+Implement authentication with role-based access
+Switch to PostgreSQL for data persistence
+Connect advisor RFP submissions to operations pipeline
+Phase 2: Core Workflows (High Priority)
+Build out advisor Active RFPs management
+Create GP dashboard for post-onboarding experience
+Implement real underwriting workflow with IC memos
+Add term sheet collection and comparison
+Phase 3: Automation (High Priority)
+Monitoring automation with covenant tracking
+Legal document generation
+Report generation (IC, LP, compliance)
+Document AI processing
+Phase 4: Polish (Medium Priority)
+Notifications and messaging
+Advanced analytics
+Export capabilities
+Search and filtering enhancements
