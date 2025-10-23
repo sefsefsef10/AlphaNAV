@@ -114,3 +114,37 @@ Preferred communication style: Simple, everyday language.
 - Module path aliases (@/, @shared/, @assets/) for clean imports
 - Serverless-first database approach for scalability
 - Component library approach with shadcn/ui for customizability while maintaining consistency
+
+## Recent Changes
+
+### October 23, 2025 - GP Facility Management Complete
+**Status**: Task 9 completed with architect approval (13 of 20 tasks, 65% milestone)
+
+**Major Features Implemented**:
+1. **GP Facility Management** - All four features fully functional:
+   - **Draw Requests**: Create, track, approve funding requests with workflow notifications
+   - **Repayment Tracking**: Monitor cash flows and payment schedules with status indicators
+   - **Document Vault**: Upload, list, download, delete facility documents with facilityId scoping
+   - **Messaging System**: Thread-based communication with NAV IQ operations team
+
+**Technical Highlights**:
+- Fixed message queries to use query parameters: `queryKey: ['/api/messages?threadId=${threadId}']`
+- Fixed document queries to use full endpoint path: `queryKey: ['/api/facilities/${facilityId}/documents']`
+- Added `facilityId` field to `uploadedDocuments` schema for facility document scoping
+- Implemented Zod validation (`insertMessageSchema.parse`) for message payloads before storage
+- Cache invalidation properly scoped to thread-specific and facility-specific queries
+- Created `/api/upload-facility-document` endpoint with facilityId validation
+- Added `getDocumentsByFacility` storage method to IStorage interface and DatabaseStorage
+- Pushed database schema changes with `npm run db:push --force`
+
+**Key Learnings**:
+- Query keys must match the actual endpoint URL when using default queryFn
+- Cache invalidation must target the same queryKey format as queries
+- Database schema changes require nullable fields when adding to existing tables
+- Zod validation at API layer prevents invalid data from reaching storage layer
+
+**Workflow Connections**:
+- Draw request approval triggers notifications to GP users
+- New messages trigger notifications to recipient (operations team or GP)
+- Document uploads/deletions trigger cache invalidation for real-time UI updates
+- All four features integrated into tabbed interface on GP Facility page
