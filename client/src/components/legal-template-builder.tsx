@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -6,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Download } from "lucide-react";
+import { Download, FileText } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface TemplateConfig {
   interestType: "fixed" | "variable";
@@ -20,7 +23,17 @@ interface TemplateConfig {
   securityInterest: boolean;
 }
 
+interface GenerateDocumentPayload {
+  documentType: string;
+  config: TemplateConfig;
+  facilityId?: string;
+  dealId?: string;
+  advisorDealId?: string;
+}
+
 export function LegalTemplateBuilder() {
+  const { toast } = useToast();
+  const [documentType, setDocumentType] = useState<"loan_agreement" | "term_sheet" | "compliance_report">("loan_agreement");
   const [config, setConfig] = useState<TemplateConfig>({
     interestType: "fixed",
     termLength: 36,
@@ -33,13 +46,102 @@ export function LegalTemplateBuilder() {
     securityInterest: true,
   });
 
+  const generateMutation = useMutation({
+    mutationFn: async (payload: GenerateDocumentPayload) => {
+      return await apiRequest("POST", "/api/generate-document", payload);
+    },
+    onSuccess: (data) => {
+      // Download the generated document with correct extension based on format
+      const mimeTypes: Record<string, string> = {
+        markdown: 'text/markdown',
+        html: 'text/html',
+        pdf: 'application/pdf',
+      };
+      const extensions: Record<string, string> = {
+        markdown: 'md',
+        html: 'html',
+        pdf: 'pdf',
+      };
+      
+      const mimeType = mimeTypes[data.format] || 'text/plain';
+      const extension = extensions[data.format] || 'txt';
+      
+      const blob = new Blob([data.content], { type: mimeType });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${data.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Document Generated",
+        description: `${data.title} has been generated and downloaded.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Generation Failed",
+        description: error.message,
+      });
+    },
+  });
+
   const handleGenerateTemplate = () => {
-    console.log("Generating template with config:", config);
-    // TODO: Implement template generation
+    generateMutation.mutate({
+      documentType,
+      config,
+    });
   };
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Document Type & Configuration</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="document-type">Document Type</Label>
+            <Select
+              value={documentType}
+              onValueChange={(value: any) => setDocumentType(value)}
+            >
+              <SelectTrigger id="document-type" data-testid="select-document-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="loan_agreement">Loan Agreement</SelectItem>
+                <SelectItem value="term_sheet">Term Sheet</SelectItem>
+                <SelectItem value="compliance_report">Compliance Report</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {documentType === 'loan_agreement' && 'Generate a complete NAV facility loan agreement with all terms and conditions.'}
+              {documentType === 'term_sheet' && 'Generate a concise term sheet summarizing key deal terms.'}
+              {documentType === 'compliance_report' && 'Generate a quarterly compliance report for an existing facility.'}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {documentType === 'compliance_report' && (
+        <Card className="bg-muted/50">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              Compliance reports use a standardized format and do not require configuration. 
+              The report will automatically include all covenant compliance data, NAV analysis, 
+              portfolio composition, and payment history for the specified facility.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {documentType !== 'compliance_report' && (
+        <>
       <Card>
         <CardHeader>
           <CardTitle>Interest & Term Configuration</CardTitle>
@@ -209,11 +311,53 @@ export function LegalTemplateBuilder() {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
 
-      <div className="flex justify-end">
-        <Button onClick={handleGenerateTemplate} size="lg" data-testid="button-generate-template">
-          <Download className="mr-2 h-4 w-4" />
-          Generate Legal Document
+      <div className="flex justify-end gap-3">
+        {documentType !== 'compliance_report' && (
+          <Button 
+            variant="outline" 
+            size="lg"
+            onClick={() => {
+              setConfig({
+                interestType: "fixed",
+                termLength: 36,
+                includeOID: false,
+                includePIK: false,
+                covenantDebtEBITDA: true,
+                debtEBITDARatio: 3.5,
+                amortizationSchedule: false,
+                prepaymentPenalty: true,
+                securityInterest: true,
+              });
+              toast({
+                title: "Configuration Reset",
+                description: "All settings have been reset to defaults",
+              });
+            }}
+            data-testid="button-reset-config"
+          >
+            Reset Configuration
+          </Button>
+        )}
+        <Button 
+          onClick={handleGenerateTemplate} 
+          size="lg" 
+          disabled={generateMutation.isPending}
+          data-testid="button-generate-template"
+        >
+          {generateMutation.isPending ? (
+            <>
+              <FileText className="mr-2 h-4 w-4 animate-pulse" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Download className="mr-2 h-4 w-4" />
+              Generate {documentType === 'loan_agreement' ? 'Loan Agreement' : documentType === 'term_sheet' ? 'Term Sheet' : 'Compliance Report'}
+            </>
+          )}
         </Button>
       </div>
     </div>

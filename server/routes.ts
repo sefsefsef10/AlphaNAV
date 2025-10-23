@@ -1002,6 +1002,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generated Documents endpoints
+  app.post("/api/generate-document", isAuthenticated, async (req: any, res) => {
+    try {
+      const { documentType, config, facilityId, dealId, advisorDealId } = req.body;
+      const { generateLoanAgreement, generateTermSheet, generateComplianceReport } = await import('./documentGenerator');
+      
+      let content = '';
+      let title = '';
+      let facilityData = null;
+
+      // Fetch facility data if facilityId provided
+      if (facilityId) {
+        facilityData = await storage.getFacility(facilityId);
+      }
+
+      // Generate content based on document type
+      switch (documentType) {
+        case 'loan_agreement':
+          content = generateLoanAgreement(config, facilityData || undefined);
+          title = `Loan Agreement - ${facilityData?.fundName || 'Draft'}`;
+          break;
+        case 'term_sheet':
+          content = generateTermSheet(config, facilityData || undefined);
+          title = `Term Sheet - ${facilityData?.fundName || 'Draft'}`;
+          break;
+        case 'compliance_report':
+          content = generateComplianceReport(facilityId, facilityData || undefined);
+          title = `Compliance Report - Q${Math.floor(new Date().getMonth() / 3) + 1} ${new Date().getFullYear()}`;
+          break;
+        default:
+          return res.status(400).json({ error: "Invalid document type" });
+      }
+
+      // Create generated document record
+      const document = await storage.createGeneratedDocument({
+        facilityId: facilityId || null,
+        dealId: dealId || null,
+        advisorDealId: advisorDealId || null,
+        documentType,
+        title,
+        content,
+        templateConfig: config,
+        format: 'markdown',
+        generatedBy: req.user.claims.sub,
+      });
+
+      res.json(document);
+    } catch (error: any) {
+      console.error('Document generation error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/generated-documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const documents = await storage.listGeneratedDocuments();
+      res.json(documents);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/generated-documents/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const document = await storage.getGeneratedDocument(req.params.id);
+      if (!document) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      res.json(document);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/facilities/:facilityId/generated-documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const documents = await storage.getGeneratedDocumentsByFacility(req.params.facilityId);
+      res.json(documents);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/generated-documents/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      await storage.deleteGeneratedDocument(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

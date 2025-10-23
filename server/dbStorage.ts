@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, or } from "drizzle-orm";
 import { 
   users, 
   onboardingSessions, 
@@ -17,6 +17,7 @@ import {
   notifications,
   notificationPreferences,
   covenants,
+  generatedDocuments,
   type User,
   type UpsertUser,
   type OnboardingSession,
@@ -45,6 +46,8 @@ import {
   type NotificationPreferences,
   type Covenant,
   type InsertCovenant,
+  type GeneratedDocument,
+  type InsertGeneratedDocument,
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 
@@ -797,5 +800,37 @@ export class DatabaseStorage implements IStorage {
     }
 
     return checkedCovenants;
+  }
+
+  // Generated Documents methods
+  async createGeneratedDocument(doc: InsertGeneratedDocument): Promise<GeneratedDocument> {
+    const [created] = await db.insert(generatedDocuments).values(doc).returning();
+    return created;
+  }
+
+  async getGeneratedDocument(id: string): Promise<GeneratedDocument | undefined> {
+    const [doc] = await db.select().from(generatedDocuments).where(eq(generatedDocuments.id, id));
+    return doc;
+  }
+
+  async getGeneratedDocumentsByFacility(facilityId: string): Promise<GeneratedDocument[]> {
+    return await db.select().from(generatedDocuments)
+      .where(eq(generatedDocuments.facilityId, facilityId))
+      .orderBy(desc(generatedDocuments.createdAt));
+  }
+
+  async getGeneratedDocumentsByDeal(dealId: string): Promise<GeneratedDocument[]> {
+    return await db.select().from(generatedDocuments)
+      .where(eq(generatedDocuments.dealId, dealId))
+      .orderBy(desc(generatedDocuments.createdAt));
+  }
+
+  async listGeneratedDocuments(): Promise<GeneratedDocument[]> {
+    return await db.select().from(generatedDocuments)
+      .orderBy(desc(generatedDocuments.createdAt));
+  }
+
+  async deleteGeneratedDocument(id: string): Promise<void> {
+    await db.delete(generatedDocuments).where(eq(generatedDocuments.id, id));
   }
 }

@@ -100,6 +100,13 @@ export interface IStorage {
   getCovenantsByFacility(facilityId: string): Promise<any[]>;
   updateCovenant(id: string, updates: any): Promise<any | undefined>;
   checkCovenants(facilityId: string): Promise<any[]>;
+  
+  createGeneratedDocument(document: any): Promise<any>;
+  getGeneratedDocument(id: string): Promise<any | undefined>;
+  getGeneratedDocumentsByFacility(facilityId: string): Promise<any[]>;
+  getGeneratedDocumentsByDeal(dealId: string): Promise<any[]>;
+  listGeneratedDocuments(): Promise<any[]>;
+  deleteGeneratedDocument(id: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -557,6 +564,126 @@ export class MemStorage implements IStorage {
 
   async markNotificationAsRead(id: string): Promise<any | undefined> {
     return undefined;
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    return;
+  }
+
+  async deleteNotification(id: string): Promise<void> {
+    return;
+  }
+
+  async getNotificationPreferences(userId: string): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async upsertNotificationPreferences(userId: string, preferences: any): Promise<any> {
+    return undefined;
+  }
+
+  async globalSearch(query: string): Promise<any[]> {
+    return [];
+  }
+
+  async createCovenant(covenant: any): Promise<any> {
+    return undefined;
+  }
+
+  async getCovenantsByFacility(facilityId: string): Promise<any[]> {
+    return [];
+  }
+
+  async updateCovenant(id: string, updates: any): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async checkCovenants(facilityId: string): Promise<any[]> {
+    return [];
+  }
+
+  async createGeneratedDocument(document: any): Promise<any> {
+    return undefined;
+  }
+
+  async getGeneratedDocument(id: string): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async getGeneratedDocumentsByFacility(facilityId: string): Promise<any[]> {
+    return [];
+  }
+
+  async getGeneratedDocumentsByDeal(dealId: string): Promise<any[]> {
+    return [];
+  }
+
+  async listGeneratedDocuments(): Promise<any[]> {
+    return [];
+  }
+
+  async deleteGeneratedDocument(id: string): Promise<void> {
+    return;
+  }
+
+  async createDrawRequest(drawRequest: any): Promise<any> {
+    return undefined;
+  }
+
+  async getDrawRequest(id: string): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async getDrawRequestsByFacility(facilityId: string): Promise<any[]> {
+    return [];
+  }
+
+  async listDrawRequests(): Promise<any[]> {
+    return [];
+  }
+
+  async updateDrawRequest(id: string, updates: any): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async createCashFlow(cashFlow: any): Promise<any> {
+    return undefined;
+  }
+
+  async getCashFlowsByFacility(facilityId: string): Promise<any[]> {
+    return [];
+  }
+
+  async listCashFlows(): Promise<any[]> {
+    return [];
+  }
+
+  async updateCashFlow(id: string, updates: any): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async createMessage(message: any): Promise<any> {
+    return undefined;
+  }
+
+  async getMessagesByThread(threadId: string): Promise<any[]> {
+    return [];
+  }
+
+  async listMessages(): Promise<any[]> {
+    return [];
+  }
+
+  async markMessageAsRead(id: string): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async deleteUploadedDocument(id: string): Promise<void> {
+    return;
+  }
+
+  async getDocumentsByFacility(facilityId: string): Promise<UploadedDocument[]> {
+    return [];
   }
 }
 

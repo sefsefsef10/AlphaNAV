@@ -435,3 +435,26 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
 
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+// Generated Documents (legal documents generated from templates)
+export const generatedDocuments = pgTable("generated_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  facilityId: varchar("facility_id"),
+  dealId: varchar("deal_id"),
+  advisorDealId: varchar("advisor_deal_id"),
+  documentType: text("document_type").notNull(), // 'term_sheet', 'loan_agreement', 'compliance_report', etc.
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  templateConfig: jsonb("template_config"), // Store the configuration used to generate
+  format: text("format").notNull().default("markdown"), // 'markdown', 'html', 'pdf'
+  generatedBy: varchar("generated_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertGeneratedDocumentSchema = createInsertSchema(generatedDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGeneratedDocument = z.infer<typeof insertGeneratedDocumentSchema>;
+export type GeneratedDocument = typeof generatedDocuments.$inferSelect;
