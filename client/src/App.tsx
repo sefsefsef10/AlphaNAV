@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
+import { NotificationsBell } from "@/components/notifications-bell";
 import ProfileSelection from "@/pages/profile-selection";
 import DashboardPage from "@/pages/dashboard";
 import DealPipelinePage from "@/pages/deal-pipeline";
@@ -27,7 +28,7 @@ import OnboardingComplete from "@/pages/onboarding-complete";
 import AdvisorDashboard from "@/pages/advisor-dashboard";
 import AdvisorSubmitDeal from "@/pages/advisor-submit-deal";
 import AdvisorActiveRFPs from "@/pages/advisor-active-rfps";
-import AdvisorClients from "@/pages/advisor-clients";
+import AdvisorMyClients from "@/pages/advisor-my-clients";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
@@ -107,7 +108,10 @@ function AppContent() {
                 Change Profile
               </Button>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <NotificationsBell />
+              <ThemeToggle />
+            </div>
           </header>
           <main className="flex-1 overflow-auto p-4 sm:p-6">
             <Switch>
@@ -123,7 +127,7 @@ function AppContent() {
               <Route path="/advisor" component={AdvisorDashboard} />
               <Route path="/advisor/submit-deal" component={AdvisorSubmitDeal} />
               <Route path="/advisor/active-rfps" component={AdvisorActiveRFPs} />
-              <Route path="/advisor/clients" component={AdvisorClients} />
+              <Route path="/advisor/clients" component={AdvisorMyClients} />
               <Route component={NotFound} />
             </Switch>
           </main>
