@@ -12,6 +12,7 @@ import { Home } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { GlobalSearch } from "@/components/global-search";
+import { HelpButton } from "@/components/help-button";
 import ProfileSelection from "@/pages/profile-selection";
 import DashboardPage from "@/pages/dashboard";
 import DealPipelinePage from "@/pages/deal-pipeline";
@@ -40,6 +41,7 @@ function AppContent() {
   const [location, setLocation] = useLocation();
   const isOnboardingPage = location.startsWith("/onboarding");
   const isAdvisorPage = location.startsWith("/advisor");
+  const isGPPage = location.startsWith("/gp");
   const isProfileSelection = location === "/";
 
   const style = {
@@ -115,6 +117,13 @@ function AppContent() {
             </div>
             <div className="flex items-center gap-2">
               <NotificationsBell />
+              <HelpButton 
+                defaultRole={
+                  isAdvisorPage ? "advisor" : 
+                  isGPPage ? "gp" : 
+                  "operations"
+                } 
+              />
               <ThemeToggle />
             </div>
           </header>
