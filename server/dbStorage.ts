@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { 
   users, 
   onboardingSessions, 
@@ -579,5 +579,115 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return prefs;
+  }
+
+  // Global search across all entities
+  async globalSearch(query: string): Promise<any[]> {
+    const searchTerm = `%${query.toLowerCase()}%`;
+    const results: any[] = [];
+
+    try {
+      // Search deals (GP onboarding)
+      const dealResults = await db
+        .select()
+        .from(deals)
+        .where(sql`LOWER(${deals.fundName}) LIKE ${searchTerm} OR LOWER(${deals.fundStrategy}) LIKE ${searchTerm}`)
+        .limit(5);
+
+      dealResults.forEach(deal => {
+        results.push({
+          id: deal.id,
+          type: 'deal',
+          title: deal.fundName,
+          subtitle: deal.fundStrategy || undefined,
+          status: deal.status,
+          metadata: { aum: deal.aum, requestedAmount: deal.requestedAmount },
+        });
+      });
+
+      // Search prospects
+      const prospectResults = await db
+        .select()
+        .from(prospects)
+        .where(sql`LOWER(${prospects.fundName}) LIKE ${searchTerm} OR LOWER(${prospects.gpName}) LIKE ${searchTerm}`)
+        .limit(5);
+
+      prospectResults.forEach(prospect => {
+        results.push({
+          id: prospect.id,
+          type: 'prospect',
+          title: prospect.fundName,
+          subtitle: prospect.gpName || undefined,
+          status: prospect.status,
+          metadata: { aum: prospect.aum, location: prospect.location },
+        });
+      });
+
+      // Search facilities
+      const facilityResults = await db
+        .select()
+        .from(facilities)
+        .where(sql`LOWER(${facilities.fundName}) LIKE ${searchTerm} OR LOWER(${facilities.gpName}) LIKE ${searchTerm}`)
+        .limit(5);
+
+      facilityResults.forEach(facility => {
+        results.push({
+          id: facility.id,
+          type: 'facility',
+          title: facility.fundName,
+          subtitle: facility.gpName || undefined,
+          status: facility.status,
+          metadata: { 
+            principalAmount: facility.principalAmount, 
+            availableCredit: facility.availableCredit,
+            maturityDate: facility.maturityDate,
+          },
+        });
+      });
+
+      // Search advisors
+      const advisorResults = await db
+        .select()
+        .from(advisors)
+        .where(sql`LOWER(${advisors.firmName}) LIKE ${searchTerm} OR LOWER(${advisors.contactName}) LIKE ${searchTerm}`)
+        .limit(5);
+
+      advisorResults.forEach(advisor => {
+        results.push({
+          id: advisor.id,
+          type: 'advisor',
+          title: advisor.firmName,
+          subtitle: advisor.contactName || undefined,
+          status: advisor.status,
+          metadata: { email: advisor.email, phone: advisor.phone },
+        });
+      });
+
+      // Search advisor deals
+      const advisorDealResults = await db
+        .select()
+        .from(advisorDeals)
+        .where(sql`LOWER(${advisorDeals.gpFundName}) LIKE ${searchTerm} OR LOWER(${advisorDeals.gpName}) LIKE ${searchTerm}`)
+        .limit(5);
+
+      advisorDealResults.forEach(deal => {
+        results.push({
+          id: deal.id,
+          type: 'advisor-deal',
+          title: deal.gpFundName,
+          subtitle: deal.gpName || undefined,
+          status: deal.status,
+          metadata: { 
+            loanAmount: deal.loanAmount, 
+            advisorId: deal.advisorId,
+          },
+        });
+      });
+
+      return results;
+    } catch (error) {
+      console.error('Global search error:', error);
+      return [];
+    }
   }
 }

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { NotificationsBell } from "@/components/notifications-bell";
+import { GlobalSearch } from "@/components/global-search";
 import ProfileSelection from "@/pages/profile-selection";
 import DashboardPage from "@/pages/dashboard";
 import DealPipelinePage from "@/pages/deal-pipeline";
@@ -118,6 +119,7 @@ function AppContent() {
             </div>
           </header>
           <main className="flex-1 overflow-auto p-4 sm:p-6">
+            <GlobalSearch />
             <Switch>
               <Route path="/dashboard" component={DashboardPage} />
               <Route path="/operations" component={OperationsDashboard} />

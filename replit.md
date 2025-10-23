@@ -182,3 +182,37 @@ Preferred communication style: Simple, everyday language.
 - New messages trigger notifications to recipient (operations team or GP)
 - Document uploads/deletions trigger cache invalidation for real-time UI updates
 - All four features integrated into tabbed interface on GP Facility page
+
+### October 23, 2025 - Global Search and Filtering
+**Status**: Task 18 in progress (16 of 20 tasks, 80% milestone)
+
+**Features Implemented**:
+1. **Global Search Component** (`client/src/components/global-search.tsx`):
+   - Keyboard shortcut: Cmd+K / Ctrl+K to open search dialog
+   - Real-time search across all entities with 2+ character minimum
+   - CommandDialog UI with search input, grouped results, loading states
+   - Search result types: GP deals, prospects, facilities, advisors, advisor deals
+   - Type-specific icons and status badges with color coding
+   - Click-to-navigate functionality to entity detail pages
+   - Empty states for no results and initial state with keyboard hint
+
+2. **Backend Search API** (`server/routes.ts`, `server/dbStorage.ts`):
+   - GET `/api/search` endpoint with authentication
+   - Multi-entity search using SQL LIKE queries (case-insensitive)
+   - Searches fund names, GP names, firm names, contact names, strategies
+   - Limits 5 results per entity type (25 total max)
+   - Returns structured results with id, type, title, subtitle, status, metadata
+   - Error handling with graceful fallback to empty results
+
+3. **Integration**:
+   - GlobalSearch component integrated into App.tsx main layout
+   - Available on all authenticated pages with sidebar (advisor, operations, GP)
+   - Uses TanStack Query for search with automatic cache management
+   - Debouncing via enabled flag (only searches when query >= 2 chars)
+
+**Technical Highlights**:
+- Leveraged existing CommandDialog from shadcn/ui (cmdk library)
+- SQL LIKE queries with parameterized search terms for security
+- Type-safe results with SearchResult interface
+- Results grouped by entity type with appropriate routing
+- Keyboard shortcuts using native DOM event listeners

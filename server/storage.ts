@@ -93,6 +93,8 @@ export interface IStorage {
   
   getNotificationPreferences(userId: string): Promise<any | undefined>;
   upsertNotificationPreferences(userId: string, preferences: any): Promise<any>;
+  
+  globalSearch(query: string): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {

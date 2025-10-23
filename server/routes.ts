@@ -932,6 +932,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Global search endpoint
+  app.get("/api/search", isAuthenticated, async (req: any, res) => {
+    try {
+      const query = req.query.searchQuery as string;
+      if (!query || query.length < 2) {
+        return res.json({ results: [] });
+      }
+
+      const results = await storage.globalSearch(query);
+      res.json({ results });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
