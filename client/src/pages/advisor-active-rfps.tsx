@@ -14,14 +14,18 @@ import {
   Send,
   TrendingUp,
   Users,
-  Award
+  Award,
+  UserPlus
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { LenderInvitationDialog } from "@/components/lender-invitation-dialog";
 import type { AdvisorDeal, LenderInvitation, TermSheet } from "@shared/schema";
 
 export default function AdvisorActiveRFPs() {
   const [, setLocation] = useLocation();
   const [selectedDeal, setSelectedDeal] = useState<string | null>(null);
+  const [invitationDialogOpen, setInvitationDialogOpen] = useState(false);
+  const [selectedDealForInvitation, setSelectedDealForInvitation] = useState<AdvisorDeal | null>(null);
 
   // Query all advisor deals
   const { data: deals = [], isLoading } = useQuery<AdvisorDeal[]>({
@@ -103,6 +107,12 @@ export default function AdvisorActiveRFPs() {
     );
   }
 
+  const handleOpenInviteDialog = (deal: AdvisorDeal, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setSelectedDealForInvitation(deal);
+    setInvitationDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -111,6 +121,16 @@ export default function AdvisorActiveRFPs() {
           Track competitive processes and manage lender responses
         </p>
       </div>
+
+      {/* Lender Invitation Dialog */}
+      {selectedDealForInvitation && (
+        <LenderInvitationDialog
+          open={invitationDialogOpen}
+          onOpenChange={setInvitationDialogOpen}
+          dealId={selectedDealForInvitation.id}
+          fundName={selectedDealForInvitation.fundName}
+        />
+      )}
 
       {/* Summary Stats */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -204,6 +224,7 @@ export default function AdvisorActiveRFPs() {
                 termSheets={getDealTermSheets(deal.id)}
                 progress={calculateProgress(deal)}
                 onViewDetails={() => setLocation(`/advisor/deals/${deal.id}`)}
+                onInviteLenders={(e) => handleOpenInviteDialog(deal, e)}
               />
             ))
           )}
@@ -258,9 +279,10 @@ interface DealCardProps {
   termSheets: TermSheet[];
   progress: number;
   onViewDetails: () => void;
+  onInviteLenders?: (e: React.MouseEvent) => void;
 }
 
-function DealCard({ deal, invitations, termSheets, progress, onViewDetails }: DealCardProps) {
+function DealCard({ deal, invitations, termSheets, progress, onViewDetails, onInviteLenders }: DealCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "won": return "bg-success text-success-foreground";
@@ -371,6 +393,16 @@ function DealCard({ deal, invitations, termSheets, progress, onViewDetails }: De
           >
             View Details
           </Button>
+          {onInviteLenders && deal.status === "active" && (
+            <Button 
+              variant="outline"
+              onClick={onInviteLenders}
+              data-testid={`button-invite-lenders-${deal.id}`}
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              Invite Lenders
+            </Button>
+          )}
           {termSheetCount > 1 && deal.status === "active" && (
             <Button 
               className="flex-1"
