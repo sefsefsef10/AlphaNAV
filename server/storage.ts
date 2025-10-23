@@ -88,6 +88,11 @@ export interface IStorage {
   
   getNotificationsByUser(userId: string): Promise<any[]>;
   markNotificationAsRead(id: string): Promise<any | undefined>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  deleteNotification(id: string): Promise<void>;
+  
+  getNotificationPreferences(userId: string): Promise<any | undefined>;
+  upsertNotificationPreferences(userId: string, preferences: any): Promise<any>;
 }
 
 export class MemStorage implements IStorage {

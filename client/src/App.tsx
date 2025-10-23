@@ -32,6 +32,7 @@ import AdvisorMyClients from "@/pages/advisor-my-clients";
 import GPDashboard from "@/pages/gp-dashboard";
 import GPFacility from "@/pages/gp-facility";
 import OperationsDashboard from "@/pages/operations-dashboard";
+import NotificationPreferences from "@/pages/notification-preferences";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
@@ -128,6 +129,7 @@ function AppContent() {
               <Route path="/legal" component={LegalPage} />
               <Route path="/lp-enablement" component={LPEnablementPage} />
               <Route path="/settings" component={SettingsPage} />
+              <Route path="/notifications" component={NotificationPreferences} />
               <Route path="/advisor" component={AdvisorDashboard} />
               <Route path="/advisor/submit-deal" component={AdvisorSubmitDeal} />
               <Route path="/advisor/active-rfps" component={AdvisorActiveRFPs} />

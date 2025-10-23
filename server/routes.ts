@@ -860,6 +860,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/notifications/mark-all-read", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/notifications/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.deleteNotification(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Notification Preferences endpoints
+  app.get("/api/user/notification-preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const preferences = await storage.getNotificationPreferences(userId);
+      if (!preferences) {
+        // Return default preferences if none exist
+        return res.json({
+          emailNotifications: true,
+          pushNotifications: true,
+          dealUpdates: true,
+          underwritingAlerts: true,
+          portfolioAlerts: true,
+          systemAnnouncements: true,
+          weeklyDigest: false,
+          instantAlerts: true,
+        });
+      }
+      res.json(preferences);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/user/notification-preferences", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      // Validate request body to ensure only valid booleans
+      const validPreferences: any = {};
+      const allowedFields = [
+        'emailNotifications',
+        'pushNotifications',
+        'dealUpdates',
+        'underwritingAlerts',
+        'portfolioAlerts',
+        'systemAnnouncements',
+        'weeklyDigest',
+        'instantAlerts'
+      ];
+      
+      for (const field of allowedFields) {
+        if (field in req.body && typeof req.body[field] === 'boolean') {
+          validPreferences[field] = req.body[field];
+        }
+      }
+      
+      const preferences = await storage.upsertNotificationPreferences(userId, validPreferences);
+      res.json(preferences);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

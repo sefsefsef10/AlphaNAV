@@ -15,6 +15,7 @@ import {
   cashFlows,
   messages,
   notifications,
+  notificationPreferences,
   type User,
   type UpsertUser,
   type OnboardingSession,
@@ -40,6 +41,7 @@ import {
   type InsertCashFlow,
   type Message,
   type InsertMessage,
+  type NotificationPreferences,
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 
@@ -541,5 +543,41 @@ export class DatabaseStorage implements IStorage {
       .where(eq(notifications.id, id))
       .returning();
     return updated;
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.userId, userId));
+  }
+
+  async deleteNotification(id: string): Promise<void> {
+    await db.delete(notifications).where(eq(notifications.id, id));
+  }
+
+  // Notification Preferences methods
+  async getNotificationPreferences(userId: string): Promise<NotificationPreferences | undefined> {
+    const [prefs] = await db
+      .select()
+      .from(notificationPreferences)
+      .where(eq(notificationPreferences.userId, userId))
+      .limit(1);
+    return prefs;
+  }
+
+  async upsertNotificationPreferences(userId: string, preferences: any): Promise<NotificationPreferences> {
+    const [prefs] = await db
+      .insert(notificationPreferences)
+      .values({ ...preferences, userId })
+      .onConflictDoUpdate({
+        target: notificationPreferences.userId,
+        set: {
+          ...preferences,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return prefs;
   }
 }

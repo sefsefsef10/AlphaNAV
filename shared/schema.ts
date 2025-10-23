@@ -387,6 +387,33 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
+// Notification Preferences (user notification settings)
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique(),
+  emailNotifications: boolean("email_notifications").notNull().default(true),
+  pushNotifications: boolean("push_notifications").notNull().default(true),
+  dealUpdates: boolean("deal_updates").notNull().default(true),
+  underwritingAlerts: boolean("underwriting_alerts").notNull().default(true),
+  portfolioAlerts: boolean("portfolio_alerts").notNull().default(true),
+  systemAnnouncements: boolean("system_announcements").notNull().default(true),
+  weeklyDigest: boolean("weekly_digest").notNull().default(false),
+  instantAlerts: boolean("instant_alerts").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateNotificationPreferencesSchema = insertNotificationPreferencesSchema.partial();
+
+export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
+
 // Audit logs (track all important actions)
 export const auditLogs = pgTable("audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
