@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { LenderInvitationDialog } from "@/components/lender-invitation-dialog";
+import { TermSheetComparison } from "@/components/term-sheet-comparison";
 import type { AdvisorDeal, LenderInvitation, TermSheet } from "@shared/schema";
 
 export default function AdvisorActiveRFPs() {
@@ -26,6 +27,8 @@ export default function AdvisorActiveRFPs() {
   const [selectedDeal, setSelectedDeal] = useState<string | null>(null);
   const [invitationDialogOpen, setInvitationDialogOpen] = useState(false);
   const [selectedDealForInvitation, setSelectedDealForInvitation] = useState<AdvisorDeal | null>(null);
+  const [comparisonDialogOpen, setComparisonDialogOpen] = useState(false);
+  const [selectedDealForComparison, setSelectedDealForComparison] = useState<AdvisorDeal | null>(null);
 
   // Query all advisor deals
   const { data: deals = [], isLoading } = useQuery<AdvisorDeal[]>({
@@ -113,6 +116,12 @@ export default function AdvisorActiveRFPs() {
     setInvitationDialogOpen(true);
   };
 
+  const handleOpenComparisonDialog = (deal: AdvisorDeal, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setSelectedDealForComparison(deal);
+    setComparisonDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -129,6 +138,17 @@ export default function AdvisorActiveRFPs() {
           onOpenChange={setInvitationDialogOpen}
           dealId={selectedDealForInvitation.id}
           fundName={selectedDealForInvitation.fundName}
+        />
+      )}
+
+      {/* Term Sheet Comparison Dialog */}
+      {selectedDealForComparison && (
+        <TermSheetComparison
+          open={comparisonDialogOpen}
+          onOpenChange={setComparisonDialogOpen}
+          termSheets={getDealTermSheets(selectedDealForComparison.id)}
+          dealId={selectedDealForComparison.id}
+          fundName={selectedDealForComparison.fundName}
         />
       )}
 
@@ -225,6 +245,7 @@ export default function AdvisorActiveRFPs() {
                 progress={calculateProgress(deal)}
                 onViewDetails={() => setLocation(`/advisor/deals/${deal.id}`)}
                 onInviteLenders={(e) => handleOpenInviteDialog(deal, e)}
+                onCompareTermSheets={(e) => handleOpenComparisonDialog(deal, e)}
               />
             ))
           )}
@@ -280,9 +301,10 @@ interface DealCardProps {
   progress: number;
   onViewDetails: () => void;
   onInviteLenders?: (e: React.MouseEvent) => void;
+  onCompareTermSheets?: (e: React.MouseEvent) => void;
 }
 
-function DealCard({ deal, invitations, termSheets, progress, onViewDetails, onInviteLenders }: DealCardProps) {
+function DealCard({ deal, invitations, termSheets, progress, onViewDetails, onInviteLenders, onCompareTermSheets }: DealCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "won": return "bg-success text-success-foreground";
@@ -403,9 +425,10 @@ function DealCard({ deal, invitations, termSheets, progress, onViewDetails, onIn
               Invite Lenders
             </Button>
           )}
-          {termSheetCount > 1 && deal.status === "active" && (
+          {termSheetCount > 1 && deal.status === "active" && onCompareTermSheets && (
             <Button 
               className="flex-1"
+              onClick={onCompareTermSheets}
               data-testid={`button-compare-${deal.id}`}
             >
               <FileText className="mr-2 h-4 w-4" />
