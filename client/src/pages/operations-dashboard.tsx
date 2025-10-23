@@ -15,8 +15,11 @@ import {
   XCircle,
   Users,
   BarChart3,
+  Download,
 } from "lucide-react";
 import type { Prospect, AdvisorDeal, Facility, Notification } from "@shared/schema";
+import { arrayToCSV, downloadCSV, formatCurrency, formatDate, type ExportColumn } from "@/lib/export-utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardMetrics {
   totalProspects: number;
@@ -28,6 +31,8 @@ interface DashboardMetrics {
 }
 
 export default function OperationsDashboard() {
+  const { toast } = useToast();
+  
   // Fetch all data for dashboard
   const { data: prospects = [] } = useQuery<Prospect[]>({
     queryKey: ["/api/prospects"],
@@ -105,6 +110,100 @@ export default function OperationsDashboard() {
 
   const portfolioHealth = calculatePortfolioHealth();
 
+  // Export functions
+  const exportDeals = () => {
+    if (deals.length === 0) {
+      toast({
+        title: "No Data",
+        description: "There are no deals to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const columns: ExportColumn[] = [
+      { header: "Deal ID", accessor: "id" },
+      { header: "GP Fund Name", accessor: "gpFundName" },
+      { header: "GP Contact Name", accessor: "gpContactName" },
+      { header: "Loan Amount", accessor: "loanAmount", formatter: (v) => v ? formatCurrency(v) : "" },
+      { header: "Status", accessor: "status" },
+      { header: "Advisor ID", accessor: "advisorId" },
+      { header: "Created At", accessor: "createdAt", formatter: (v) => formatDate(v) },
+    ];
+
+    const csv = arrayToCSV(deals, columns);
+    const timestamp = new Date().toISOString().split('T')[0];
+    downloadCSV(csv, `nav-deals-${timestamp}.csv`);
+
+    toast({
+      title: "Export Successful",
+      description: `Exported ${deals.length} deals to CSV`,
+    });
+  };
+
+  const exportFacilities = () => {
+    if (facilities.length === 0) {
+      toast({
+        title: "No Data",
+        description: "There are no facilities to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const columns: ExportColumn[] = [
+      { header: "Facility ID", accessor: "id" },
+      { header: "Fund Name", accessor: "fundName" },
+      { header: "Lender Name", accessor: "lenderName" },
+      { header: "Principal Amount", accessor: "principalAmount", formatter: (v) => formatCurrency(v) },
+      { header: "Outstanding Balance", accessor: "outstandingBalance", formatter: (v) => formatCurrency(v) },
+      { header: "Available Credit", accessor: (row) => formatCurrency(row.principalAmount - row.outstandingBalance) },
+      { header: "LTV Ratio", accessor: (row) => `${row.ltvRatio}%` },
+      { header: "Status", accessor: "status" },
+      { header: "Maturity Date", accessor: "maturityDate", formatter: (v) => formatDate(v) },
+    ];
+
+    const csv = arrayToCSV(facilities, columns);
+    const timestamp = new Date().toISOString().split('T')[0];
+    downloadCSV(csv, `nav-facilities-${timestamp}.csv`);
+
+    toast({
+      title: "Export Successful",
+      description: `Exported ${facilities.length} facilities to CSV`,
+    });
+  };
+
+  const exportProspects = () => {
+    if (prospects.length === 0) {
+      toast({
+        title: "No Data",
+        description: "There are no prospects to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const columns: ExportColumn[] = [
+      { header: "Prospect ID", accessor: "id" },
+      { header: "Fund Name", accessor: "fundName" },
+      { header: "Contact Name", accessor: "contactName" },
+      { header: "Fund Size", accessor: "fundSize", formatter: (v) => v ? formatCurrency(v) : "" },
+      { header: "Vintage", accessor: "vintage" },
+      { header: "Eligibility Status", accessor: "eligibilityStatus" },
+      { header: "Source", accessor: "source" },
+      { header: "Created At", accessor: "createdAt", formatter: (v) => formatDate(v) },
+    ];
+
+    const csv = arrayToCSV(prospects, columns);
+    const timestamp = new Date().toISOString().split('T')[0];
+    downloadCSV(csv, `nav-prospects-${timestamp}.csv`);
+
+    toast({
+      title: "Export Successful",
+      description: `Exported ${prospects.length} prospects to CSV`,
+    });
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: "bg-secondary text-secondary-foreground",
@@ -123,23 +222,45 @@ export default function OperationsDashboard() {
     return colors[status] || "bg-secondary text-secondary-foreground";
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Operations Dashboard</h1>
-        <p className="text-muted-foreground">
-          NAV IQ Capital portfolio and pipeline management
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Operations Dashboard</h1>
+          <p className="text-muted-foreground">
+            NAV IQ Capital portfolio and pipeline management
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportProspects}
+            data-testid="button-export-prospects"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Prospects
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportDeals}
+            data-testid="button-export-deals"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Deals
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportFacilities}
+            data-testid="button-export-facilities"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Facilities
+          </Button>
+        </div>
       </div>
 
       {/* Key Metrics */}

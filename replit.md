@@ -216,3 +216,39 @@ Preferred communication style: Simple, everyday language.
 - Type-safe results with SearchResult interface
 - Results grouped by entity type with appropriate routing
 - Keyboard shortcuts using native DOM event listeners
+
+### October 23, 2025 - Data Export and Reporting
+**Status**: Task 19 in progress (17 of 20 tasks, 85% milestone)
+
+**Features Implemented**:
+1. **CSV Export Utility** (`client/src/lib/export-utils.ts`):
+   - Generic `arrayToCSV` function for converting data to CSV format
+   - Column configuration with headers, accessors, and formatters
+   - Proper CSV escaping for commas, quotes, newlines
+   - `downloadCSV` function triggers browser download
+   - Helper formatters: formatCurrency, formatDate, formatBoolean
+
+2. **Operations Dashboard Export Buttons**:
+   - Three export buttons in dashboard header: Prospects, Deals, Facilities
+   - Export handlers with data validation (checks for empty data)
+   - Success/error toast notifications
+   - Timestamped filename generation (e.g., `nav-deals-2025-10-23.csv`)
+   - Comprehensive column mapping for each entity type:
+     * Deals: ID, GP Fund Name, GP Name, Loan Amount, Status, Advisor ID, Submitted At
+     * Facilities: ID, Fund Name, GP Name, Principal Amount, Outstanding Balance, Available Credit, LTV Ratio, Status, Maturity Date
+     * Prospects: ID, Fund Name, GP Name, AUM, Location, Status, Lead Source, Created At
+
+3. **Export Flow**:
+   - User clicks export button on operations dashboard
+   - System validates data exists, shows error if empty
+   - CSV generated with proper formatting (currency, dates, percentages)
+   - Browser downloads file with timestamp
+   - Success toast confirms export count
+
+**Technical Highlights**:
+- Reusable export utilities support any entity type
+- Type-safe ExportColumn interface for configuration
+- Currency formatting with locale support ($1,000,000)
+- Date formatting (MM/DD/YYYY)
+- CSV escaping prevents injection vulnerabilities
+- Clean separation of export logic from UI components
