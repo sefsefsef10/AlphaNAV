@@ -31,6 +31,7 @@ import AdvisorActiveRFPs from "@/pages/advisor-active-rfps";
 import AdvisorMyClients from "@/pages/advisor-my-clients";
 import GPDashboard from "@/pages/gp-dashboard";
 import GPFacility from "@/pages/gp-facility";
+import OperationsDashboard from "@/pages/operations-dashboard";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
@@ -118,6 +119,7 @@ function AppContent() {
           <main className="flex-1 overflow-auto p-4 sm:p-6">
             <Switch>
               <Route path="/dashboard" component={DashboardPage} />
+              <Route path="/operations" component={OperationsDashboard} />
               <Route path="/deal-pipeline" component={DealPipelinePage} />
               <Route path="/underwriting" component={UnderwritingPage} />
               <Route path="/monitoring" component={MonitoringPage} />
