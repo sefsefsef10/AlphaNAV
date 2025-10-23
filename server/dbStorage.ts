@@ -11,6 +11,8 @@ import {
   lenderInvitations,
   termSheets,
   facilities,
+  drawRequests,
+  cashFlows,
   notifications,
   type User,
   type UpsertUser,
@@ -31,6 +33,10 @@ import {
   type TermSheet,
   type InsertTermSheet,
   type Facility,
+  type DrawRequest,
+  type InsertDrawRequest,
+  type CashFlow,
+  type InsertCashFlow,
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 
@@ -395,6 +401,80 @@ export class DatabaseStorage implements IStorage {
       .from(facilities)
       .where(eq(facilities.id, id));
     return facility;
+  }
+
+  // Draw Request methods
+  async createDrawRequest(drawRequestData: InsertDrawRequest): Promise<DrawRequest> {
+    const [drawRequest] = await db.insert(drawRequests).values(drawRequestData).returning();
+    return drawRequest;
+  }
+
+  async getDrawRequest(id: string): Promise<DrawRequest | undefined> {
+    const [drawRequest] = await db
+      .select()
+      .from(drawRequests)
+      .where(eq(drawRequests.id, id));
+    return drawRequest;
+  }
+
+  async getDrawRequestsByFacility(facilityId: string): Promise<DrawRequest[]> {
+    return await db
+      .select()
+      .from(drawRequests)
+      .where(eq(drawRequests.facilityId, facilityId))
+      .orderBy(desc(drawRequests.requestDate));
+  }
+
+  async listDrawRequests(): Promise<DrawRequest[]> {
+    return await db
+      .select()
+      .from(drawRequests)
+      .orderBy(desc(drawRequests.requestDate));
+  }
+
+  async updateDrawRequest(
+    id: string,
+    updates: Partial<DrawRequest>
+  ): Promise<DrawRequest | undefined> {
+    const [updated] = await db
+      .update(drawRequests)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(drawRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Cash Flow methods
+  async createCashFlow(cashFlowData: InsertCashFlow): Promise<CashFlow> {
+    const [cashFlow] = await db.insert(cashFlows).values(cashFlowData).returning();
+    return cashFlow;
+  }
+
+  async getCashFlowsByFacility(facilityId: string): Promise<CashFlow[]> {
+    return await db
+      .select()
+      .from(cashFlows)
+      .where(eq(cashFlows.facilityId, facilityId))
+      .orderBy(cashFlows.dueDate);
+  }
+
+  async listCashFlows(): Promise<CashFlow[]> {
+    return await db
+      .select()
+      .from(cashFlows)
+      .orderBy(cashFlows.dueDate);
+  }
+
+  async updateCashFlow(
+    id: string,
+    updates: Partial<CashFlow>
+  ): Promise<CashFlow | undefined> {
+    const [updated] = await db
+      .update(cashFlows)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(cashFlows.id, id))
+      .returning();
+    return updated;
   }
 
   // Notification methods

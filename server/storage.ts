@@ -67,6 +67,17 @@ export interface IStorage {
   listFacilities(): Promise<any[]>;
   getFacility(id: string): Promise<any | undefined>;
   
+  createDrawRequest(drawRequest: any): Promise<any>;
+  getDrawRequest(id: string): Promise<any | undefined>;
+  getDrawRequestsByFacility(facilityId: string): Promise<any[]>;
+  listDrawRequests(): Promise<any[]>;
+  updateDrawRequest(id: string, updates: any): Promise<any | undefined>;
+  
+  createCashFlow(cashFlow: any): Promise<any>;
+  getCashFlowsByFacility(facilityId: string): Promise<any[]>;
+  listCashFlows(): Promise<any[]>;
+  updateCashFlow(id: string, updates: any): Promise<any | undefined>;
+  
   getNotificationsByUser(userId: string): Promise<any[]>;
   markNotificationAsRead(id: string): Promise<any | undefined>;
 }

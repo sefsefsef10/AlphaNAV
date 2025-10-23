@@ -608,6 +608,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Draw Requests endpoints
+  app.get("/api/draw-requests", async (req, res) => {
+    try {
+      const facilityId = req.query.facilityId as string | undefined;
+      if (facilityId) {
+        const drawRequests = await storage.getDrawRequestsByFacility(facilityId);
+        res.json(drawRequests);
+      } else {
+        const drawRequests = await storage.listDrawRequests();
+        res.json(drawRequests);
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/draw-requests", async (req, res) => {
+    try {
+      const drawRequest = await storage.createDrawRequest(req.body);
+      
+      // WORKFLOW CONNECTION: Notify operations team of new draw request
+      await createNotification({
+        userId: "operations-team", // TODO: Get actual operations team IDs
+        type: "draw_request",
+        title: "New Draw Request",
+        message: `Draw request for $${(req.body.requestedAmount / 1000000).toFixed(1)}M submitted`,
+        relatedEntityType: "draw_request",
+        relatedEntityId: drawRequest.id,
+        priority: "medium",
+      });
+      
+      res.json(drawRequest);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/draw-requests/:id", async (req, res) => {
+    try {
+      const drawRequest = await storage.getDrawRequest(req.params.id);
+      if (!drawRequest) {
+        return res.status(404).json({ error: "Draw request not found" });
+      }
+      res.json(drawRequest);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/draw-requests/:id", async (req, res) => {
+    try {
+      const oldDrawRequest = await storage.getDrawRequest(req.params.id);
+      if (!oldDrawRequest) {
+        return res.status(404).json({ error: "Draw request not found" });
+      }
+
+      const drawRequest = await storage.updateDrawRequest(req.params.id, req.body);
+      
+      // WORKFLOW CONNECTION: Notify GP of status changes
+      if (req.body.status && req.body.status !== oldDrawRequest.status) {
+        let title = "Draw Request Updated";
+        let message = `Your draw request status changed to ${req.body.status}`;
+        
+        if (req.body.status === "approved") {
+          title = "Draw Request Approved";
+          message = `Your draw request for $${(oldDrawRequest.requestedAmount / 1000000).toFixed(1)}M has been approved`;
+        } else if (req.body.status === "rejected") {
+          title = "Draw Request Rejected";
+          message = `Your draw request for $${(oldDrawRequest.requestedAmount / 1000000).toFixed(1)}M has been rejected`;
+        } else if (req.body.status === "disbursed") {
+          title = "Funds Disbursed";
+          message = `$${(oldDrawRequest.requestedAmount / 1000000).toFixed(1)}M has been disbursed to your account`;
+        }
+        
+        await createNotification({
+          userId: oldDrawRequest.requestedBy, // TODO: Get actual GP user ID
+          type: "draw_request",
+          title,
+          message,
+          relatedEntityType: "draw_request",
+          relatedEntityId: drawRequest.id,
+          priority: req.body.status === "approved" || req.body.status === "disbursed" ? "high" : "medium",
+        });
+      }
+      
+      res.json(drawRequest);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Cash Flows endpoints
+  app.get("/api/cash-flows", async (req, res) => {
+    try {
+      const facilityId = req.query.facilityId as string | undefined;
+      if (facilityId) {
+        const cashFlows = await storage.getCashFlowsByFacility(facilityId);
+        res.json(cashFlows);
+      } else {
+        const cashFlows = await storage.listCashFlows();
+        res.json(cashFlows);
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/cash-flows", async (req, res) => {
+    try {
+      const cashFlow = await storage.createCashFlow(req.body);
+      res.json(cashFlow);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/cash-flows/:id", async (req, res) => {
+    try {
+      const cashFlow = await storage.updateCashFlow(req.params.id, req.body);
+      if (!cashFlow) {
+        return res.status(404).json({ error: "Cash flow not found" });
+      }
+      res.json(cashFlow);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Notifications endpoints (requires authentication)
   app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
     try {
