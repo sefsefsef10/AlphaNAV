@@ -1,6 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { DatabaseStorage } from "./dbStorage";
+
+const storage = new DatabaseStorage();
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { 
   insertOnboardingSessionSchema, 
