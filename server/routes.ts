@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { 
   insertOnboardingSessionSchema, 
   insertUploadedDocumentSchema,
@@ -33,6 +34,51 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication
+  await setupAuth(app);
+
+  // Auth endpoints
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error: any) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  app.patch('/api/auth/user/role', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { role } = req.body;
+      
+      if (!['advisor', 'gp', 'operations', 'admin'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const updated = await storage.upsertUser({
+        ...user,
+        role,
+      });
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update role" });
+    }
+  });
+
+  // Onboarding endpoints (public for GP self-service)
   app.post("/api/onboarding/sessions", async (req, res) => {
     try {
       const validatedData = insertOnboardingSessionSchema.parse(req.body);
@@ -422,6 +468,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Term sheet not found" });
       }
       res.json(termSheet);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Facilities endpoints (requires authentication for GPs to view their facilities)
+  app.get("/api/facilities", async (req, res) => {
+    try {
+      const facilities = await storage.listFacilities();
+      res.json(facilities);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/facilities/:id", async (req, res) => {
+    try {
+      const facility = await storage.getFacility(req.params.id);
+      if (!facility) {
+        return res.status(404).json({ error: "Facility not found" });
+      }
+      res.json(facility);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Notifications endpoints (requires authentication)
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const notifications = await storage.getNotificationsByUser(userId);
+      res.json(notifications);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req, res) => {
+    try {
+      const notification = await storage.markNotificationAsRead(req.params.id);
+      if (!notification) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      res.json(notification);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

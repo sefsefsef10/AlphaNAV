@@ -63,6 +63,12 @@ export interface IStorage {
   createTermSheet(termSheet: InsertTermSheet): Promise<TermSheet>;
   getTermSheetsByDeal(advisorDealId: string): Promise<TermSheet[]>;
   updateTermSheet(id: string, updates: Partial<TermSheet>): Promise<TermSheet | undefined>;
+  
+  listFacilities(): Promise<any[]>;
+  getFacility(id: string): Promise<any | undefined>;
+  
+  getNotificationsByUser(userId: string): Promise<any[]>;
+  markNotificationAsRead(id: string): Promise<any | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -504,6 +510,22 @@ export class MemStorage implements IStorage {
     };
     this.termSheets.set(id, updated);
     return updated;
+  }
+
+  async listFacilities(): Promise<any[]> {
+    return [];
+  }
+
+  async getFacility(id: string): Promise<any | undefined> {
+    return undefined;
+  }
+
+  async getNotificationsByUser(userId: string): Promise<any[]> {
+    return [];
+  }
+
+  async markNotificationAsRead(id: string): Promise<any | undefined> {
+    return undefined;
   }
 }
 
