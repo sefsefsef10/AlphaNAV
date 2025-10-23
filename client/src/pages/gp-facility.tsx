@@ -44,6 +44,8 @@ import {
 } from "lucide-react";
 import type { Facility, DrawRequest, CashFlow } from "@shared/schema";
 import { insertDrawRequestSchema } from "@shared/schema";
+import { FacilityDocuments } from "@/components/facility-documents";
+import { FacilityMessaging } from "@/components/facility-messaging";
 
 export default function GPFacility() {
   const { toast } = useToast();
@@ -217,6 +219,9 @@ export default function GPFacility() {
           <TabsTrigger value="documents" data-testid="tab-documents">
             Documents
           </TabsTrigger>
+          <TabsTrigger value="messaging" data-testid="tab-messaging">
+            Messages
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="draws" className="space-y-4">
@@ -271,19 +276,14 @@ export default function GPFacility() {
         </TabsContent>
 
         <TabsContent value="documents" className="space-y-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center space-y-4">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto" />
-                <div>
-                  <h3 className="font-semibold text-lg">Document Vault</h3>
-                  <p className="text-muted-foreground">
-                    Document management coming soon
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <FacilityDocuments facilityId={activeFacility.id} />
+        </TabsContent>
+
+        <TabsContent value="messaging" className="space-y-4">
+          <FacilityMessaging
+            facilityId={activeFacility.id}
+            gpUserId="gp-user-1"
+          />
         </TabsContent>
       </Tabs>
     </div>

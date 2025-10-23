@@ -33,6 +33,7 @@ export interface IStorage {
   createUploadedDocument(doc: InsertUploadedDocument): Promise<UploadedDocument>;
   getUploadedDocument(id: string): Promise<UploadedDocument | undefined>;
   getDocumentsBySessionId(sessionId: string): Promise<UploadedDocument[]>;
+  getDocumentsByFacility(facilityId: string): Promise<UploadedDocument[]>;
   updateUploadedDocument(id: string, updates: Partial<UploadedDocument>): Promise<UploadedDocument | undefined>;
   
   createProspect(prospect: InsertProspect): Promise<Prospect>;
@@ -77,6 +78,13 @@ export interface IStorage {
   getCashFlowsByFacility(facilityId: string): Promise<any[]>;
   listCashFlows(): Promise<any[]>;
   updateCashFlow(id: string, updates: any): Promise<any | undefined>;
+  
+  createMessage(message: any): Promise<any>;
+  getMessagesByThread(threadId: string): Promise<any[]>;
+  listMessages(): Promise<any[]>;
+  markMessageAsRead(id: string): Promise<any | undefined>;
+  
+  deleteUploadedDocument(id: string): Promise<void>;
   
   getNotificationsByUser(userId: string): Promise<any[]>;
   markNotificationAsRead(id: string): Promise<any | undefined>;

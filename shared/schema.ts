@@ -55,7 +55,8 @@ export type OnboardingSession = typeof onboardingSessions.$inferSelect;
 
 export const uploadedDocuments = pgTable("uploaded_documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  sessionId: varchar("session_id").notNull(),
+  sessionId: varchar("session_id"), // For onboarding documents
+  facilityId: varchar("facility_id"), // For facility documents
   fileName: text("file_name").notNull(),
   fileType: text("file_type").notNull(),
   fileSize: integer("file_size").notNull(),

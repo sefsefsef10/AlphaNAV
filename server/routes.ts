@@ -10,7 +10,8 @@ import {
   insertAdvisorSchema,
   insertAdvisorDealSchema,
   insertLenderInvitationSchema,
-  insertTermSheetSchema
+  insertTermSheetSchema,
+  insertMessageSchema
 } from "@shared/schema";
 import {
   createNotification,
@@ -731,6 +732,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Cash flow not found" });
       }
       res.json(cashFlow);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Messages endpoints
+  app.get("/api/messages", async (req, res) => {
+    try {
+      const threadId = req.query.threadId as string | undefined;
+      if (threadId) {
+        const messages = await storage.getMessagesByThread(threadId);
+        res.json(messages);
+      } else {
+        const messages = await storage.listMessages();
+        res.json(messages);
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/messages", async (req, res) => {
+    try {
+      // Validate message data using Zod schema
+      const validatedData = insertMessageSchema.parse(req.body);
+      const message = await storage.createMessage(validatedData);
+      
+      // WORKFLOW CONNECTION: Notify recipient of new message
+      await createNotification({
+        userId: validatedData.recipientId,
+        type: "message",
+        title: "New Message",
+        message: `New message from ${validatedData.senderRole}: ${validatedData.subject || "New message"}`,
+        relatedEntityType: "message",
+        relatedEntityId: message.id,
+        priority: "medium",
+      });
+      
+      res.json(message);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/messages/:id/read", async (req, res) => {
+    try {
+      const message = await storage.markMessageAsRead(req.params.id);
+      if (!message) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+      res.json(message);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Facility documents endpoint
+  app.get("/api/facilities/:facilityId/documents", async (req, res) => {
+    try {
+      const documents = await storage.getDocumentsByFacility(req.params.facilityId);
+      res.json(documents);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Upload facility document
+  app.post("/api/upload-facility-document", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const facilityId = req.body.facilityId;
+      if (!facilityId) {
+        return res.status(400).json({ error: "Facility ID required" });
+      }
+
+      const storageUrl = `/uploads/${req.file.filename}`;
+      const document = await storage.createUploadedDocument({
+        facilityId,
+        sessionId: null,
+        fileName: req.file.originalname,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
+        storageUrl,
+        extractedData: null,
+        processingStatus: "completed",
+      });
+
+      res.json(document);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/uploaded-documents/:id", async (req, res) => {
+    try {
+      await storage.deleteUploadedDocument(req.params.id);
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

@@ -13,6 +13,7 @@ import {
   facilities,
   drawRequests,
   cashFlows,
+  messages,
   notifications,
   type User,
   type UpsertUser,
@@ -37,6 +38,8 @@ import {
   type InsertDrawRequest,
   type CashFlow,
   type InsertCashFlow,
+  type Message,
+  type InsertMessage,
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 
@@ -147,6 +150,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(uploadedDocuments)
       .where(eq(uploadedDocuments.sessionId, sessionId))
+      .orderBy(desc(uploadedDocuments.uploadedAt));
+  }
+
+  async getDocumentsByFacility(facilityId: string): Promise<UploadedDocument[]> {
+    return await db
+      .select()
+      .from(uploadedDocuments)
+      .where(eq(uploadedDocuments.facilityId, facilityId))
       .orderBy(desc(uploadedDocuments.uploadedAt));
   }
 
@@ -475,6 +486,42 @@ export class DatabaseStorage implements IStorage {
       .where(eq(cashFlows.id, id))
       .returning();
     return updated;
+  }
+
+  // Message methods
+  async createMessage(messageData: InsertMessage): Promise<Message> {
+    const [message] = await db.insert(messages).values(messageData).returning();
+    return message;
+  }
+
+  async getMessagesByThread(threadId: string): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.threadId, threadId))
+      .orderBy(messages.createdAt);
+  }
+
+  async listMessages(): Promise<Message[]> {
+    return await db
+      .select()
+      .from(messages)
+      .orderBy(desc(messages.createdAt))
+      .limit(100);
+  }
+
+  async markMessageAsRead(id: string): Promise<Message | undefined> {
+    const [message] = await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(eq(messages.id, id))
+      .returning();
+    return message;
+  }
+
+  // Document deletion
+  async deleteUploadedDocument(id: string): Promise<void> {
+    await db.delete(uploadedDocuments).where(eq(uploadedDocuments.id, id));
   }
 
   // Notification methods
