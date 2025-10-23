@@ -332,6 +332,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(lenderInvitations.invitedAt));
   }
 
+  async getLenderInvitation(id: string): Promise<LenderInvitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(lenderInvitations)
+      .where(eq(lenderInvitations.id, id));
+    return invitation;
+  }
+
   async updateLenderInvitation(
     id: string,
     updates: Partial<LenderInvitation>

@@ -12,6 +12,13 @@ import {
   insertLenderInvitationSchema,
   insertTermSheetSchema
 } from "@shared/schema";
+import {
+  createNotification,
+  notifyDealStatusChange,
+  notifyTermSheetReceived,
+  notifyLenderResponse,
+  notifyProspectEligibility,
+} from "./notificationUtils";
 import multer from "multer";
 import OpenAI from "openai";
 import path from "path";
@@ -305,6 +312,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source: "gp-onboarding",
       });
 
+      // WORKFLOW CONNECTION: Notify operations team about new prospect
+      if (meetsAllCriteria) {
+        await createNotification({
+          userId: "operations-team",
+          title: "High-Priority Prospect",
+          message: `${session.fundName} completed onboarding - ${scoreFactors.join("; ")}`,
+          type: "success",
+          priority: "high",
+          actionUrl: `/prospects/${prospect.id}`,
+        });
+      }
+
       res.json({ session, prospect });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -364,8 +383,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : null
       };
       const validatedData = insertAdvisorDealSchema.parse(data);
-      const deal = await storage.createAdvisorDeal(validatedData);
-      res.json(deal);
+      const advisorDeal = await storage.createAdvisorDeal(validatedData);
+
+      // WORKFLOW CONNECTION: Create corresponding Deal in operations pipeline (background)
+      storage.createDeal({
+        fundName: advisorDeal.fundName,
+        fundSize: advisorDeal.fundSize,
+        loanAmount: advisorDeal.loanAmount,
+        vintage: null,
+        stage: "rfp",
+        status: "pending",
+        assignedTo: null,
+        nextSteps: "Awaiting lender responses",
+        lastContactDate: new Date(),
+        tags: ["advisor-sourced"],
+        advisorDealId: advisorDeal.id,
+      }).catch(err => console.error("Error creating operations deal:", err));
+
+      // WORKFLOW CONNECTION: Notify advisor that deal was submitted
+      if (advisorDeal.advisorId) {
+        const advisor = await storage.getAdvisor(advisorDeal.advisorId);
+        if (advisor && advisor.userId) {
+          await createNotification({
+            userId: advisor.userId,
+            title: "Deal Submitted Successfully",
+            message: `RFP for ${advisorDeal.fundName} has been created`,
+            type: "success",
+            priority: "medium",
+            actionUrl: `/advisor/active-rfps`,
+          });
+        }
+      }
+
+      // Return only advisorDeal to maintain API compatibility
+      res.json(advisorDeal);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -395,11 +446,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/advisor-deals/:id", async (req, res) => {
     try {
-      const deal = await storage.updateAdvisorDeal(req.params.id, req.body);
-      if (!deal) {
+      const oldDeal = await storage.getAdvisorDeal(req.params.id);
+      if (!oldDeal) {
         return res.status(404).json({ error: "Advisor deal not found" });
       }
-      res.json(deal);
+
+      const updatedDeal = await storage.updateAdvisorDeal(req.params.id, req.body);
+      if (!updatedDeal) {
+        return res.status(404).json({ error: "Advisor deal not found" });
+      }
+
+      // WORKFLOW CONNECTION: Notify advisor of status changes
+      if (req.body.status && req.body.status !== oldDeal.status) {
+        if (updatedDeal.advisorId) {
+          const advisor = await storage.getAdvisor(updatedDeal.advisorId);
+          if (advisor && advisor.userId) {
+            await notifyDealStatusChange(
+              advisor.userId,
+              updatedDeal.id,
+              updatedDeal.fundName,
+              oldDeal.status,
+              updatedDeal.status
+            );
+          }
+        }
+      }
+
+      res.json(updatedDeal);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -430,10 +503,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/lender-invitations/:id", async (req, res) => {
     try {
+      const oldInvitation = await storage.getLenderInvitation(req.params.id);
+      if (!oldInvitation) {
+        return res.status(404).json({ error: "Lender invitation not found" });
+      }
+
       const invitation = await storage.updateLenderInvitation(req.params.id, req.body);
       if (!invitation) {
         return res.status(404).json({ error: "Lender invitation not found" });
       }
+
+      // WORKFLOW CONNECTION: Notify advisor when lender responds
+      if (req.body.status && req.body.status !== oldInvitation.status && req.body.status !== "pending") {
+        const advisorDeal = await storage.getAdvisorDeal(invitation.advisorDealId);
+        if (advisorDeal && advisorDeal.advisorId) {
+          const advisor = await storage.getAdvisor(advisorDeal.advisorId);
+          if (advisor && advisor.userId) {
+            await notifyLenderResponse(
+              advisor.userId,
+              advisorDeal.id,
+              advisorDeal.fundName,
+              invitation.lenderName,
+              invitation.status
+            );
+          }
+        }
+      }
+
       res.json(invitation);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -444,6 +540,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertTermSheetSchema.parse(req.body);
       const termSheet = await storage.createTermSheet(validatedData);
+
+      // WORKFLOW CONNECTION: Notify advisor when term sheet is submitted
+      const advisorDeal = await storage.getAdvisorDeal(termSheet.advisorDealId);
+      if (advisorDeal && advisorDeal.advisorId) {
+        const advisor = await storage.getAdvisor(advisorDeal.advisorId);
+        if (advisor && advisor.userId) {
+          await notifyTermSheetReceived(
+            advisor.userId,
+            advisorDeal.id,
+            advisorDeal.fundName,
+            termSheet.lenderName
+          );
+        }
+      }
+
       res.json(termSheet);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
