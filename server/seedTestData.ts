@@ -119,7 +119,7 @@ export async function seedTestData() {
         fundSize: 250000000, // $250M
         vintage: 2019,
         portfolioCount: 8,
-        sectors: JSON.stringify(['Software', 'Healthcare', 'Fintech']),
+        sectors: ['Software', 'Healthcare', 'Fintech'],
         stage: 'Initial Contact',
         loanNeedScore: 85,
         borrowerQualityScore: 90,
@@ -138,7 +138,7 @@ export async function seedTestData() {
         fundSize: 350000000, // $350M
         vintage: 2018,
         portfolioCount: 12,
-        sectors: JSON.stringify(['Manufacturing', 'Consumer Goods', 'Business Services']),
+        sectors: ['Manufacturing', 'Consumer Goods', 'Business Services'],
         stage: 'Underwriting',
         loanNeedScore: 80,
         borrowerQualityScore: 85,
@@ -157,7 +157,7 @@ export async function seedTestData() {
         fundSize: 180000000, // $180M
         vintage: 2020,
         portfolioCount: 6,
-        sectors: JSON.stringify(['Technology', 'Software', 'E-commerce']),
+        sectors: ['Technology', 'Software', 'E-commerce'],
         stage: 'Due Diligence',
         loanNeedScore: 75,
         borrowerQualityScore: 80,
@@ -178,7 +178,7 @@ export async function seedTestData() {
         fundSize: 450000000, // $450M (upper limit)
         vintage: 2017,
         portfolioCount: 15,
-        sectors: JSON.stringify(['Energy', 'Infrastructure', 'Utilities']),
+        sectors: ['Energy', 'Infrastructure', 'Utilities'],
         stage: 'Proposal Sent',
         loanNeedScore: 70,
         borrowerQualityScore: 75,
@@ -197,7 +197,7 @@ export async function seedTestData() {
         fundSize: 120000000, // $120M
         vintage: 2021,
         portfolioCount: 5,
-        sectors: JSON.stringify(['Healthcare', 'Biotech', 'Medical Devices']),
+        sectors: ['Healthcare', 'Biotech', 'Medical Devices'],
         stage: 'Initial Contact',
         loanNeedScore: 65,
         borrowerQualityScore: 70,
@@ -218,7 +218,7 @@ export async function seedTestData() {
         fundSize: 75000000, // $75M (too small)
         vintage: 2022,
         portfolioCount: 4,
-        sectors: JSON.stringify(['Software', 'SaaS']),
+        sectors: ['Software', 'SaaS'],
         stage: 'Initial Contact',
         loanNeedScore: 60,
         borrowerQualityScore: 65,
@@ -237,7 +237,7 @@ export async function seedTestData() {
         fundSize: 650000000, // $650M (too large)
         vintage: 2016,
         portfolioCount: 20,
-        sectors: JSON.stringify(['Diversified']),
+        sectors: ['Diversified'],
         stage: 'Not Interested',
         loanNeedScore: 50,
         borrowerQualityScore: 85,
@@ -447,7 +447,7 @@ export async function seedTestData() {
         fundAum: 280000000,
         fundVintage: 2020,
         fundPortfolioCount: 9,
-        fundSectors: JSON.stringify(['Software', 'Technology', 'Healthcare']),
+        fundSectors: ['Software', 'Technology', 'Healthcare'],
         borrowingPermitted: true,
         navIqStatus: 'reviewing',
       },
@@ -464,7 +464,7 @@ export async function seedTestData() {
         fundAum: 420000000,
         fundVintage: 2019,
         fundPortfolioCount: 14,
-        fundSectors: JSON.stringify(['Manufacturing', 'Business Services', 'Consumer']),
+        fundSectors: ['Manufacturing', 'Business Services', 'Consumer'],
         borrowingPermitted: true,
         navIqStatus: 'term_sheet_sent',
         navIqTermSheetDate: new Date('2024-10-15'),
@@ -482,7 +482,7 @@ export async function seedTestData() {
         fundAum: 210000000,
         fundVintage: 2021,
         fundPortfolioCount: 7,
-        fundSectors: JSON.stringify(['Clean Energy', 'Sustainability', 'Environmental']),
+        fundSectors: ['Clean Energy', 'Sustainability', 'Environmental'],
         borrowingPermitted: true,
         navIqStatus: 'won',
         winner: 'NAV IQ Capital',
@@ -581,7 +581,7 @@ export async function seedTestData() {
         contactPhone: '415-555-0200',
         currentStep: 4,
         status: 'completed',
-        extractedData: JSON.stringify({
+        extractedData: {
           fundName: 'Sequoia Growth Partners',
           vintage: 2020,
           aum: 220000000,
@@ -596,15 +596,15 @@ export async function seedTestData() {
             eligible: true,
           },
           confidenceScore: 88,
-        }),
-        confirmedData: JSON.stringify({
+        },
+        confirmedData: {
           fundName: 'Sequoia Growth Partners',
           vintage: 2020,
           aum: 220000000,
           portfolioCount: 7,
           sectors: ['Software', 'Cloud Infrastructure', 'AI/ML'],
           keyPersonnel: ['Rachel Green', 'Ross Geller'],
-        }),
+        },
       },
       {
         fundName: 'Oakmont Capital Fund II',
@@ -613,13 +613,13 @@ export async function seedTestData() {
         contactPhone: '212-555-0201',
         currentStep: 3,
         status: 'in_progress',
-        extractedData: JSON.stringify({
+        extractedData: {
           fundName: 'Oakmont Capital Fund II',
           vintage: 2019,
           aum: 175000000,
           portfolioCount: 6,
           confidenceScore: 75,
-        }),
+        },
         confirmedData: null,
       },
     ]).returning();
