@@ -126,7 +126,7 @@ export default function LandingPage() {
             </div>
 
             {/* Value Props */}
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 pt-8 sm:pt-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 pt-8 sm:pt-12">
               <Card data-testid="card-value-prop-underwriting">
                 <CardHeader>
                   <Zap className="h-8 w-8 mb-2 text-primary" />
@@ -867,12 +867,13 @@ export default function LandingPage() {
             <Card data-testid="card-contact-form">
               <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-6" data-testid="form-contact">
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Name</Label>
                       <Input
                         id="name"
                         data-testid="input-name"
+                        className="min-h-11"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         required
@@ -884,6 +885,7 @@ export default function LandingPage() {
                         id="email"
                         type="email"
                         data-testid="input-email"
+                        className="min-h-11"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         required
@@ -891,12 +893,13 @@ export default function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="company">Company</Label>
                       <Input
                         id="company"
                         data-testid="input-company"
+                        className="min-h-11"
                         value={formData.company}
                         onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                         required
@@ -908,7 +911,7 @@ export default function LandingPage() {
                         value={formData.role}
                         onValueChange={(value) => setFormData({ ...formData, role: value })}
                       >
-                        <SelectTrigger id="role" data-testid="select-role">
+                        <SelectTrigger id="role" data-testid="select-role" className="min-h-11">
                           <SelectValue placeholder="Select your role" />
                         </SelectTrigger>
                         <SelectContent>
@@ -945,13 +948,13 @@ export default function LandingPage() {
                   )}
 
                   <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                    <Button type="submit" className="flex-1" data-testid="button-submit-demo">
+                    <Button type="submit" className="flex-1 min-h-11" data-testid="button-submit-demo">
                       Request Demo
                     </Button>
                     <Button 
                       type="button" 
                       variant="outline"
-                      className="sm:w-auto"
+                      className="sm:w-auto min-h-11"
                       data-testid="button-schedule-call"
                       onClick={() => window.open('mailto:hello@alphanav.ai?subject=Schedule Demo Call', '_blank')}
                     >
