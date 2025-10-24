@@ -350,8 +350,8 @@ export default function TermsOfService() {
             </p>
             <div className="text-muted-foreground pl-6">
               <p><strong>AlphaNAV</strong></p>
-              <p>Email: <a href="mailto:legal@alphanav.com" className="text-primary hover:underline">legal@alphanav.com</a></p>
-              <p>General Inquiries: <a href="mailto:hello@alphanav.com" className="text-primary hover:underline">hello@alphanav.com</a></p>
+              <p>Email: <a href="mailto:legal@alphanav.ai" className="text-primary hover:underline">legal@alphanav.ai</a></p>
+              <p>General Inquiries: <a href="mailto:hello@alphanav.ai" className="text-primary hover:underline">hello@alphanav.ai</a></p>
             </div>
           </section>
 

@@ -145,7 +145,7 @@ export default function PrivacyPolicy() {
               <li><strong>Objection:</strong> Object to processing based on legitimate interests</li>
             </ul>
             <p className="text-muted-foreground mt-4">
-              To exercise these rights, contact us at <a href="mailto:privacy@alphanav.com" className="text-primary hover:underline">privacy@alphanav.com</a>
+              To exercise these rights, contact us at <a href="mailto:privacy@alphanav.ai" className="text-primary hover:underline">privacy@alphanav.ai</a>
             </p>
           </section>
 
@@ -192,8 +192,8 @@ export default function PrivacyPolicy() {
             </p>
             <div className="text-muted-foreground pl-6">
               <p><strong>AlphaNAV</strong></p>
-              <p>Email: <a href="mailto:privacy@alphanav.com" className="text-primary hover:underline">privacy@alphanav.com</a></p>
-              <p>General Inquiries: <a href="mailto:hello@alphanav.com" className="text-primary hover:underline">hello@alphanav.com</a></p>
+              <p>Email: <a href="mailto:privacy@alphanav.ai" className="text-primary hover:underline">privacy@alphanav.ai</a></p>
+              <p>General Inquiries: <a href="mailto:hello@alphanav.ai" className="text-primary hover:underline">hello@alphanav.ai</a></p>
             </div>
           </section>
 

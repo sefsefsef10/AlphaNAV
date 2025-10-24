@@ -932,7 +932,7 @@ export default function LandingPage() {
                       type="button" 
                       variant="outline" 
                       data-testid="button-schedule-call"
-                      onClick={() => window.open('mailto:hello@alphanav.com?subject=Schedule Demo Call', '_blank')}
+                      onClick={() => window.open('mailto:hello@alphanav.ai?subject=Schedule Demo Call', '_blank')}
                     >
                       Schedule Call
                     </Button>
@@ -969,8 +969,8 @@ export default function LandingPage() {
             <div className="text-center text-sm text-muted-foreground space-y-2">
               <p>Built in partnership with NAV IQ Capital</p>
               <p data-testid="text-email">
-                <a href="mailto:hello@alphanav.com" className="hover:text-foreground">
-                  hello@alphanav.com
+                <a href="mailto:hello@alphanav.ai" className="hover:text-foreground">
+                  hello@alphanav.ai
                 </a>
               </p>
               <div className="flex justify-center gap-4 pt-2">
