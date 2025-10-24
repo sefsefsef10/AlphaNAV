@@ -84,24 +84,24 @@ export default function RoleSelection() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-6xl">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 sm:mb-12">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-12 h-12 bg-primary rounded-md flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-xl">AN</span>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary rounded-md flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-lg sm:text-xl">AN</span>
             </div>
-            <h1 className="text-3xl font-bold">AlphaNAV</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">AlphaNAV</h1>
           </div>
-          <h2 className="text-2xl font-semibold mb-2" data-testid="heading-role-selection">
+          <h2 className="text-xl sm:text-2xl font-semibold mb-2 px-4" data-testid="heading-role-selection">
             Welcome, {user?.firstName || user?.email}
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground px-4">
             Select your role to get started with AlphaNAV
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
           {roles.map((role) => {
             const Icon = role.icon;
             const isSelected = selectedRole === role.value;
@@ -116,19 +116,19 @@ export default function RoleSelection() {
                 data-testid={`card-role-${role.value}`}
               >
                 <CardHeader>
-                  <div className={`w-12 h-12 rounded-md flex items-center justify-center mb-4 ${
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-md flex items-center justify-center mb-3 sm:mb-4 ${
                     isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
                   }`}>
-                    <Icon className="h-6 w-6" />
+                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
-                  <CardTitle className="text-xl">{role.title}</CardTitle>
-                  <CardDescription>{role.description}</CardDescription>
+                  <CardTitle className="text-lg sm:text-xl">{role.title}</CardTitle>
+                  <CardDescription className="text-sm">{role.description}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
                     {role.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm">
-                        <span className="text-primary mt-0.5">✓</span>
+                      <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm">
+                        <span className="text-primary mt-0.5 flex-shrink-0">✓</span>
                         <span className="text-muted-foreground">{feature}</span>
                       </li>
                     ))}

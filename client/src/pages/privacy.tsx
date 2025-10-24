@@ -7,27 +7,28 @@ export default function PrivacyPolicy() {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <Link href="/">
             <div className="flex items-center gap-2 cursor-pointer" data-testid="nav-logo">
               <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-sm">AN</span>
               </div>
-              <span className="text-xl font-bold">AlphaNAV</span>
+              <span className="text-lg sm:text-xl font-bold">AlphaNAV</span>
             </div>
           </Link>
           <Link href="/">
-            <Button variant="ghost" data-testid="button-back-home">
+            <Button variant="ghost" size="sm" className="sm:h-auto" data-testid="button-back-home">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Home
+              <span className="hidden sm:inline">Back to Home</span>
+              <span className="sm:hidden">Back</span>
             </Button>
           </Link>
         </div>
       </nav>
 
       {/* Content */}
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
-        <h1 className="text-4xl font-bold mb-8" data-testid="heading-privacy">Privacy Policy</h1>
+      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 max-w-4xl">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-6 sm:mb-8" data-testid="heading-privacy">Privacy Policy</h1>
         
         <div className="prose prose-invert max-w-none space-y-8">
           <section>
