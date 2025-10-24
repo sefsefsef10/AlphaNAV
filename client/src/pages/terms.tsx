@@ -369,12 +369,12 @@ export default function TermsOfService() {
           <div className="text-center text-sm text-muted-foreground">
             <p>© 2025 AlphaNAV. All rights reserved.</p>
             <div className="flex justify-center gap-4 mt-4">
-              <Link href="/privacy">
-                <a className="hover:text-foreground" data-testid="link-privacy-footer">Privacy Policy</a>
+              <Link href="/privacy" className="hover:text-foreground" data-testid="link-privacy-footer">
+                Privacy Policy
               </Link>
               <span>|</span>
-              <Link href="/terms">
-                <a className="hover:text-foreground" data-testid="link-terms-footer">Terms of Service</a>
+              <Link href="/terms" className="hover:text-foreground" data-testid="link-terms-footer">
+                Terms of Service
               </Link>
             </div>
           </div>

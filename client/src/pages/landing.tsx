@@ -974,12 +974,12 @@ export default function LandingPage() {
                 </a>
               </p>
               <div className="flex justify-center gap-4 pt-2">
-                <Link href="/privacy">
-                  <a className="hover:text-foreground" data-testid="link-privacy">Privacy Policy</a>
+                <Link href="/privacy" className="hover:text-foreground" data-testid="link-privacy">
+                  Privacy Policy
                 </Link>
                 <span>|</span>
-                <Link href="/terms">
-                  <a className="hover:text-foreground" data-testid="link-terms">Terms of Service</a>
+                <Link href="/terms" className="hover:text-foreground" data-testid="link-terms">
+                  Terms of Service
                 </Link>
               </div>
             </div>
