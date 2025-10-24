@@ -50,28 +50,32 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-2" data-testid="nav-logo">
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-sm">AN</span>
             </div>
-            <span className="text-xl font-bold">AlphaNAV</span>
+            <span className="text-lg sm:text-xl font-bold">AlphaNAV</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {isAuthenticated ? (
               <Link href="/dashboard">
-                <Button data-testid="button-go-to-app">Go to App</Button>
+                <Button size="sm" className="sm:h-auto" data-testid="button-go-to-app">Go to App</Button>
               </Link>
             ) : (
               <>
                 <Button 
-                  variant="ghost" 
+                  variant="ghost"
+                  size="sm"
+                  className="sm:h-auto"
                   data-testid="button-sign-in"
                   onClick={() => window.location.href = "/api/login"}
                 >
                   Sign In
                 </Button>
                 <Button 
+                  size="sm"
+                  className="sm:h-auto hidden sm:inline-flex"
                   data-testid="button-request-demo-nav"
                   onClick={() => {
                     document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
@@ -86,19 +90,20 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="py-20 md:py-32">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center space-y-8">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+      <section className="py-12 sm:py-16 md:py-24 lg:py-32">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-4xl mx-auto text-center space-y-6 sm:space-y-8">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
               The First Operating System for NAV Lending
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
               Automate underwriting, monitoring, and portfolio management for NAV facilities. Built for lower-middle market PE funds and the lenders who back them.
             </p>
             
-            <div className="flex flex-wrap gap-4 justify-center pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center pt-4 px-4">
               <Button 
-                size="lg" 
+                size="lg"
+                className="w-full sm:w-auto"
                 data-testid="button-request-demo-hero"
                 onClick={() => {
                   document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
@@ -109,7 +114,8 @@ export default function LandingPage() {
               </Button>
               <Button 
                 size="lg" 
-                variant="outline" 
+                variant="outline"
+                className="w-full sm:w-auto"
                 data-testid="button-see-how-it-works"
                 onClick={() => {
                   document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
@@ -120,7 +126,7 @@ export default function LandingPage() {
             </div>
 
             {/* Value Props */}
-            <div className="grid md:grid-cols-3 gap-6 pt-12">
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 pt-8 sm:pt-12">
               <Card data-testid="card-value-prop-underwriting">
                 <CardHeader>
                   <Zap className="h-8 w-8 mb-2 text-primary" />
@@ -156,14 +162,14 @@ export default function LandingPage() {
       </section>
 
       {/* Problem Section */}
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center space-y-6">
-            <h2 className="text-3xl md:text-4xl font-bold">NAV Lending Is Still Stuck in 2010</h2>
-            <p className="text-lg text-muted-foreground">
+      <section className="py-12 sm:py-16 md:py-20 bg-muted/30">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-3xl mx-auto text-center space-y-4 sm:space-y-6">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold px-4">NAV Lending Is Still Stuck in 2010</h2>
+            <p className="text-base sm:text-lg text-muted-foreground px-4">
               PE funds email PDFs. Lenders manually review hundreds of pages. Advisors coordinate RFPs through Outlook. Covenant tracking lives in Excel. Close timelines stretch to 90 days.
             </p>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base sm:text-lg text-muted-foreground px-4">
               Meanwhile, <span className="font-semibold text-foreground">$500B+ in lower-middle market fund NAV</span> waits for efficient financing.
             </p>
           </div>
@@ -171,17 +177,17 @@ export default function LandingPage() {
       </section>
 
       {/* Solution Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto space-y-12">
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold">One Platform. Three Workflows. Zero Manual Work.</h2>
-              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+      <section className="py-12 sm:py-16 md:py-20">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold px-4">One Platform. Three Workflows. Zero Manual Work.</h2>
+              <p className="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto px-4">
                 AlphaNAV connects PE funds, NAV lenders, and placement agents in a purpose-built platform for $100M-$500M AUM funds.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
               <Card>
                 <CardHeader>
                   <CardTitle>For PE Fund Managers</CardTitle>
@@ -220,18 +226,18 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto space-y-12">
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold">How It Works</h2>
+      <section id="how-it-works" className="py-12 sm:py-16 md:py-20 bg-muted/30">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold px-4">How It Works</h2>
             </div>
 
             <Tabs defaultValue="gp" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="gp" data-testid="tab-gp">For PE Fund Managers</TabsTrigger>
-                <TabsTrigger value="lender" data-testid="tab-lender">For NAV Lenders</TabsTrigger>
-                <TabsTrigger value="advisor" data-testid="tab-advisor">For Placement Agents</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 h-auto">
+                <TabsTrigger value="gp" data-testid="tab-gp" className="text-xs sm:text-sm">For PE Fund Managers</TabsTrigger>
+                <TabsTrigger value="lender" data-testid="tab-lender" className="text-xs sm:text-sm">For NAV Lenders</TabsTrigger>
+                <TabsTrigger value="advisor" data-testid="tab-advisor" className="text-xs sm:text-sm">For Placement Agents</TabsTrigger>
               </TabsList>
 
               <TabsContent value="gp" className="space-y-6 pt-6">
@@ -305,14 +311,14 @@ export default function LandingPage() {
       </section>
 
       {/* Core Features */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto space-y-12">
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold">Core Features</h2>
+      <section className="py-12 sm:py-16 md:py-20">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold px-4">Core Features</h2>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid sm:grid-cols-2 gap-6 sm:gap-8">
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <Upload className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
@@ -408,14 +414,14 @@ export default function LandingPage() {
       </section>
 
       {/* AI Capabilities */}
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto space-y-12">
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold">AI Capabilities</h2>
+      <section className="py-12 sm:py-16 md:py-20 bg-muted/30">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold px-4">AI Capabilities</h2>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
               <Card>
                 <CardHeader>
                   <CardTitle>Document Extraction</CardTitle>
@@ -503,14 +509,14 @@ export default function LandingPage() {
       </section>
 
       {/* Why Choose AlphaNAV */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto space-y-12">
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold">Why Lenders Choose AlphaNAV</h2>
+      <section className="py-12 sm:py-16 md:py-20">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold px-4">Why Lenders Choose AlphaNAV</h2>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
               <Card>
                 <CardHeader>
                   <CardTitle>Proven in Production</CardTitle>
@@ -596,14 +602,14 @@ export default function LandingPage() {
       </section>
 
       {/* Technical Specs */}
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto space-y-12">
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold">Technical Specifications</h2>
+      <section className="py-12 sm:py-16 md:py-20 bg-muted/30">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto space-y-8 sm:space-y-12">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold px-4">Technical Specifications</h2>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <Database className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
@@ -641,14 +647,14 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto space-y-12">
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold">Pricing</h2>
+      <section className="py-12 sm:py-16 md:py-20">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-6xl mx-auto space-y-8 sm:space-y-12">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold px-4">Pricing</h2>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
               <Card>
                 <CardHeader>
                   <CardTitle>Starter</CardTitle>
@@ -786,11 +792,11 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-20 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto space-y-12">
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold">FAQ</h2>
+      <section className="py-12 sm:py-16 md:py-20 bg-muted/30">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-3xl mx-auto space-y-8 sm:space-y-12">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold px-4">FAQ</h2>
             </div>
 
             <Accordion type="single" collapsible className="w-full">
@@ -848,12 +854,12 @@ export default function LandingPage() {
       </section>
 
       {/* Contact Form */}
-      <section id="contact-form" className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto space-y-12">
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold">See AlphaNAV in Action</h2>
-              <p className="text-lg text-muted-foreground">
+      <section id="contact-form" className="py-12 sm:py-16 md:py-20">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-2xl mx-auto space-y-8 sm:space-y-12">
+            <div className="text-center space-y-3 sm:space-y-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold px-4">See AlphaNAV in Action</h2>
+              <p className="text-base sm:text-lg text-muted-foreground px-4">
                 Request a demo with your own fund documents and workflows. We'll show you how to close facilities in under 30 days.
               </p>
             </div>
@@ -938,13 +944,14 @@ export default function LandingPage() {
                     </div>
                   )}
 
-                  <div className="flex gap-4">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                     <Button type="submit" className="flex-1" data-testid="button-submit-demo">
                       Request Demo
                     </Button>
                     <Button 
                       type="button" 
-                      variant="outline" 
+                      variant="outline"
+                      className="sm:w-auto"
                       data-testid="button-schedule-call"
                       onClick={() => window.open('mailto:hello@alphanav.ai?subject=Schedule Demo Call', '_blank')}
                     >
@@ -965,10 +972,10 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12 bg-muted/30" data-testid="footer">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto space-y-8">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+      <footer className="border-t py-8 sm:py-12 bg-muted/30" data-testid="footer">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-3 sm:gap-4">
               <div className="flex items-center gap-2" data-testid="footer-logo">
                 <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
                   <span className="text-primary-foreground font-bold text-sm">AN</span>
