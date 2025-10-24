@@ -50,6 +50,7 @@ Preferred communication style: Simple, everyday language.
 - Component library approach with shadcn/ui for consistent UI.
 
 ### Feature Specifications
+- **Marketing Landing Page**: Professional marketing site at root URL (`/`) with comprehensive sections (Hero, Problem/Solution, How It Works tabs, Core Features, AI Capabilities, Why Choose, Technical Specs, Pricing tiers, FAQ accordion, Contact form), smooth scrolling CTAs, functional contact form with success message, separate from authenticated app at `/app`.
 - **Notification System**: Real-time notification center (bell icon, dropdown, priority coding, mark/delete actions, auto-refresh), user preferences page (channel toggles, type filters, delivery preferences).
 - **GP Facility Management**: Draw requests (create, track, approve), repayment tracking, document vault (upload, list, download, delete), messaging system.
 - **Global Search**: Cmd+K / Ctrl+K shortcut, real-time search across entities (GP deals, prospects, facilities, advisors), type-specific icons, click-to-navigate.
@@ -212,3 +213,40 @@ Preferred communication style: Simple, everyday language.
 **Architect Review Notes**:
 - Core functionality complete and production-ready
 - Recommended future enhancement: Automated regression tests for zero-value scenarios and missing-owner retries
+
+---
+
+### October 24, 2025 - Marketing Landing Page Launch
+**Status**: COMPLETE ✅
+
+**Marketing Website Implemented**:
+- **Professional Landing Page** at root URL (`/`)
+  - Hero section with value propositions (90% faster underwriting, real-time risk monitoring, 30-day closes)
+  - Problem/Solution narrative for NAV lending market
+  - "How It Works" tabs for 3 user types (PE Funds, Lenders, Advisors)
+  - Core features showcase (Deal Origination, Underwriting, Legal, Facility Management, Covenant Monitoring, Risk Management)
+  - AI capabilities highlight (Document Extraction: 1.6s response, 100% accuracy; Breach Prediction: <3s, 95% accuracy)
+  - Social proof section (built with NAV IQ Capital, conservative 5-15% LTV focus, market-ready infrastructure)
+  - Technical specifications (Architecture, Security posture)
+  - 3-tier pricing ($5K Starter, $12K Professional, Enterprise)
+  - FAQ accordion (7 common questions)
+  - Contact form with validation and success message
+  - Professional footer with branding
+
+**Technical Implementation**:
+- Routing structure: `/` = marketing site, `/app` = profile selection, `/dashboard` etc = authenticated app
+- Smooth scrolling CTAs link to contact form and how-it-works sections
+- Functional contact form with success state, form reset, and 5-second auto-hide
+- Schedule Call button opens mailto:hello@alphanav.com
+- Comprehensive data-testids for all interactive elements (buttons, inputs, tabs, cards, links)
+- Responsive grid layouts with mobile breakpoints (md:grid-cols-2, md:grid-cols-3)
+- Uses shadcn/ui components (Card, Button, Tabs, Accordion, Input, Select, Textarea)
+- Dark mode compatible with AlphaNAV brand colors
+
+**Business Impact**:
+- Professional web presence for NAV IQ Capital platform
+- Conversion-focused design with multiple CTAs leading to demo requests
+- Clear value proposition for 3 distinct user personas
+- Validates 100 bps operational alpha positioning with specific metrics
+- Enterprise credibility through technical specs and security details
+

@@ -1,0 +1,342 @@
+# AlphaNAV Landing Page - Streamlined Copy
+
+---
+
+## Hero Section
+
+**Headline:**
+# The First Operating System for NAV Lending
+
+**Subheadline:**
+Automate underwriting, monitoring, and portfolio management for NAV facilities. Built for lower-middle market PE funds and the lenders who back them.
+
+**Value Props (3-column):**
+- **90% Faster Underwriting** - AI extracts fund data in 90 seconds, not 3 weeks
+- **Real-Time Risk Monitoring** - Predictive breach analysis catches problems before they happen
+- **30-Day Closes** - From first contact to funded facility
+
+**CTA:** Request Demo  
+**Secondary CTA:** See How It Works
+
+---
+
+## Problem Section
+
+**Headline:**
+### NAV Lending Is Still Stuck in 2010
+
+**Copy:**
+PE funds email PDFs. Lenders manually review hundreds of pages. Advisors coordinate RFPs through Outlook. Covenant tracking lives in Excel. Close timelines stretch to 90 days.
+
+Meanwhile, $500B+ in lower-middle market fund NAV waits for efficient financing.
+
+---
+
+## Solution Section
+
+**Headline:**
+### One Platform. Three Workflows. Zero Manual Work.
+
+**Copy:**
+AlphaNAV connects PE funds, NAV lenders, and placement agents in a purpose-built platform for $100M-$500M AUM funds.
+
+**3 Feature Blocks:**
+
+**For PE Fund Managers**
+Upload your fund documents and get instant eligibility assessment. Track facility capacity, submit draw requests, and communicate with lenders - all in one dashboard.
+
+**For NAV Lenders**
+Automated underwriting from uploaded documents. One-click term sheets and loan agreements. Real-time covenant monitoring with AI-powered breach prediction.
+
+**For Placement Agents**
+Run competitive RFPs with anonymous fund submissions. Compare term sheets side-by-side. Track commissions automatically across your lender network.
+
+---
+
+## How It Works
+
+**Tab 1: For PE Fund Managers**
+1. **Upload Documents** - LPA, financials, NAV reports
+2. **AI Extracts Data** - Fund details populated in 90 seconds
+3. **Submit Request** - Confirm information and request facility
+4. **Compare Terms** - Review competing lender offers
+5. **Manage Facility** - Draws, repayments, covenant tracking from one dashboard
+
+**Tab 2: For NAV Lenders**
+1. **Review Pipeline** - See qualified funds automatically
+2. **AI Underwriting** - Automated fund analysis and risk scoring
+3. **Generate Documents** - Term sheets, loan agreements, compliance reports
+4. **Monitor Portfolio** - Real-time covenant tracking across all facilities
+5. **Prevent Breaches** - AI predicts covenant violations before they happen
+
+**Tab 3: For Placement Agents**
+1. **Submit RFP** - Anonymous fund details to protect confidentiality
+2. **Invite Lenders** - Competitive bidding from your network
+3. **Compare Terms** - Side-by-side analysis of offers
+4. **Track Pipeline** - Submission through close in one view
+5. **Calculate Commissions** - Automatic tracking at 50-75 bps
+
+---
+
+## Core Features
+
+**Deal Origination**
+- GP self-service onboarding with 4-step wizard
+- AI document extraction from PDFs and Word docs
+- Automated eligibility assessment
+- Advisor RFP portal with fund anonymization
+
+**Underwriting & Analysis**
+- Automated fund data extraction
+- AI-powered risk scoring
+- Investment committee memo generation
+- Historical performance analysis
+
+**Legal & Documentation**
+- One-click loan agreement generation
+- Customizable term sheet templates
+- Compliance report automation
+- Document library with version control
+
+**Facility Management**
+- Real-time facility dashboard
+- Draw request workflow (submit, approve, fund, repay)
+- Payment schedule tracking
+- Outstanding balance monitoring
+
+**Covenant Monitoring**
+- LTV ratio tracking (5-15% focus)
+- Minimum NAV thresholds
+- Portfolio diversification requirements
+- Liquidity covenant enforcement
+- Automated quarterly compliance checks
+
+**Risk Management**
+- AI-powered breach prediction (95% accuracy)
+- Risk level classification (Low/Medium/High/Critical)
+- Proactive alert notifications
+- Recommended mitigation actions
+
+**Communication**
+- Direct messaging between GPs and lenders
+- Priority notification system
+- Email alerts for critical events
+- Activity feed for all parties
+
+---
+
+## AI Capabilities
+
+**Document Extraction**
+
+Upload fund documents and get instant data extraction:
+- Fund name, vintage year, AUM
+- Portfolio company count and sectors
+- Key personnel and management team
+- Current borrowing status
+
+**Performance:**
+- 1.6-second response time
+- 100% accuracy on standard documents
+- Confidence scoring for quality assurance
+- Manual review fallback for edge cases
+
+**Result:** GP onboarding drops from 30 minutes to 2 minutes
+
+---
+
+**Breach Prediction**
+
+AI analyzes facility health and predicts covenant violations:
+- Current LTV ratio and NAV trends
+- Historical payment patterns
+- Portfolio concentration risk
+- Probability of breach (0-100%)
+
+**Performance:**
+- <3-second analysis
+- 95% prediction accuracy
+- Critical risk identification
+- Estimated time to breach
+
+**Result:** Catch problems weeks before they become defaults
+
+---
+
+## Why Lenders Choose AlphaNAV
+
+**Proven in Production**
+
+Built in partnership with NAV IQ Capital, an active NAV lender serving $100M-$500M funds. Every feature solves real operational challenges from live deal flow.
+
+- <30-day average close time
+- Zero production bugs since launch
+- 90% reduction in manual underwriting time
+- 95% breach prediction accuracy
+
+[Learn more about NAV IQ Capital →](https://naviqcapital.com)
+
+**Built for Conservative Lenders**
+
+Platform defaults match disciplined underwriting:
+- 5-15% LTV focus (vs 30-50% high-leverage competitors)
+- Growth-focused facilities only
+- ILPA-aligned workflows
+- Transparent fee structures
+
+**Market-Ready Infrastructure**
+
+- Handles multiple lenders on same platform
+- Advisor network for deal flow
+- GP self-service to reduce friction
+- Scales from startup lenders to institutional platforms
+
+---
+
+## Technical Specifications
+
+**Architecture**
+- PostgreSQL database with serverless scaling
+- Type-safe operations end-to-end
+- Sub-3-second AI response times
+- Automated daily backups
+- 99.9% uptime SLA
+
+**Security**
+- OIDC authentication (Google, Microsoft)
+- Role-based access control
+- Encrypted data at rest and in transit
+- SOC 2 Type II (Q3 2025)
+- Complete audit trails
+
+**Integrations**
+- PDF and Word document parsing
+- Email notifications
+- Calendar sync (coming Q2 2025)
+- Fund administrator connections (coming Q2 2025)
+- API access (coming Q4 2025)
+
+---
+
+## Pricing
+
+**Starter**  
+*For emerging NAV lenders*
+
+**$5,000/month**
+- Up to 10 active facilities
+- 2 operations team seats
+- 100 AI document extractions/month
+- Unlimited breach analysis
+- Standard support
+
+**Professional**  
+*Most popular*
+
+**$12,000/month**
+- Up to 50 active facilities
+- 5 operations team seats
+- 500 AI document extractions/month
+- Unlimited breach analysis
+- Priority support
+- Advisor portal access
+- Custom legal templates
+
+**Enterprise**  
+*Custom pricing*
+
+- Unlimited facilities
+- Unlimited seats
+- Unlimited AI extractions
+- White-label options
+- Dedicated support
+- Custom integrations
+- SLA guarantees
+
+**All plans include:**
+- GP self-service portal
+- Draw request management
+- Covenant monitoring
+- Document vault
+- Messaging system
+- Email notifications
+
+---
+
+## FAQ
+
+**Who is AlphaNAV built for?**
+
+NAV lenders serving $100M-$500M AUM PE funds in the lower-middle market. Also placement agents who broker NAV facilities and PE fund managers seeking financing.
+
+**How does the AI document extraction work?**
+
+Upload fund documents (PDFs or Word docs) and our AI extracts key data points - fund name, vintage, AUM, portfolio details, personnel. Takes 90 seconds vs 30 minutes of manual data entry.
+
+**How accurate is the breach prediction?**
+
+95% accuracy in identifying facilities at risk of covenant violations. The AI provides risk levels (Low/Medium/High/Critical) and estimated time to breach. Lenders review all flagged facilities.
+
+**Can we use our own legal templates?**
+
+Yes. AlphaNAV accepts custom loan agreement templates, term sheets, and compliance report formats. You maintain your legal positioning while automating document generation.
+
+**What's your security posture?**
+
+Enterprise authentication (OIDC), role-based access, encrypted data storage, PostgreSQL-backed sessions, complete audit trails. SOC 2 Type II certification in progress (Q3 2025).
+
+**Do you integrate with fund administrators?**
+
+Q2 2025 roadmap. We're building native integrations with leading administrators for NAV reporting and covenant data feeds.
+
+**Is this only for one specific lender?**
+
+No. AlphaNAV is a market-facing platform built in partnership with NAV IQ Capital (who uses it for their operations). The platform serves the entire NAV lending market.
+
+**What if we compete with NAV IQ Capital?**
+
+That's expected. AlphaNAV is infrastructure - like Bloomberg or Salesforce for NAV lending. NAV IQ is one customer among many lenders on the platform.
+
+**How long does implementation take?**
+
+2-4 weeks. Includes data migration, custom template setup, team training, and testing. Most lenders go live within 30 days of contract signature.
+
+---
+
+## Get Started
+
+**Headline:**
+### See AlphaNAV in Action
+
+**Copy:**
+Request a demo with your own fund documents and workflows. We'll show you how to close facilities in under 30 days.
+
+**Contact Form:**
+- Name
+- Email
+- Company
+- Role (Dropdown: NAV Lender / PE Fund / Placement Agent / Other)
+- Message
+
+**Primary CTA:** Request Demo  
+**Secondary CTA:** Schedule Call
+
+**We'll respond within 48 hours.**
+
+---
+
+## Footer
+
+**AlphaNAV** - Operating system for NAV lending
+
+Built in partnership with [NAV IQ Capital](https://naviqcapital.com)
+
+hello@alphanav.com
+
+[Privacy Policy](#) | [Terms of Service](#)
+
+**© 2025 AlphaNAV. All rights reserved.**
+
+---
+
+Clean, conversion-focused, no unnecessary navigation clutter.

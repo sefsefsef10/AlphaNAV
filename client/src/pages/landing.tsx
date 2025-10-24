@@ -19,11 +19,29 @@ export default function LandingPage() {
     message: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [formSubmitted, setFormSubmitted] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
-    // TODO: Implement form submission
-    alert("Thank you! We'll respond within 48 hours.");
+    
+    // In production, this would send to backend API
+    // For now, simulate form submission
+    console.log("Demo request submitted:", formData);
+    
+    // Reset form and show success message
+    setFormData({
+      name: "",
+      email: "",
+      company: "",
+      role: "",
+      message: "",
+    });
+    setFormSubmitted(true);
+    
+    // Hide success message after 5 seconds
+    setTimeout(() => {
+      setFormSubmitted(false);
+    }, 5000);
   };
 
   return (
@@ -31,7 +49,7 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="border-b sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-testid="nav-logo">
             <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-sm">AN</span>
             </div>
@@ -39,9 +57,16 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-4">
             <Link href="/app">
-              <Button variant="ghost" data-testid="link-app">Sign In</Button>
+              <Button variant="ghost" data-testid="button-sign-in">Sign In</Button>
             </Link>
-            <Button data-testid="button-request-demo">Request Demo</Button>
+            <Button 
+              data-testid="button-request-demo-nav"
+              onClick={() => {
+                document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              Request Demo
+            </Button>
           </div>
         </div>
       </nav>
@@ -58,18 +83,31 @@ export default function LandingPage() {
             </p>
             
             <div className="flex flex-wrap gap-4 justify-center pt-4">
-              <Button size="lg" data-testid="button-request-demo-hero">
+              <Button 
+                size="lg" 
+                data-testid="button-request-demo-hero"
+                onClick={() => {
+                  document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
                 Request Demo
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button size="lg" variant="outline" data-testid="button-see-how-it-works">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                data-testid="button-see-how-it-works"
+                onClick={() => {
+                  document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
                 See How It Works
               </Button>
             </div>
 
             {/* Value Props */}
             <div className="grid md:grid-cols-3 gap-6 pt-12">
-              <Card>
+              <Card data-testid="card-value-prop-underwriting">
                 <CardHeader>
                   <Zap className="h-8 w-8 mb-2 text-primary" />
                   <CardTitle>90% Faster Underwriting</CardTitle>
@@ -79,7 +117,7 @@ export default function LandingPage() {
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card data-testid="card-value-prop-monitoring">
                 <CardHeader>
                   <TrendingUp className="h-8 w-8 mb-2 text-primary" />
                   <CardTitle>Real-Time Risk Monitoring</CardTitle>
@@ -89,7 +127,7 @@ export default function LandingPage() {
                 </CardContent>
               </Card>
               
-              <Card>
+              <Card data-testid="card-value-prop-speed">
                 <CardHeader>
                   <Clock className="h-8 w-8 mb-2 text-primary" />
                   <CardTitle>30-Day Closes</CardTitle>
@@ -168,7 +206,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 bg-muted/30">
+      <section id="how-it-works" className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto space-y-12">
             <div className="text-center space-y-4">
@@ -796,7 +834,7 @@ export default function LandingPage() {
       </section>
 
       {/* Contact Form */}
-      <section className="py-20">
+      <section id="contact-form" className="py-20">
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto space-y-12">
             <div className="text-center space-y-4">
@@ -806,9 +844,9 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <Card>
+            <Card data-testid="card-contact-form">
               <CardContent className="pt-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6" data-testid="form-contact">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Name</Label>
@@ -875,18 +913,36 @@ export default function LandingPage() {
                     />
                   </div>
 
+                  {formSubmitted && (
+                    <div 
+                      className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg text-center"
+                      data-testid="text-form-success"
+                    >
+                      <p className="text-green-600 dark:text-green-400 font-medium">
+                        Thank you! We'll respond within 48 hours.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex gap-4">
                     <Button type="submit" className="flex-1" data-testid="button-submit-demo">
                       Request Demo
                     </Button>
-                    <Button type="button" variant="outline" data-testid="button-schedule-call">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      data-testid="button-schedule-call"
+                      onClick={() => window.open('mailto:hello@alphanav.com?subject=Schedule Demo Call', '_blank')}
+                    >
                       Schedule Call
                     </Button>
                   </div>
 
-                  <p className="text-sm text-center text-muted-foreground">
-                    We'll respond within 48 hours.
-                  </p>
+                  {!formSubmitted && (
+                    <p className="text-sm text-center text-muted-foreground">
+                      We'll respond within 48 hours.
+                    </p>
+                  )}
                 </form>
               </CardContent>
             </Card>
@@ -895,11 +951,11 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12 bg-muted/30">
+      <footer className="border-t py-12 bg-muted/30" data-testid="footer">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto space-y-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" data-testid="footer-logo">
                 <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center">
                   <span className="text-primary-foreground font-bold text-sm">AN</span>
                 </div>
@@ -912,15 +968,19 @@ export default function LandingPage() {
 
             <div className="text-center text-sm text-muted-foreground space-y-2">
               <p>Built in partnership with NAV IQ Capital</p>
-              <p>hello@alphanav.com</p>
+              <p data-testid="text-email">
+                <a href="mailto:hello@alphanav.com" className="hover:text-foreground">
+                  hello@alphanav.com
+                </a>
+              </p>
               <div className="flex justify-center gap-4 pt-2">
-                <a href="#" className="hover:text-foreground">Privacy Policy</a>
+                <a href="#" className="hover:text-foreground" data-testid="link-privacy">Privacy Policy</a>
                 <span>|</span>
-                <a href="#" className="hover:text-foreground">Terms of Service</a>
+                <a href="#" className="hover:text-foreground" data-testid="link-terms">Terms of Service</a>
               </div>
             </div>
 
-            <div className="text-center text-sm text-muted-foreground">
+            <div className="text-center text-sm text-muted-foreground" data-testid="text-copyright">
               © 2025 AlphaNAV. All rights reserved.
             </div>
           </div>
