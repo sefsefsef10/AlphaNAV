@@ -14,6 +14,8 @@ import { NotificationsBell } from "@/components/notifications-bell";
 import { GlobalSearch } from "@/components/global-search";
 import { HelpButton } from "@/components/help-button";
 import LandingPage from "@/pages/landing";
+import PrivacyPolicy from "@/pages/privacy";
+import TermsOfService from "@/pages/terms";
 import ProfileSelection from "@/pages/profile-selection";
 import DashboardPage from "@/pages/dashboard";
 import DealPipelinePage from "@/pages/deal-pipeline";
@@ -69,11 +71,13 @@ function AppContent() {
     }
   }, [isProfileSelection, setLocation]);
 
-  // Landing page (marketing site, no sidebar, no header)
-  if (isLandingPage) {
+  // Landing page and legal pages (marketing site, no sidebar, no header)
+  if (isLandingPage || location === "/privacy" || location === "/terms") {
     return (
       <>
         <Route path="/" component={LandingPage} />
+        <Route path="/privacy" component={PrivacyPolicy} />
+        <Route path="/terms" component={TermsOfService} />
         <Toaster />
       </>
     );
