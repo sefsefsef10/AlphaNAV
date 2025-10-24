@@ -13,6 +13,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { GlobalSearch } from "@/components/global-search";
 import { HelpButton } from "@/components/help-button";
+import LandingPage from "@/pages/landing";
 import ProfileSelection from "@/pages/profile-selection";
 import DashboardPage from "@/pages/dashboard";
 import DealPipelinePage from "@/pages/deal-pipeline";
@@ -39,10 +40,11 @@ import NotFound from "@/pages/not-found";
 
 function AppContent() {
   const [location, setLocation] = useLocation();
+  const isLandingPage = location === "/";
   const isOnboardingPage = location.startsWith("/onboarding");
   const isAdvisorPage = location.startsWith("/advisor");
   const isGPPage = location.startsWith("/gp");
-  const isProfileSelection = location === "/";
+  const isProfileSelection = location === "/app";
 
   const style = {
     "--sidebar-width": "16rem",
@@ -67,11 +69,21 @@ function AppContent() {
     }
   }, [isProfileSelection, setLocation]);
 
+  // Landing page (marketing site, no sidebar, no header)
+  if (isLandingPage) {
+    return (
+      <>
+        <Route path="/" component={LandingPage} />
+        <Toaster />
+      </>
+    );
+  }
+
   // Profile selection page (no sidebar, no header)
   if (isProfileSelection) {
     return (
       <>
-        <Route path="/" component={ProfileSelection} />
+        <Route path="/app" component={ProfileSelection} />
         <Toaster />
       </>
     );
@@ -107,7 +119,7 @@ function AppContent() {
                 size="sm"
                 onClick={() => {
                   localStorage.removeItem("userRole");
-                  setLocation("/");
+                  setLocation("/app");
                 }}
                 data-testid="button-change-profile"
               >
