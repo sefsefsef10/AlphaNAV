@@ -9,8 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CheckCircle2, ArrowRight, Zap, TrendingUp, Clock, Brain, Shield, Database, Upload, BarChart3, FileText, Bell } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LandingPage() {
+  const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -56,17 +58,29 @@ export default function LandingPage() {
             <span className="text-xl font-bold">AlphaNAV</span>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/app">
-              <Button variant="ghost" data-testid="button-sign-in">Sign In</Button>
-            </Link>
-            <Button 
-              data-testid="button-request-demo-nav"
-              onClick={() => {
-                document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            >
-              Request Demo
-            </Button>
+            {isAuthenticated ? (
+              <Link href="/dashboard">
+                <Button data-testid="button-go-to-app">Go to App</Button>
+              </Link>
+            ) : (
+              <>
+                <Button 
+                  variant="ghost" 
+                  data-testid="button-sign-in"
+                  onClick={() => window.location.href = "/api/login"}
+                >
+                  Sign In
+                </Button>
+                <Button 
+                  data-testid="button-request-demo-nav"
+                  onClick={() => {
+                    document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  Request Demo
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </nav>

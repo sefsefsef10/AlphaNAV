@@ -8,14 +8,16 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
-import { Home } from "lucide-react";
+import { Home, LogOut } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { GlobalSearch } from "@/components/global-search";
 import { HelpButton } from "@/components/help-button";
+import { useAuth } from "@/hooks/useAuth";
 import LandingPage from "@/pages/landing";
 import PrivacyPolicy from "@/pages/privacy";
 import TermsOfService from "@/pages/terms";
+import RoleSelection from "@/pages/role-selection";
 import ProfileSelection from "@/pages/profile-selection";
 import DashboardPage from "@/pages/dashboard";
 import DealPipelinePage from "@/pages/deal-pipeline";
@@ -41,38 +43,44 @@ import NotificationPreferences from "@/pages/notification-preferences";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
+  const { user, isLoading, isAuthenticated } = useAuth();
   const [location, setLocation] = useLocation();
   const isLandingPage = location === "/";
   const isOnboardingPage = location.startsWith("/onboarding");
   const isAdvisorPage = location.startsWith("/advisor");
   const isGPPage = location.startsWith("/gp");
   const isProfileSelection = location === "/app";
+  const isRoleSelection = location === "/select-role";
 
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
 
-  // Auto-route returning users based on stored role (in useEffect to avoid render-time state updates)
+  // Redirect authenticated users without a role to role selection
   useEffect(() => {
-    if (isProfileSelection) {
-      const storedRole = localStorage.getItem("userRole");
-      if (storedRole) {
+    if (!isLoading && isAuthenticated && user) {
+      // If user doesn't have a role set, send to role selection
+      if (!user.role || user.role === 'gp') {
+        if (location !== "/select-role" && !isOnboardingPage) {
+          setLocation("/select-role");
+        }
+      } else if (location === "/" || location === "/select-role") {
+        // User has a role, redirect to appropriate dashboard
         const roleRoutes: Record<string, string> = {
           advisor: "/advisor",
-          gp: "/onboarding",
-          lender: "/deal-pipeline",
+          operations: "/dashboard",
+          admin: "/dashboard",
         };
-        const targetRoute = roleRoutes[storedRole];
-        if (targetRoute) {
-          setLocation(targetRoute);
-        }
+        const targetRoute = roleRoutes[user.role] || "/dashboard";
+        setLocation(targetRoute);
       }
     }
-  }, [isProfileSelection, setLocation]);
+  }, [isLoading, isAuthenticated, user, location, setLocation, isOnboardingPage]);
 
   // Landing page and legal pages (marketing site, no sidebar, no header)
-  if (isLandingPage || location === "/privacy" || location === "/terms") {
+  // Show landing if loading, not authenticated, or explicitly on landing/legal pages
+  if (isLoading || !isAuthenticated || isLandingPage || location === "/privacy" || location === "/terms") {
     return (
       <>
         <Route path="/" component={LandingPage} />
@@ -83,7 +91,17 @@ function AppContent() {
     );
   }
 
-  // Profile selection page (no sidebar, no header)
+  // Role selection page (authenticated but no role set)
+  if (isRoleSelection) {
+    return (
+      <>
+        <Route path="/select-role" component={RoleSelection} />
+        <Toaster />
+      </>
+    );
+  }
+
+  // Profile selection page (legacy, for backward compatibility)
   if (isProfileSelection) {
     return (
       <>
@@ -141,6 +159,15 @@ function AppContent() {
                 } 
               />
               <ThemeToggle />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.location.href = "/api/logout"}
+                data-testid="button-logout"
+                title="Logout"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </header>
           <main className="flex-1 overflow-auto p-4 sm:p-6">
