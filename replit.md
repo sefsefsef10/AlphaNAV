@@ -28,11 +28,18 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL via Neon serverless.
 - **ORM**: Drizzle ORM with a schema-first approach for type-safe sharing and migrations. Zod integration via `drizzle-zod` for runtime validation.
 - **Connection Management**: Connection pooling with Neon's serverless adapter using WebSocket.
-- **Schema**: Minimal user table, extensible for NAV lending domain models. Centralized database schema in `shared/` for full-stack type safety.
+- **Schema**: Comprehensive domain schema covering users (with auth), sessions, onboarding, prospects, deals, advisors, facilities, covenants, documents, notifications, and messages. Centralized database schema in `shared/` for full-stack type safety.
+- **Storage Layer**: DatabaseStorage implementation (`server/dbStorage.ts`) exported via `server/storage.ts`, used by auth and all API routes.
 
 ### Authentication & Authorization
-- **Current State**: Basic user schema exists, with planned PostgreSQL-backed session storage for Express.
-- **Future**: Likely session-based authentication with PostgreSQL session store.
+- **Provider**: Replit Auth (OIDC) supporting Google, GitHub, X, Apple, and email/password login
+- **Session Management**: PostgreSQL-backed sessions via connect-pg-simple (7-day TTL)
+- **Middleware**: Passport.js with token refresh support
+- **Auth Routes**: `/api/login` (initiate), `/api/logout` (end session), `/api/callback` (OIDC callback)
+- **Protected Routes**: `isAuthenticated` middleware validates session and refreshes tokens automatically
+- **User Flow**: Login → Role Selection (`/select-role`) → Role-specific dashboard
+- **Roles**: operations (lenders), advisor (placement agents), gp (fund managers), admin
+- **Frontend Hook**: `useAuth()` provides user, isLoading, isAuthenticated states
 
 ### UI/UX Decisions
 - Dark mode as default, professional typography (Inter, JetBrains Mono), `tabular-nums` font variant for data.
