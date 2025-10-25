@@ -42,6 +42,7 @@ import OperationsDashboard from "@/pages/operations-dashboard";
 import NotificationPreferences from "@/pages/notification-preferences";
 import ProspectsPage from "@/pages/operations/prospects";
 import ProspectsUploadPage from "@/pages/operations/prospects-upload";
+import ProspectDetailPage from "@/pages/operations/prospect-detail";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
@@ -188,6 +189,7 @@ function AppContent() {
               <Route path="/notifications" component={NotificationPreferences} />
               <Route path="/operations/prospects" component={ProspectsPage} />
               <Route path="/operations/prospects/upload" component={ProspectsUploadPage} />
+              <Route path="/operations/prospects/:id" component={ProspectDetailPage} />
               <Route path="/advisor" component={AdvisorDashboard} />
               <Route path="/advisor/submit-deal" component={AdvisorSubmitDeal} />
               <Route path="/advisor/active-rfps" component={AdvisorActiveRFPs} />
