@@ -34,8 +34,13 @@ const operationsNavItems = [
     icon: FileText,
   },
   {
-    title: "Monitoring",
-    url: "/monitoring",
+    title: "Facilities",
+    url: "/operations/facilities",
+    icon: DollarSign,
+  },
+  {
+    title: "Covenant Monitoring",
+    url: "/operations/covenant-monitoring",
     icon: Activity,
   },
   {
