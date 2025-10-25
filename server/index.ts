@@ -14,14 +14,44 @@ if (process.env.SENTRY_DSN && process.env.NODE_ENV === "production") {
     dsn: process.env.SENTRY_DSN,
     environment: process.env.NODE_ENV || "development",
     tracesSampleRate: 0.1, // Sample 10% of transactions for performance monitoring
-    sendDefaultPii: true, // Include request headers and user IP
+    sendDefaultPii: false, // Don't automatically send PII - we'll explicitly control what's sent
     integrations: [
       Sentry.expressIntegration(), // Automatically instruments Express for request context
     ],
+    beforeSend(event, hint) {
+      // Scrub sensitive data before sending to Sentry
+      if (event.request) {
+        // Remove sensitive headers
+        if (event.request.headers) {
+          delete event.request.headers['authorization'];
+          delete event.request.headers['cookie'];
+          delete event.request.headers['x-api-key'];
+        }
+        
+        // Remove sensitive query parameters
+        if (event.request.query_string && typeof event.request.query_string === 'string') {
+          event.request.query_string = event.request.query_string
+            .replace(/password=[^&]*/gi, 'password=[REDACTED]')
+            .replace(/token=[^&]*/gi, 'token=[REDACTED]')
+            .replace(/api_key=[^&]*/gi, 'api_key=[REDACTED]');
+        }
+      }
+      
+      // Scrub sensitive data from breadcrumbs
+      if (event.breadcrumbs) {
+        event.breadcrumbs = event.breadcrumbs.map(breadcrumb => {
+          if (breadcrumb.data) {
+            // Remove password fields
+            if ('password' in breadcrumb.data) breadcrumb.data.password = '[REDACTED]';
+            if ('token' in breadcrumb.data) breadcrumb.data.token = '[REDACTED]';
+          }
+          return breadcrumb;
+        });
+      }
+      
+      return event;
+    },
   });
-  
-  // Add Sentry middleware for error handler (added later after routes)
-  // Note: expressIntegration() auto-instruments requests when routes are registered
 }
 
 // Security: Helmet.js - Set security headers
@@ -31,7 +61,9 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"], // Tailwind requires unsafe-inline
+      fontSrc: ["'self'", "https://fonts.gstatic.com"], // Google Fonts
       scriptSrc: isProduction ? ["'self'"] : ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Vite dev requires unsafe-inline and unsafe-eval
+      scriptSrcAttr: ["'none'"], // Prevent inline event handlers
       imgSrc: ["'self'", "data:", "https:"],
       connectSrc: [
         "'self'",
@@ -39,8 +71,10 @@ app.use(helmet({
         "https://generativelanguage.googleapis.com",
         "https://*.sentry.io", // Sentry dashboard
         "https://*.ingest.sentry.io", // Sentry event ingestion
+        "https://fonts.googleapis.com", // Google Fonts CSS
         ...(isProduction ? [] : ["ws:", "wss:"]) // WebSocket for Vite HMR in development
       ],
+      frameAncestors: ["'none'"], // Prevent clickjacking
     },
   },
   hsts: {
@@ -50,7 +84,7 @@ app.use(helmet({
   },
 }));
 
-// Security: Rate limiting
+// Security: Rate limiting - Applied BEFORE body parsing to prevent resource exhaustion
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // 100 requests per 15 minutes per IP
@@ -59,19 +93,28 @@ const globalLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-const authLimiter = rateLimit({
+const authLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // 5 login attempts per 15 minutes
   skipSuccessfulRequests: true,
   message: 'Too many login attempts, please try again later',
 });
 
-app.use('/api/', globalLimiter);
-app.use('/api/login', authLimiter);
-app.use('/api/auth/', authLimiter);
+const authRefreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 token refreshes per 15 minutes (higher limit for legitimate refresh bursts)
+  message: 'Too many refresh requests, please try again later',
+});
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Apply rate limiting BEFORE body parsing
+app.use('/api/', globalLimiter);
+app.use('/api/login', authLoginLimiter);
+app.use('/api/auth/callback', authLoginLimiter);
+app.use('/api/auth/refresh', authRefreshLimiter);
+
+// Body parsing AFTER rate limiting
+app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -88,12 +131,13 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      
+      // Only log response metadata, not full payloads (prevent PII leakage)
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+        const responseType = capturedJsonResponse.error ? 'error' : 
+                           Array.isArray(capturedJsonResponse) ? `array[${capturedJsonResponse.length}]` : 
+                           'object';
+        logLine += ` :: ${responseType}`;
       }
 
       log(logLine);

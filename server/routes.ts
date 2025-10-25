@@ -27,9 +27,40 @@ import path from "path";
 import { z } from "zod";
 
 const router = Router();
+
+// Allowed file types for document uploads
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'text/plain',
+  'text/csv',
+];
+
+const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'];
+
 const upload = multer({ 
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  limits: { 
+    fileSize: 10 * 1024 * 1024, // 10MB limit (reduced from 50MB for security)
+    files: 1 // Only allow single file uploads
+  },
+  fileFilter: (req, file, cb) => {
+    // Validate MIME type
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      return cb(new Error(`Invalid file type. Allowed types: ${ALLOWED_EXTENSIONS.join(', ')}`));
+    }
+    
+    // Validate file extension
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return cb(new Error(`Invalid file extension. Allowed extensions: ${ALLOWED_EXTENSIONS.join(', ')}`));
+    }
+    
+    cb(null, true);
+  }
 });
 
 // Validation helper function
@@ -46,16 +77,20 @@ function validateBody<T>(schema: z.ZodSchema<T>, body: any): { success: true; da
 const updateProspectSchema = insertProspectSchema.omit({ 
   extractedAt: true, // Set once during extraction
   extractedBy: true, // Set once during extraction
-  extractedData: true // Set once during extraction
-}).partial();
+  extractedData: true, // Set once during extraction
+  stage: true // Stage changes require business logic validation
+}).partial().strict(); // Reject unknown fields to prevent mass assignment
 
 const updateFacilitySchema = insertFacilitySchema.omit({
-  prospectId: true // Foreign key should not be changed
-}).partial();
+  prospectId: true, // Foreign key should not be changed
+  advisorDealId: true, // Foreign key should not be changed
+  status: true // Status changes require business logic validation
+}).partial().strict(); // Reject unknown fields to prevent mass assignment
 
 const updateCovenantSchema = insertCovenantSchema.omit({
-  facilityId: true // Foreign key should not be changed
-}).partial();
+  facilityId: true, // Foreign key should not be changed
+  status: true // Status changes require business logic validation
+}).partial().strict(); // Reject unknown fields to prevent mass assignment
 
 // POST /api/prospects/upload-and-extract
 // Upload a document and extract fund data using AI

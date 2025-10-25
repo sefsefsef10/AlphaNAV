@@ -9,23 +9,26 @@ This guide explains how to set up billing alerts, monitor usage, and implement c
 
 ## Current AI Usage in AlphaNAV
 
-### OpenAI Integration
-- **Model**: GPT-4 (or GPT-4-turbo)
+### Gemini Integration (PRIMARY AI PROVIDER)
+- **Model**: Gemini 2.0 Flash (text-only)
 - **Use Cases**:
-  - Document data extraction (fund documents)
-  - Automated legal document generation
-  - Compliance report generation
-- **Environment Variable**: `OPENAI_API_KEY`
-- **Code Location**: `server/routes.ts`
-
-### Gemini Integration
-- **Model**: Gemini 2.0 Flash
-- **Use Cases**:
-  - Fund document extraction (fundName, AUM, vintage)
+  - **PRIMARY**: Fund document extraction (fundName, AUM, vintage, sectors, etc.)
   - Eligibility assessment with confidence scoring
   - Covenant breach risk analysis
+  - Document data extraction from uploaded files
 - **Environment Variable**: `GEMINI_API_KEY`
-- **Code Location**: `server/routes.ts`
+- **Code Location**: `server/routes.ts`, `server/services/aiExtraction.ts`
+- **Why Gemini**: 20x cheaper than GPT-4, fast enough for document processing
+
+### OpenAI Integration (OPTIONAL/FUTURE)
+- **Model**: GPT-4-turbo (if enabled)
+- **Use Cases**: 
+  - Reserved for future features (legal document generation, compliance reports)
+  - Currently **NOT USED** in production code
+- **Environment Variable**: `OPENAI_API_KEY`
+- **Status**: API key configured but not actively called in current codebase
+
+**⚠️ IMPORTANT**: AlphaNAV primarily uses Gemini for all AI operations. OpenAI costs will be near-zero unless future features are added.
 
 ## Step 1: OpenAI Cost Monitoring Setup
 
@@ -72,50 +75,41 @@ This guide explains how to set up billing alerts, monitor usage, and implement c
 
 ### 1.4 Cost Optimization Strategies
 
-**Reduce OpenAI Costs**:
+**Reduce OpenAI Costs** (if/when OpenAI is used):
 
-1. **Use GPT-4-turbo instead of GPT-4**:
-   - 50% cheaper
-   - Faster response times
-   - Similar accuracy for most tasks
+1. **Current Strategy: Use Gemini Instead**:
+   - AlphaNAV uses Gemini 2.0 Flash (20x cheaper than GPT-4)
+   - Only enable OpenAI if specific use cases require it
 
-2. **Implement caching**:
-   ```typescript
-   // Cache common document extractions
-   const cacheKey = `doc-extract-${documentHash}`;
-   const cached = await cache.get(cacheKey);
-   if (cached) return cached;
-   ```
+2. **If enabling OpenAI features**:
+   - Use GPT-4-turbo (50% cheaper than GPT-4)
+   - Implement caching for repeated operations
+   - Optimize prompts to minimize token usage
 
-3. **Optimize prompts**:
-   - Shorter prompts = lower costs
-   - Remove unnecessary context
-   - Use structured outputs (cheaper than long responses)
-
-4. **Batch processing**:
-   - Process multiple documents in one API call
-   - Reduces per-request overhead
-
-5. **Rate limiting**:
-   - Limit AI calls per user per hour
+3. **Rate limiting**:
+   - Limit AI calls per user per hour (already implemented)
    - Prevent abuse and runaway costs
 
 ### 1.5 OpenAI Budget Calculator
 
-**Estimated Monthly Costs** (GPT-4-turbo):
+**Status**: OpenAI not actively used in current implementation
+
+**Estimated Monthly Costs** (if GPT-4-turbo is enabled):
 - **Document extraction**: ~$0.03 per document (500 tokens)
 - **Legal doc generation**: ~$0.10 per document (2,000 tokens)
 - **Compliance reports**: ~$0.05 per report (1,000 tokens)
 
-**Example Scenarios**:
-- **10 deals/month**: $1.80/month
-- **50 deals/month**: $9.00/month
-- **200 deals/month**: $36.00/month
-- **1,000 deals/month**: $180.00/month
+**Example Scenarios** (if OpenAI features are enabled):
+- **10 deals/month**: ~$2/month
+- **50 deals/month**: ~$10/month
+- **200 deals/month**: ~$40/month
+- **1,000 deals/month**: ~$200/month
+
+**Recommended Approach**: Monitor Gemini costs first. Only enable OpenAI if specific features require GPT-4's capabilities.
 
 **Pricing** (as of 2024):
 - **GPT-4-turbo**: $10/1M input tokens, $30/1M output tokens
-- **GPT-4**: $30/1M input tokens, $60/1M output tokens
+- **GPT-4**: $30/1M input tokens, $60/1M output tokens (not recommended)
 
 ## Step 2: Google Gemini Cost Monitoring Setup
 
@@ -414,44 +408,52 @@ Before going live:
 ## Step 7: Long-Term Cost Management
 
 ### Monthly Review Process
-1. **Week 1**: Analyze previous month's spend
+1. **Week 1**: Analyze previous month's Gemini spend
 2. **Week 2**: Identify optimization opportunities
 3. **Week 3**: Implement cost-saving measures
 4. **Week 4**: Forecast next month's budget
 
 ### Quarterly Optimization
-- Review and update prompt templates
-- Evaluate cheaper AI models
+- Review and update prompt templates for Gemini
+- Monitor Gemini 2.0 Flash pricing changes
 - Analyze ROI of AI features
-- Consider tiered pricing for users
-- Negotiate enterprise pricing with providers
+- Consider tiered pricing for users if costs grow
+- Evaluate if OpenAI features should be enabled
 
 ### Annual Planning
 - Budget allocation for AI services
-- Evaluate alternative providers
-- Consider self-hosted models (if volume justifies)
+- Evaluate alternative providers (Claude, Mistral)
+- Review Gemini model updates and pricing
 - Plan for model upgrades and deprecations
 
 ## Cost Summary
 
-### Expected Monthly AI Costs (Production)
+### Expected Monthly AI Costs (Production) - Gemini Primary
 
 **Low Volume** (10-50 deals/month):
-- OpenAI: $1-$10
 - Gemini: $0.04-$0.20
-- **Total**: ~$10-$15/month
+- OpenAI: $0 (not used)
+- **Total**: ~$0.05-$0.25/month
 
 **Medium Volume** (100-200 deals/month):
-- OpenAI: $18-$36
 - Gemini: $0.40-$0.80
-- **Total**: ~$20-$40/month
+- OpenAI: $0 (not used)
+- **Total**: ~$0.50-$1.00/month
 
 **High Volume** (500-1,000 deals/month):
-- OpenAI: $90-$180
 - Gemini: $2-$4
-- **Total**: ~$95-$185/month
+- OpenAI: $0 (not used)
+- **Total**: ~$2-$5/month
 
-**Recommended Budget**: Start with $100/month, adjust based on actual usage.
+**Very High Volume** (5,000-10,000 deals/month):
+- Gemini: $20-$40
+- OpenAI: $0 (not used)
+- **Total**: ~$20-$40/month
+
+**Recommended Budget**: 
+- Start with $25/month Gemini budget
+- Set $50/month hard limit
+- Only configure OpenAI if specific features require GPT-4 capabilities
 
 ## Support Resources
 
