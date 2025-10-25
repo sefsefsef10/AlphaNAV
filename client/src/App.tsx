@@ -85,9 +85,23 @@ function AppContent() {
     }
   }, [isLoading, isAuthenticated, user, location, setLocation, isOnboardingPage]);
 
+  // Show loading or landing page states
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-12 h-12 bg-primary rounded-md flex items-center justify-center mx-auto mb-4">
+            <span className="text-primary-foreground font-bold text-xl">AN</span>
+          </div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+        <Toaster />
+      </div>
+    );
+  }
+
   // Landing page and legal pages (marketing site, no sidebar, no header)
-  // Show landing if loading, not authenticated, or explicitly on landing/legal pages
-  if (isLoading || !isAuthenticated || isLandingPage || location === "/privacy" || location === "/terms") {
+  if (!isAuthenticated || isLandingPage || location === "/privacy" || location === "/terms") {
     return (
       <>
         <Route path="/" component={LandingPage} />

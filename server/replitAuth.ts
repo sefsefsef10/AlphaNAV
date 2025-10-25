@@ -126,6 +126,65 @@ export async function setupAuth(app: Express) {
       );
     });
   });
+
+  // Get current authenticated user
+  app.get("/api/auth/user", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const user = req.user as any;
+      const userId = user.claims?.sub;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Invalid session" });
+      }
+
+      // Get user from database
+      const dbUser = await storage.getUser(userId);
+      
+      if (!dbUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(dbUser);
+    } catch (error) {
+      console.error("Get user error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Update user role
+  app.patch("/api/auth/user/role", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const user = req.user as any;
+      const userId = user.claims?.sub;
+      const { role } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Invalid session" });
+      }
+
+      if (!role || !["operations", "advisor", "gp", "admin"].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      // Update user role in database
+      await storage.updateUserRole(userId, role);
+
+      // Get updated user
+      const updatedUser = await storage.getUser(userId);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Update user role error:", error);
+      res.status(500).json({ message: "Failed to update role" });
+    }
+  });
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {

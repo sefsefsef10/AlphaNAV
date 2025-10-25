@@ -24,6 +24,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUserRole(userId: string, role: string, advisorId?: string): Promise<User | undefined>;
   
   createOnboardingSession(session: InsertOnboardingSession): Promise<OnboardingSession>;
   getOnboardingSession(id: string): Promise<OnboardingSession | undefined>;
@@ -184,6 +185,20 @@ export class MemStorage implements IStorage {
     };
     this.users.set(user.id, user);
     return user;
+  }
+
+  async updateUserRole(userId: string, role: string, advisorId?: string): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+
+    const updated: User = {
+      ...user,
+      role: role as any,
+      advisorId: advisorId || null,
+      updatedAt: new Date(),
+    };
+    this.users.set(userId, updated);
+    return updated;
   }
 
   async createOnboardingSession(insertSession: InsertOnboardingSession): Promise<OnboardingSession> {
