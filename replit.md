@@ -60,5 +60,40 @@ Preferred communication style: Simple, everyday language.
 - **Data & Validation**: Zod, React Hook Form with Zod resolvers, date-fns.
 - **Styling & Design**: Tailwind CSS, PostCSS, class-variance-authority, clsx, tailwind-merge.
 - **Database & ORM**: @neondatabase/serverless, Drizzle ORM, ws.
-- **AI Integration**: Gemini 2.0 Flash model.
+- **AI Integration**: Gemini 2.0 Flash model, OpenAI GPT-4.
 - **Security**: Helmet.js, express-rate-limit, connect-pg-simple.
+- **Monitoring**: Sentry (error tracking and performance monitoring).
+
+## Production Readiness
+
+### Security Hardening (✅ Complete)
+- **Helmet.js**: Environment-aware CSP with strict production policy (self, OpenAI, Gemini, Sentry domains)
+- **Rate Limiting**: 100 req/15min global, 5 req/15min auth endpoints
+- **Session Security**: httpOnly cookies, sameSite: strict, 7-day TTL
+- **Input Validation**: Comprehensive Zod schemas on all 7 critical POST/PATCH endpoints with proper update schemas
+
+### Monitoring & Observability (✅ Complete)
+- **Sentry Integration**: Backend (@sentry/node v10.x) and frontend (@sentry/react) with 10% transaction sampling
+- **Session Replay**: Privacy-compliant (maskAllText: true, blockAllMedia: true) for debugging user issues
+- **Error Tracking**: Automatic exception capture with request context, user data, and stack traces
+- **CSP Configuration**: Sentry domains whitelisted (*.sentry.io, *.ingest.sentry.io)
+
+### Documentation (✅ Complete)
+- **DEPLOYMENT_CHECKLIST.md**: Comprehensive pre-launch checklist with rollback procedures
+- **SENTRY_SETUP.md**: Step-by-step Sentry configuration for production deployment
+- **DATABASE_BACKUP_SETUP.md**: Neon PITR setup, disaster recovery drills, backup automation
+- **AI_COST_MONITORING_SETUP.md**: OpenAI/Gemini budget alerts, cost optimization, monitoring procedures
+
+### E2E Testing (✅ Complete)
+- **Operations Workflow**: 26-step test covering deal creation, underwriting, facility management
+- **Advisor Workflow**: 26-step test covering RFP process, anonymization, commission tracking
+- **GP Workflow**: 18-step test covering self-onboarding, draw requests, document vault
+
+### Production Deployment Remaining Tasks
+1. Configure Sentry DSN in production environment
+2. Set up Neon automated backups with PITR (7-day retention minimum)
+3. Configure OpenAI billing alerts ($50 soft limit, $100 hard limit)
+4. Configure Gemini billing alerts ($100/month budget)
+5. Assign incident response owners and on-call rotation
+6. Schedule first disaster recovery drill within 30 days of launch
+7. Set up weekly cost review meetings for AI spend monitoring
