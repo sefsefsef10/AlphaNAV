@@ -490,6 +490,92 @@ router.patch("/covenants/:id", async (req: Request, res: Response) => {
   }
 });
 
+// ===== LEGAL DOCUMENT GENERATION ROUTES =====
+
+// POST /api/facilities/:id/generate-document
+// Generate a legal document for a facility
+router.post("/facilities/:id/generate-document", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    const { documentType, config } = req.body;
+
+    // Get facility data
+    const [facility] = await db.select()
+      .from(facilities)
+      .where(eq(facilities.id, id))
+      .limit(1);
+
+    if (!facility) {
+      return res.status(404).json({ error: "Facility not found" });
+    }
+
+    // Import document generator functions
+    const { generateLoanAgreement, generateTermSheet, generateComplianceReport } = 
+      await import("./documentGenerator");
+
+    let document: string;
+    let filename: string;
+
+    switch (documentType) {
+      case "loan-agreement":
+        document = generateLoanAgreement(config, {
+          fundName: facility.fundName,
+          principalAmount: facility.principalAmount,
+          interestRate: facility.interestRate,
+          ltvRatio: facility.ltvRatio,
+          maturityDate: facility.maturityDate,
+          paymentSchedule: facility.paymentSchedule,
+        });
+        filename = `loan-agreement-${facility.fundName.replace(/\s+/g, '-').toLowerCase()}.md`;
+        break;
+
+      case "term-sheet":
+        document = generateTermSheet(config, {
+          fundName: facility.fundName,
+          principalAmount: facility.principalAmount,
+          interestRate: facility.interestRate,
+          ltvRatio: facility.ltvRatio,
+          maturityDate: facility.maturityDate,
+          paymentSchedule: facility.paymentSchedule,
+        });
+        filename = `term-sheet-${facility.fundName.replace(/\s+/g, '-').toLowerCase()}.md`;
+        break;
+
+      case "compliance-report":
+        document = generateComplianceReport(facility.id, {
+          fundName: facility.fundName,
+          principalAmount: facility.principalAmount,
+          outstandingBalance: facility.outstandingBalance,
+          interestRate: facility.interestRate,
+          ltvRatio: facility.ltvRatio,
+          maturityDate: facility.maturityDate,
+        });
+        filename = `compliance-report-${facility.fundName.replace(/\s+/g, '-').toLowerCase()}.md`;
+        break;
+
+      default:
+        return res.status(400).json({ error: "Invalid document type" });
+    }
+
+    res.json({
+      document,
+      filename,
+      generatedAt: new Date().toISOString(),
+    });
+
+  } catch (error) {
+    console.error("Generate document error:", error);
+    res.status(500).json({ 
+      error: "Failed to generate document",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
 // Export router as registerRoutes function for compatibility
 import type { Express } from "express";
 import { createServer, type Server } from "http";

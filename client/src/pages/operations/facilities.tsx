@@ -17,6 +17,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useState } from "react";
+import { GenerateDocumentDialog } from "@/components/generate-document-dialog";
 
 export default function FacilitiesPage() {
   const [, setLocation] = useLocation();
@@ -255,11 +256,17 @@ export default function FacilitiesPage() {
                     </div>
 
                     {/* Payment Schedule Badge */}
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {facility.paymentSchedule.charAt(0).toUpperCase() + facility.paymentSchedule.slice(1)} payments
-                      </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
+                          {facility.paymentSchedule.charAt(0).toUpperCase() + facility.paymentSchedule.slice(1)} payments
+                        </span>
+                      </div>
+                      <GenerateDocumentDialog
+                        facilityId={facility.id}
+                        facilityName={facility.fundName}
+                      />
                     </div>
                   </div>
                 </CardContent>
