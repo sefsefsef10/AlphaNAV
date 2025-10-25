@@ -57,12 +57,16 @@ export const uploadedDocuments = pgTable("uploaded_documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   sessionId: varchar("session_id"), // For onboarding documents
   facilityId: varchar("facility_id"), // For facility documents
+  prospectId: varchar("prospect_id"), // For prospect documents
+  uploadedBy: varchar("uploaded_by"), // User ID who uploaded
   fileName: text("file_name").notNull(),
   fileType: text("file_type").notNull(),
   fileSize: integer("file_size").notNull(),
   storageUrl: text("storage_url").notNull(),
   extractedData: jsonb("extracted_data"),
-  processingStatus: text("processing_status").notNull().default("pending"),
+  extractionConfidence: integer("extraction_confidence"), // 0-100 confidence score
+  processingStatus: text("processing_status").notNull().default("pending"), // pending, processing, completed, failed
+  processingError: text("processing_error"), // Error message if failed
   uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
 });
 
@@ -78,11 +82,17 @@ export const prospects = pgTable("prospects", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   onboardingSessionId: varchar("onboarding_session_id"),
   fundName: text("fund_name").notNull(),
-  fundSize: integer("fund_size"),
+  fundSize: integer("fund_size"), // AUM in dollars
   vintage: integer("vintage"),
   portfolioCount: integer("portfolio_count"),
   sectors: jsonb("sectors"),
-  stage: text("stage"),
+  gpName: text("gp_name"), // General Partner name
+  gpFirmName: text("gp_firm_name"), // GP firm name
+  gpTrackRecord: text("gp_track_record"), // GP track record summary
+  fundStructure: text("fund_structure"), // LP/GP split, fund type
+  strategy: text("strategy"), // Investment strategy
+  geography: text("geography"), // Geographic focus
+  stage: text("stage").notNull().default("prospect"), // prospect, underwriting, term_sheet, due_diligence, closed
   loanNeedScore: integer("loan_need_score"),
   borrowerQualityScore: integer("borrower_quality_score"),
   engagementScore: integer("engagement_score"),
@@ -94,7 +104,11 @@ export const prospects = pgTable("prospects", {
   contactPhone: text("contact_phone"),
   eligibilityStatus: text("eligibility_status"),
   eligibilityNotes: text("eligibility_notes"),
-  source: text("source").notNull().default("manual"),
+  extractionConfidence: integer("extraction_confidence"), // 0-100, overall confidence score
+  extractedData: jsonb("extracted_data"), // Full raw extraction results
+  extractedAt: timestamp("extracted_at"), // When AI extraction completed
+  extractedBy: varchar("extracted_by"), // Which AI model/version
+  source: text("source").notNull().default("manual"), // manual, ai_extraction, api
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
