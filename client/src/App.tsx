@@ -101,7 +101,7 @@ function AppContent() {
   if (isRoleSelection) {
     return (
       <>
-        <Route path="/select-role" component={RoleSelection} />
+        <RoleSelection />
         <Toaster />
       </>
     );
@@ -111,7 +111,7 @@ function AppContent() {
   if (isProfileSelection) {
     return (
       <>
-        <Route path="/app" component={ProfileSelection} />
+        <ProfileSelection />
         <Toaster />
       </>
     );
