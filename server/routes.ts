@@ -33,9 +33,19 @@ router.post("/prospects/upload-and-extract", upload.single("document"), async (r
     const userId = (req.user as any).claims?.sub;
     const file = req.file;
 
+    // Validate object storage configuration
+    const storageRoot = process.env.PRIVATE_OBJECT_DIR;
+    if (!storageRoot) {
+      console.error("PRIVATE_OBJECT_DIR environment variable not configured");
+      return res.status(500).json({ 
+        error: "Server configuration error",
+        details: "Object storage not configured"
+      });
+    }
+
     // Store file in object storage (.private directory)
     const fileName = `${Date.now()}-${file.originalname}`;
-    const storagePath = path.join(process.env.PRIVATE_OBJECT_DIR!, "documents", fileName);
+    const storagePath = path.join(storageRoot, "documents", fileName);
     
     // Ensure directory exists
     const dir = path.dirname(storagePath);
@@ -298,8 +308,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   await setupAuth(app);
   
-  // Register all prospect routes
-  app.use(router);
+  // Register all prospect routes under /api prefix
+  app.use("/api", router);
   
-  return createServer(app);
+  // Create and return HTTP server
+  const server = createServer(app);
+  return server;
 }

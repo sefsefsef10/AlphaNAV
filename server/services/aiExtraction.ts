@@ -82,9 +82,19 @@ export async function extractFundData(
   documentText: string
 ): Promise<ExtractionResult> {
   try {
+    // Properly structured contents array for Gemini API
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash-exp",
-      contents: `${EXTRACTION_PROMPT}\n\nDocument content:\n${documentText}`,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `${EXTRACTION_PROMPT}\n\nDocument content:\n${documentText}`
+            }
+          ]
+        }
+      ],
     });
 
     const text = response.text || "";
@@ -97,7 +107,20 @@ export async function extractFundData(
       jsonText = jsonText.replace(/```\n?/g, "").replace(/```\n?$/g, "");
     }
 
-    const extracted = JSON.parse(jsonText);
+    // Defensive JSON parsing
+    let extracted;
+    try {
+      extracted = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      console.error("Raw response:", text);
+      throw new Error("AI returned invalid JSON response");
+    }
+
+    // Validate required structure
+    if (!extracted.confidence) {
+      throw new Error("AI response missing required confidence scores");
+    }
 
     return {
       ...extracted,
@@ -111,10 +134,27 @@ export async function extractFundData(
   }
 }
 
+// Allowed file types for security
+const ALLOWED_MIME_TYPES = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "text/plain",
+];
+
 export async function extractFromFile(
   fileBuffer: Buffer,
   fileType: string
 ): Promise<ExtractionResult> {
+  // Validate file type
+  if (!ALLOWED_MIME_TYPES.includes(fileType)) {
+    throw new Error(
+      `Unsupported file type: ${fileType}. Allowed types: PDF, Word, Excel, or Text files.`
+    );
+  }
+
   // For now, handle text-based extraction
   // TODO: Add PDF parsing, DOCX parsing for production
   let documentText = "";
@@ -133,8 +173,16 @@ export async function extractFromFile(
     documentText = fileBuffer.toString("utf-8");
   } else if (fileType === "text/plain") {
     documentText = fileBuffer.toString("utf-8");
-  } else {
-    throw new Error(`Unsupported file type: ${fileType}`);
+  } else if (
+    fileType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    fileType === "application/vnd.ms-excel"
+  ) {
+    // For Excel files
+    documentText = fileBuffer.toString("utf-8");
+  }
+
+  if (!documentText || documentText.trim().length === 0) {
+    throw new Error("Could not extract text from document");
   }
 
   return extractFundData(documentText);
