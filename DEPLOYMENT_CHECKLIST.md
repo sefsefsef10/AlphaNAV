@@ -87,7 +87,7 @@
 
 **Implemented Features**:
 - [x] **All 7 critical POST/PATCH endpoints validated**:
-  - `POST /api/prospects/upload-and-extract` - File upload with type validation
+  - `POST /api/prospects/upload-and-extract` - File upload with multi-layer validation
   - `PATCH /api/prospects/:id` - updateProspectSchema with .strict()
   - `POST /api/facilities` - insertFacilitySchema
   - `PATCH /api/facilities/:id` - updateFacilitySchema with .strict()
@@ -97,12 +97,18 @@
 - [x] **Mass assignment protection**: Update schemas use .strict() to reject unknown fields
 - [x] **Protected fields**: Status/stage fields excluded from PATCH to require business logic
 - [x] **Foreign key protection**: prospectId, facilityId, advisorDealId immutable in updates
-- [x] **File upload validation**:
-  - Allowed types: PDF, DOC, DOCX, XLS, XLSX, TXT, CSV
+- [x] **File upload validation (triple-layer)**:
+  - Layer 1: MIME type validation (application/pdf, etc.)
+  - Layer 2: File extension validation (.pdf, .doc, .docx, .xls, .xlsx, .txt, .csv)
+  - Layer 3: Magic bytes validation (prevents polyglot attacks)
   - Max size: 10MB (reduced from 50MB)
-  - MIME type + extension validation
+  - Plain text validation: Null byte detection for TXT/CSV
 
-**Verification**: Review server/routes.ts lines 47-67 (update schemas) and lines 34-67 (file upload)
+**Known Limitation**: No antivirus/malware scanning in MVP. Risk acceptance: authenticated users only, files processed by Google Gemini (sandboxed), not executed server-side.
+
+**Production Recommendation**: Add AV scanning (ClamAV or SaaS) before enabling for external users.
+
+**Verification**: Review server/routes.ts lines 47-77 (magic bytes), lines 107-128 (update schemas), lines 145-152 (upload validation)
 
 ### 5. CORS Configuration ⚠️ ACTION REQUIRED
 **Status**: Using Vite default CORS (development mode)

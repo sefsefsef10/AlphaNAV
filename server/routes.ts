@@ -41,6 +41,38 @@ const ALLOWED_MIME_TYPES = [
 
 const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'];
 
+// Magic bytes (file signatures) for validating actual file content
+const FILE_SIGNATURES: Record<string, Buffer[]> = {
+  '.pdf': [Buffer.from([0x25, 0x50, 0x44, 0x46])], // %PDF
+  '.doc': [Buffer.from([0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1])], // DOC (OLE2)
+  '.docx': [Buffer.from([0x50, 0x4B, 0x03, 0x04])], // ZIP archive (DOCX is ZIP)
+  '.xls': [Buffer.from([0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1])], // XLS (OLE2)
+  '.xlsx': [Buffer.from([0x50, 0x4B, 0x03, 0x04])], // ZIP archive (XLSX is ZIP)
+  // Note: TXT and CSV have no magic bytes (plain text), validated separately
+};
+
+function validateFileSignature(buffer: Buffer, extension: string): boolean {
+  // Plain text files (TXT, CSV) don't have magic bytes
+  if (extension === '.txt' || extension === '.csv') {
+    // Basic check: ensure it's valid UTF-8 or ASCII
+    try {
+      const content = buffer.toString('utf-8');
+      // Check for null bytes (binary content masquerading as text)
+      return !content.includes('\0');
+    } catch {
+      return false;
+    }
+  }
+  
+  const signatures = FILE_SIGNATURES[extension];
+  if (!signatures || signatures.length === 0) {
+    return false;
+  }
+  
+  // Check if file starts with any of the valid signatures
+  return signatures.some(sig => buffer.slice(0, sig.length).equals(sig));
+}
+
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: { 
@@ -106,6 +138,15 @@ router.post("/prospects/upload-and-extract", upload.single("document"), async (r
 
     const userId = (req.user as any).claims?.sub;
     const file = req.file;
+    
+    // Validate file content using magic bytes (prevents polyglot/malicious uploads)
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    if (!validateFileSignature(file.buffer, fileExtension)) {
+      return res.status(400).json({ 
+        error: "Invalid file content",
+        details: "File content does not match the declared file type. This may indicate a corrupted or malicious file."
+      });
+    }
 
     // Validate object storage configuration
     const storageRoot = process.env.PRIVATE_OBJECT_DIR;
@@ -823,14 +864,15 @@ router.get("/lender-invitations/:dealId", async (req: Request, res: Response) =>
 // Export router as registerRoutes function for compatibility
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { setupAuth } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   await setupAuth(app);
   
-  // Register all prospect routes under /api prefix
-  app.use("/api", router);
+  // Apply authentication middleware to ALL routes under /api
+  // This ensures no route can be accessed without authentication
+  app.use("/api", isAuthenticated, router);
   
   // Create and return HTTP server
   const server = createServer(app);

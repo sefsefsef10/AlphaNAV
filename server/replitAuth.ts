@@ -111,20 +111,49 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+    passport.authenticate(`replitauth:${req.hostname}`, (err: any, user: any, info: any) => {
+      if (err) {
+        return next(err);
+      }
+      if (!user) {
+        return res.redirect("/api/login");
+      }
+      
+      // Regenerate session to prevent session fixation attacks
+      req.session.regenerate((regenerateErr) => {
+        if (regenerateErr) {
+          return next(regenerateErr);
+        }
+        
+        req.logIn(user, (loginErr) => {
+          if (loginErr) {
+            return next(loginErr);
+          }
+          return res.redirect("/");
+        });
+      });
     })(req, res, next);
   });
 
   app.get("/api/logout", (req, res) => {
-    req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+    req.logout((logoutErr) => {
+      if (logoutErr) {
+        console.error("Logout error:", logoutErr);
+      }
+      
+      // Destroy session completely to prevent session reuse
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) {
+          console.error("Session destroy error:", destroyErr);
+        }
+        
+        res.redirect(
+          client.buildEndSessionUrl(config, {
+            client_id: process.env.REPL_ID!,
+            post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+          }).href
+        );
+      });
     });
   });
 
@@ -178,9 +207,25 @@ export async function setupAuth(app: Express) {
       // Update user role in database
       await storage.updateUserRole(userId, role);
 
-      // Get updated user
-      const updatedUser = await storage.getUser(userId);
-      res.json(updatedUser);
+      // Regenerate session after privilege change to prevent session fixation
+      req.session.regenerate((regenerateErr) => {
+        if (regenerateErr) {
+          console.error("Session regeneration error:", regenerateErr);
+          return res.status(500).json({ message: "Failed to update role" });
+        }
+        
+        // Re-login user with new session
+        req.logIn(user, async (loginErr) => {
+          if (loginErr) {
+            console.error("Re-login error:", loginErr);
+            return res.status(500).json({ message: "Failed to update role" });
+          }
+          
+          // Get updated user
+          const updatedUser = await storage.getUser(userId);
+          res.json(updatedUser);
+        });
+      });
     } catch (error) {
       console.error("Update user role error:", error);
       res.status(500).json({ message: "Failed to update role" });
