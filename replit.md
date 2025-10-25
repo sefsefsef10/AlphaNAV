@@ -35,11 +35,17 @@ Preferred communication style: Simple, everyday language.
 - **Provider**: Replit Auth (OIDC) supporting Google, GitHub, X, Apple, and email/password login
 - **Session Management**: PostgreSQL-backed sessions via connect-pg-simple (7-day TTL)
 - **Middleware**: Passport.js with token refresh support
-- **Auth Routes**: `/api/login` (initiate), `/api/logout` (end session), `/api/callback` (OIDC callback)
+- **Auth Routes**: 
+  - `/api/login` - Initiate OIDC authentication
+  - `/api/logout` - End session and redirect to OIDC logout
+  - `/api/callback` - OIDC callback handler
+  - `GET /api/auth/user` - Get current authenticated user (returns User object from database)
+  - `PATCH /api/auth/user/role` - Update user's role (operations, advisor, gp, admin)
 - **Protected Routes**: `isAuthenticated` middleware validates session and refreshes tokens automatically
 - **User Flow**: Login → Role Selection (`/select-role`) → Role-specific dashboard
 - **Roles**: operations (lenders), advisor (placement agents), gp (fund managers), admin
-- **Frontend Hook**: `useAuth()` provides user, isLoading, isAuthenticated states
+- **Frontend Hook**: `useAuth()` queries `/api/auth/user` to provide user, isLoading, isAuthenticated states
+- **Critical Fix (Oct 25, 2025)**: Added missing `/api/auth/user` endpoint - previously returned HTML instead of JSON, causing authentication state to fail
 
 ### UI/UX Decisions
 - Dark mode as default, professional typography (Inter, JetBrains Mono), `tabular-nums` font variant for data.
@@ -58,7 +64,13 @@ Preferred communication style: Simple, everyday language.
 - **Data Export**: CSV export utility for dashboards.
 - **Help System & Onboarding**: Dialog-based help center with role-specific guides.
 - **Gemini AI Integration**: Document extraction from fund data (e.g., fundName, AUM, vintage) with eligibility assessment and confidence scoring. Covenant breach risk analysis providing probability, risk level, and recommendations.
-- **Automated Legal Document Generation**: Templates for Loan Agreements, Term Sheets, and Compliance Reports using facility data, with conditional sections and format-aware downloads.
+- **Automated Legal Document Generation**: 
+  - Templates for Loan Agreements, Term Sheets, and Compliance Reports using facility data
+  - API endpoint: `POST /api/facilities/:id/generate-document`
+  - Configurable options: interest type, term length, OID, PIK, covenants, amortization, prepayment penalty, security interest
+  - Format-aware downloads (Markdown)
+  - Dialog UI integrated into facility management page with data-testid attributes
+  - **Implementation Date**: October 25, 2025
 - **Covenant Monitoring and Compliance Tracking**: Automated compliance checks against defined thresholds with support for various covenant types (LTV, Minimum NAV, Diversification, Liquidity, Custom). Three status levels: compliant, warning, and breach, with urgent notification for breaches.
 
 ## External Dependencies
@@ -70,3 +82,51 @@ Preferred communication style: Simple, everyday language.
 - **Database & ORM**: @neondatabase/serverless, Drizzle ORM, ws (WebSocket).
 - **AI Integration**: Gemini 2.0 Flash model.
 - **Planned Third-Party Integrations**: LinkedIn APIs, CRM integrations (Folk), document upload/processing capabilities.
+
+## Recent Updates (October 25, 2025)
+
+### Critical Bug Fixes
+1. **Missing Authentication Endpoint**: Added `GET /api/auth/user` endpoint in `server/replitAuth.ts`
+   - Issue: Frontend `useAuth()` hook was calling `/api/auth/user` which didn't exist
+   - Symptom: API returned HTML instead of JSON, causing authentication state to fail and blank pages
+   - Fix: Implemented endpoint that returns current user from database with proper JSON response
+   - Also added: `PATCH /api/auth/user/role` endpoint for role selection
+
+2. **App.tsx Conditional Rendering**: Fixed loading state handling in `client/src/App.tsx`
+   - Issue: `isLoading || !isAuthenticated` condition prevented role selection and protected pages from rendering
+   - Symptom: Blank/dark pages on `/select-role` and operations routes after login
+   - Fix: Separated loading state into distinct condition with loading spinner, fixed route handler precedence
+
+3. **GP User Routing**: Fixed authentication redirect logic for GP users
+   - Issue: GP users treated same as users without roles, stuck in redirect loop
+   - Fix: Only redirect users with truly no role to `/select-role`, added GP to role routes map (`/gp`)
+
+### Features Completed
+1. **Legal Document Generation UI Integration**
+   - Added "Generate Document" button to each facility card in facilities management page
+   - Created dialog component (`client/src/components/generate-document-dialog.tsx`) with document type selection and configuration options
+   - Integrated with existing API endpoint for document generation
+   - Download functionality for generated Markdown files
+
+2. **Storage Interface Updates**
+   - Added `updateUserRole` method to `IStorage` interface
+   - Implemented in both `DatabaseStorage` and `MemStorage`
+   - Enables role selection feature for new users
+
+### Testing Status
+- Authentication flow tested and verified
+- Role selection page rendering confirmed
+- Legal document generation dialog integration tested
+- All LSP diagnostics resolved (zero TypeScript errors)
+- E2E testing pending (blocked by previous authentication bugs, now resolved)
+
+### Known Issues
+- None currently blocking deployment
+
+### Next Steps
+1. Run comprehensive end-to-end tests on all workflows
+2. Test legal document generation with actual facility data
+3. Verify GP onboarding flow end-to-end
+4. Verify Advisor RFP workflow
+5. Performance testing and optimization
+6. Deployment to production
