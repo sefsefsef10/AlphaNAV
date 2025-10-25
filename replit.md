@@ -132,7 +132,20 @@ Preferred communication style: Simple, everyday language.
 ### E2E Testing Results
 - ✅ **Operations Workflow** (26 steps): PASSED - Prospect upload, AI extraction, underwriting, facility creation, covenant monitoring
 - ✅ **Advisor Workflow** (26 steps): PASSED - RFP submission, lender invitations, detail view, dashboard navigation
-- ⏳ **GP Workflow**: Pending (features exist, testing not yet run)
+- ✅ **GP Workflow** (18 steps): PASSED - GP dashboard, facility management, draw requests, document vault
+
+### Production Deployment Checklist
+- ✅ **Created**: Comprehensive 800+ line deployment checklist in `DEPLOYMENT_CHECKLIST.md`
+- ✅ **Architect Reviewed**: PASSED with recommendations for next actions
+- **Includes**:
+  - **Security Hardening** (BLOCKING): Helmet/CSP, rate limiting, CORS, session cookies, input validation, API key rotation
+  - **Infrastructure Setup**: Sentry monitoring, Neon backups, uptime monitoring, logging
+  - **Replit Deployment**: Step-by-step deployment workflow with health checks
+  - **Incident Response**: Severity levels (P0-P3), designated owners, runbook procedures
+  - **AI Cost Monitoring**: OpenAI/Gemini billing alerts, quota tracking, contingency plans
+  - **Disaster Recovery**: Monthly backup drills, RTO/RPO targets, business continuity scenarios
+  - **Post-Deployment Verification**: Smoke tests for all three workflows
+  - **Rollback Procedures**: Deployment and database rollback steps
 
 ### Known Issues
 - None currently blocking deployment
@@ -140,12 +153,31 @@ Preferred communication style: Simple, everyday language.
 ### Production Readiness Status
 - **Feature Completeness**: 100% (All 22 MVP features implemented and tested)
 - **Code Quality**: A- (Zero LSP errors, comprehensive type safety)
-- **Testing Coverage**: Operations + Advisor workflows verified E2E
-- **Infrastructure Gaps**: Production monitoring (Sentry) and automated database backups pending
+- **Testing Coverage**: All three workflows (Operations, Advisor, GP) verified E2E
+- **Deployment Documentation**: Comprehensive checklist with security hardening, monitoring, and disaster recovery
+- **Blocking Tasks Before Launch**:
+  1. Execute mandatory security hardening (Helmet, rate limiting, CORS, session flags)
+  2. Configure Sentry error tracking
+  3. Set up AI billing alerts (OpenAI/Gemini)
+  4. Assign incident response owners
+  5. Schedule first backup restore drill
 
-### Next Steps
-1. ✅ ~~Run comprehensive end-to-end tests on Operations and Advisor workflows~~
-2. Run E2E test on GP onboarding workflow
-3. Set up production monitoring (Sentry error tracking)
-4. Configure Neon database automated backups
-5. Final deployment readiness review
+### Next Steps for Production Launch
+1. ✅ ~~Run comprehensive end-to-end tests on all three workflows~~ (COMPLETED)
+2. ✅ ~~Create production deployment checklist~~ (COMPLETED - Architect approved)
+3. **Execute blocking security tasks** (from DEPLOYMENT_CHECKLIST.md):
+   - Install and configure Helmet.js
+   - Implement rate limiting
+   - Configure strict CORS whitelist
+   - Verify session cookie security flags
+   - Audit input validation on all API endpoints
+4. **Set up production monitoring**:
+   - Create Sentry account and configure error tracking
+   - Set up uptime monitoring (UptimeRobot)
+5. **Configure AI cost controls**:
+   - OpenAI billing alerts ($50/$100/$200 thresholds)
+   - Gemini quota monitoring and alerts
+6. **Prepare disaster recovery**:
+   - Create Neon production database branch
+   - Schedule and document first backup restore drill
+7. **Deploy to production** following DEPLOYMENT_CHECKLIST.md
