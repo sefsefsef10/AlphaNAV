@@ -63,33 +63,71 @@ postgresql://[username]:[password]@[production-branch-host]/[database]?sslmode=r
 
 Neon provides the full connection string in the branch details.
 
-## Step 4: Backup Strategy
+## Step 4: Backup Strategy ✅ PRODUCTION CONFIGURATION
 
-### Daily Manual Snapshots (Recommended)
-Create daily snapshots by branching:
+### ⚠️ MANDATORY PRE-LAUNCH ACTIONS
 
+**Before deploying to production, complete these steps:**
+
+1. **Upgrade to Neon Pro Plan** ($19/month)
+   - Required for 30-day PITR window
+   - Go to: https://console.neon.tech → Billing → Upgrade to Pro
+   - **Why**: Free tier only has 7-day history (insufficient for compliance)
+
+2. **Enable Branch Protection**
+   - Go to: Neon Console → Branches → production
+   - Click "Protect Branch"
+   - **Why**: Prevents accidental deletion of production data
+
+3. **Set Up Automated Backup Schedule**
+   ```
+   Schedule: Daily at 2 AM UTC (low-traffic window)
+   Retention: Keep 30 daily backups + 12 monthly backups
+   ```
+
+### Daily Automated Snapshots (REQUIRED)
+
+**Option A: Using Neon CLI (Recommended)**
 ```bash
-# Example: Create daily backup branch
-BRANCH_NAME="backup-$(date +%Y-%m-%d)"
+# Install Neon CLI
+npm install -g neonctl
+
+# Authenticate
+neonctl auth
+
+# Create daily backup (run via cron/GitHub Actions)
+#!/bin/bash
+BACKUP_NAME="backup-$(date +%Y-%m-%d)"
+neonctl branches create --project-id YOUR_PROJECT_ID --name $BACKUP_NAME --parent production
+
+# Delete backups older than 30 days
+neonctl branches list --project-id YOUR_PROJECT_ID | grep "backup-" | # filter old ones
 ```
 
-1. Go to Neon Console
-2. Create new branch from `production`
-3. Name it: `backup-YYYY-MM-DD` (e.g., `backup-2025-10-25`)
-4. Set retention: Keep critical daily backups for 30+ days
+**Option B: Using Neon Console (Manual)**
+1. Go to Neon Console → Branches
+2. Click "Create Branch"
+3. Parent: `production`
+4. Name: `backup-YYYY-MM-DD`
+5. Repeat daily at 2 AM UTC
 
-### Pre-Deployment Snapshots
-Before major deployments, create a snapshot:
-1. Create branch: `pre-deploy-[feature-name]`
-2. Deploy changes
-3. If issues occur, restore from this branch
-4. Delete branch after 7 days if deployment successful
+### Pre-Deployment Snapshots (REQUIRED)
+**Always create snapshot before deployment:**
+```bash
+# Before deploying
+neonctl branches create --name "pre-deploy-$(date +%Y-%m-%d-%H%M)" --parent production
 
-### Weekly Full Snapshots
-For critical production data:
-1. Every Sunday, create branch: `weekly-YYYY-MM-DD`
-2. Keep for 90 days minimum
-3. Document what changed during the week
+# Deploy changes
+# If issues occur, restore from pre-deploy branch
+```
+
+### Weekly Full Snapshots (COMPLIANCE)
+For financial services compliance:
+```bash
+# Every Sunday at 3 AM UTC
+neonctl branches create --name "weekly-$(date +%Y-W%V)" --parent production
+# Keep for 12 months minimum (regulatory requirement)
+```
 
 ## Step 5: Recovery Procedures
 

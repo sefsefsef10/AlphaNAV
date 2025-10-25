@@ -148,21 +148,54 @@ router.post("/prospects/upload-and-extract", upload.single("document"), async (r
       });
     }
 
-    // Validate object storage configuration
-    const storageRoot = process.env.PRIVATE_OBJECT_DIR;
+    // Validate object storage configuration with intelligent fallback
+    let storageRoot = process.env.PRIVATE_OBJECT_DIR;
+    let usingFallback = false;
+    
     if (!storageRoot) {
-      console.error("PRIVATE_OBJECT_DIR environment variable not configured");
-      return res.status(500).json({ 
-        error: "Server configuration error",
-        details: "Object storage not configured"
-      });
+      console.warn("PRIVATE_OBJECT_DIR not configured, using fallback directory");
+      storageRoot = path.join(process.cwd(), ".uploads");
+      usingFallback = true;
+    }
+    
+    // Test if storage root is accessible (create if needed)
+    try {
+      await fs.mkdir(storageRoot, { recursive: true });
+      // Test write permissions
+      const testFile = path.join(storageRoot, '.test-write');
+      await fs.writeFile(testFile, 'test');
+      await fs.unlink(testFile);
+    } catch (error) {
+      console.error(`Storage root ${storageRoot} not accessible:`, error);
+      
+      // If configured storage failed, try fallback
+      if (!usingFallback) {
+        console.warn("Configured storage failed, falling back to local directory");
+        storageRoot = path.join(process.cwd(), ".uploads");
+        usingFallback = true;
+        
+        try {
+          await fs.mkdir(storageRoot, { recursive: true });
+        } catch (fallbackError) {
+          console.error("Fallback storage also failed:", fallbackError);
+          return res.status(500).json({ 
+            error: "Server configuration error",
+            details: "Could not initialize file storage"
+          });
+        }
+      } else {
+        return res.status(500).json({ 
+          error: "Server configuration error",
+          details: "Could not initialize file storage"
+        });
+      }
     }
 
-    // Store file in object storage (.private directory)
+    // Store file in object storage (.private directory or fallback)
     const fileName = `${Date.now()}-${file.originalname}`;
     const storagePath = path.join(storageRoot, "documents", fileName);
     
-    // Ensure directory exists
+    // Ensure documents directory exists
     const dir = path.dirname(storagePath);
     await fs.mkdir(dir, { recursive: true });
     

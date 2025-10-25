@@ -116,6 +116,50 @@ app.use('/api/auth/refresh', authRefreshLimiter);
 app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
+// CORS Configuration - Production-ready with domain whitelist
+if (isProduction) {
+  // Production: Strict CORS whitelist
+  const allowedOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+    : [];
+  
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin || '*');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      
+      // Handle preflight
+      if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+      }
+    } else if (origin) {
+      // Log unauthorized CORS attempts (potential security issue)
+      console.warn(`[SECURITY] Blocked CORS request from unauthorized origin: ${origin}`);
+      return res.status(403).json({ error: 'CORS not allowed from this origin' });
+    }
+    
+    next();
+  });
+} else {
+  // Development: Permissive CORS for local testing
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(204);
+    }
+    
+    next();
+  });
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;

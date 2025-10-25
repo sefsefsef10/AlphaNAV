@@ -147,6 +147,14 @@ export async function setupAuth(app: Express) {
           console.error("Session destroy error:", destroyErr);
         }
         
+        // Clear the session cookie from client
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict"
+        });
+        
         res.redirect(
           client.buildEndSessionUrl(config, {
             client_id: process.env.REPL_ID!,
