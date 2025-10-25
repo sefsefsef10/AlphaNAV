@@ -12,19 +12,50 @@ import {
   type InsertFacility,
   type InsertCovenant,
   type InsertAdvisorDeal,
-  type InsertLenderInvitation
+  type InsertLenderInvitation,
+  insertProspectSchema,
+  insertFacilitySchema,
+  insertCovenantSchema,
+  insertAdvisorDealSchema,
+  insertLenderInvitationSchema,
 } from "@shared/schema";
 import { extractFromFile, type ExtractionResult } from "./services/aiExtraction";
 import multer from "multer";
 import { eq } from "drizzle-orm";
 import fs from "fs/promises";
 import path from "path";
+import { z } from "zod";
 
 const router = Router();
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
+
+// Validation helper function
+function validateBody<T>(schema: z.ZodSchema<T>, body: any): { success: true; data: T } | { success: false; error: z.ZodError } {
+  const result = schema.safeParse(body);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: result.error };
+}
+
+// Update schemas for PATCH endpoints (omit foreign keys and one-time-set fields)
+// Note: insert schemas already omit id, createdAt, updatedAt
+const updateProspectSchema = insertProspectSchema.omit({ 
+  extractedAt: true, // Set once during extraction
+  extractedBy: true, // Set once during extraction
+  extractedData: true // Set once during extraction
+}).partial();
+
+const updateFacilitySchema = insertFacilitySchema.omit({
+  prospectId: true // Foreign key should not be changed
+}).partial();
+
+const updateCovenantSchema = insertCovenantSchema.omit({
+  facilityId: true // Foreign key should not be changed
+}).partial();
 
 // POST /api/prospects/upload-and-extract
 // Upload a document and extract fund data using AI
@@ -258,7 +289,17 @@ router.patch("/prospects/:id", async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
-    const updates = req.body;
+    
+    // Validate request body
+    const validation = validateBody(updateProspectSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Invalid update data",
+        details: validation.error.errors 
+      });
+    }
+
+    const updates = validation.data;
 
     const [updatedProspect] = await db.update(prospects)
       .set({
@@ -378,7 +419,16 @@ router.post("/facilities", async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const facilityData: InsertFacility = req.body;
+    // Validate request body
+    const validation = validateBody(insertFacilitySchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Invalid facility data",
+        details: validation.error.errors 
+      });
+    }
+
+    const facilityData: InsertFacility = validation.data;
 
     const [newFacility] = await db.insert(facilities)
       .values(facilityData)
@@ -404,7 +454,17 @@ router.patch("/facilities/:id", async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
-    const updates = req.body;
+    
+    // Validate request body
+    const validation = validateBody(updateFacilitySchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Invalid update data",
+        details: validation.error.errors 
+      });
+    }
+
+    const updates = validation.data;
 
     const [updatedFacility] = await db.update(facilities)
       .set({
@@ -440,10 +500,17 @@ router.post("/facilities/:facilityId/covenants", async (req: Request, res: Respo
     }
 
     const { facilityId } = req.params;
-    const covenantData: InsertCovenant = {
-      ...req.body,
-      facilityId,
-    };
+    
+    // Validate request body
+    const validation = validateBody(insertCovenantSchema, { ...req.body, facilityId });
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Invalid covenant data",
+        details: validation.error.errors 
+      });
+    }
+
+    const covenantData: InsertCovenant = validation.data;
 
     const [newCovenant] = await db.insert(covenants)
       .values(covenantData)
@@ -469,7 +536,17 @@ router.patch("/covenants/:id", async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
-    const updates = req.body;
+    
+    // Validate request body
+    const validation = validateBody(updateCovenantSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Invalid update data",
+        details: validation.error.errors 
+      });
+    }
+
+    const updates = validation.data;
 
     const [updatedCovenant] = await db.update(covenants)
       .set({
@@ -606,7 +683,16 @@ router.post("/advisor-deals", async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const dealData: InsertAdvisorDeal = req.body;
+    // Validate request body
+    const validation = validateBody(insertAdvisorDealSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Invalid advisor deal data",
+        details: validation.error.errors 
+      });
+    }
+
+    const dealData: InsertAdvisorDeal = validation.data;
     
     const [newDeal] = await db.insert(advisorDeals)
       .values(dealData)
@@ -654,7 +740,16 @@ router.post("/lender-invitations", async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const invitationData: InsertLenderInvitation = req.body;
+    // Validate request body
+    const validation = validateBody(insertLenderInvitationSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Invalid lender invitation data",
+        details: validation.error.errors 
+      });
+    }
+
+    const invitationData: InsertLenderInvitation = validation.data;
     
     const [newInvitation] = await db.insert(lenderInvitations)
       .values(invitationData)

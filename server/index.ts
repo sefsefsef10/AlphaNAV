@@ -1,9 +1,56 @@
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
 
 const app = express();
+
+// Security: Helmet.js - Set security headers
+const isProduction = process.env.NODE_ENV === "production";
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // Tailwind requires unsafe-inline
+      scriptSrc: isProduction ? ["'self'"] : ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Vite dev requires unsafe-inline and unsafe-eval
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: [
+        "'self'",
+        "https://api.openai.com",
+        "https://generativelanguage.googleapis.com",
+        ...(isProduction ? [] : ["ws:", "wss:"]) // WebSocket for Vite HMR in development
+      ],
+    },
+  },
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true
+  },
+}));
+
+// Security: Rate limiting
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per 15 minutes per IP
+  message: 'Too many requests, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 login attempts per 15 minutes
+  skipSuccessfulRequests: true,
+  message: 'Too many login attempts, please try again later',
+});
+
+app.use('/api/', globalLimiter);
+app.use('/api/login', authLimiter);
+app.use('/api/auth/', authLimiter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -42,6 +89,15 @@ app.use((req, res, next) => {
   await seedDatabase();
   
   const server = await registerRoutes(app);
+
+  // Health check endpoint (for monitoring and Replit deployments)
+  app.get('/api/health', (_req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
