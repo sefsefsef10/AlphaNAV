@@ -67,7 +67,7 @@ function AppContent() {
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
       // If user doesn't have a role set, send to role selection
-      if (!user.role || user.role === 'gp') {
+      if (!user.role) {
         if (location !== "/select-role" && !isOnboardingPage) {
           setLocation("/select-role");
         }
@@ -77,6 +77,7 @@ function AppContent() {
           advisor: "/advisor",
           operations: "/dashboard",
           admin: "/dashboard",
+          gp: "/gp",
         };
         const targetRoute = roleRoutes[user.role] || "/dashboard";
         setLocation(targetRoute);
