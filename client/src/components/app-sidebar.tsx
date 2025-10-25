@@ -30,7 +30,7 @@ const operationsNavItems = [
   },
   {
     title: "Underwriting",
-    url: "/underwriting",
+    url: "/operations/underwriting",
     icon: FileText,
   },
   {

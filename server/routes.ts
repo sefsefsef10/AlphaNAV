@@ -3,8 +3,12 @@ import { db } from "./db";
 import { 
   prospects, 
   uploadedDocuments,
+  facilities,
+  covenants,
   type InsertProspect,
-  type InsertUploadedDocument
+  type InsertUploadedDocument,
+  type InsertFacility,
+  type InsertCovenant
 } from "@shared/schema";
 import { extractFromFile, type ExtractionResult } from "./services/aiExtraction";
 import multer from "multer";
@@ -294,6 +298,193 @@ router.delete("/prospects/:id", async (req: Request, res: Response) => {
     console.error("Delete prospect error:", error);
     res.status(500).json({ 
       error: "Failed to delete prospect",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// ===== FACILITY ROUTES =====
+
+// GET /api/facilities
+// List all facilities
+router.get("/facilities", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const allFacilities = await db.select()
+      .from(facilities)
+      .orderBy(facilities.createdAt);
+
+    res.json(allFacilities);
+
+  } catch (error) {
+    console.error("Get facilities error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch facilities",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/facilities/:id
+// Get a single facility with covenants
+router.get("/facilities/:id", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+
+    const [facility] = await db.select()
+      .from(facilities)
+      .where(eq(facilities.id, id))
+      .limit(1);
+
+    if (!facility) {
+      return res.status(404).json({ error: "Facility not found" });
+    }
+
+    // Get related covenants
+    const facilityCovenants = await db.select()
+      .from(covenants)
+      .where(eq(covenants.facilityId, id));
+
+    res.json({
+      ...facility,
+      covenants: facilityCovenants,
+    });
+
+  } catch (error) {
+    console.error("Get facility error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch facility",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// POST /api/facilities
+// Create a new facility from prospect
+router.post("/facilities", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const facilityData: InsertFacility = req.body;
+
+    const [newFacility] = await db.insert(facilities)
+      .values(facilityData)
+      .returning();
+
+    res.json(newFacility);
+
+  } catch (error) {
+    console.error("Create facility error:", error);
+    res.status(500).json({ 
+      error: "Failed to create facility",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// PATCH /api/facilities/:id
+// Update a facility
+router.patch("/facilities/:id", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    const updates = req.body;
+
+    const [updatedFacility] = await db.update(facilities)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(facilities.id, id))
+      .returning();
+
+    if (!updatedFacility) {
+      return res.status(404).json({ error: "Facility not found" });
+    }
+
+    res.json(updatedFacility);
+
+  } catch (error) {
+    console.error("Update facility error:", error);
+    res.status(500).json({ 
+      error: "Failed to update facility",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// ===== COVENANT ROUTES =====
+
+// POST /api/facilities/:facilityId/covenants
+// Add a covenant to a facility
+router.post("/facilities/:facilityId/covenants", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { facilityId } = req.params;
+    const covenantData: InsertCovenant = {
+      ...req.body,
+      facilityId,
+    };
+
+    const [newCovenant] = await db.insert(covenants)
+      .values(covenantData)
+      .returning();
+
+    res.json(newCovenant);
+
+  } catch (error) {
+    console.error("Create covenant error:", error);
+    res.status(500).json({ 
+      error: "Failed to create covenant",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// PATCH /api/covenants/:id
+// Update a covenant (e.g., check status)
+router.patch("/covenants/:id", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    const updates = req.body;
+
+    const [updatedCovenant] = await db.update(covenants)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(covenants.id, id))
+      .returning();
+
+    if (!updatedCovenant) {
+      return res.status(404).json({ error: "Covenant not found" });
+    }
+
+    res.json(updatedCovenant);
+
+  } catch (error) {
+    console.error("Update covenant error:", error);
+    res.status(500).json({ 
+      error: "Failed to update covenant",
       details: error instanceof Error ? error.message : "Unknown error"
     });
   }
