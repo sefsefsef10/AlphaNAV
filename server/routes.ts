@@ -5,10 +5,14 @@ import {
   uploadedDocuments,
   facilities,
   covenants,
+  advisorDeals,
+  lenderInvitations,
   type InsertProspect,
   type InsertUploadedDocument,
   type InsertFacility,
-  type InsertCovenant
+  type InsertCovenant,
+  type InsertAdvisorDeal,
+  type InsertLenderInvitation
 } from "@shared/schema";
 import { extractFromFile, type ExtractionResult } from "./services/aiExtraction";
 import multer from "multer";
@@ -573,6 +577,116 @@ router.post("/facilities/:id/generate-document", async (req: Request, res: Respo
       error: "Failed to generate document",
       details: error instanceof Error ? error.message : "Unknown error"
     });
+  }
+});
+
+// ===== ADVISOR DEALS ROUTES =====
+
+// GET /api/advisor-deals
+// List all advisor deals
+router.get("/advisor-deals", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const deals = await db.select().from(advisorDeals).orderBy(advisorDeals.createdAt);
+    res.json(deals);
+  } catch (error) {
+    console.error("Get advisor deals error:", error);
+    res.status(500).json({ error: "Failed to fetch advisor deals" });
+  }
+});
+
+// POST /api/advisor-deals
+// Create a new advisor deal (RFP submission)
+router.post("/advisor-deals", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const dealData: InsertAdvisorDeal = req.body;
+    
+    const [newDeal] = await db.insert(advisorDeals)
+      .values(dealData)
+      .returning();
+
+    res.json(newDeal);
+  } catch (error) {
+    console.error("Create advisor deal error:", error);
+    res.status(500).json({ 
+      error: "Failed to create advisor deal",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/advisor-deals/:id
+// Get a specific advisor deal
+router.get("/advisor-deals/:id", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    const [deal] = await db.select()
+      .from(advisorDeals)
+      .where(eq(advisorDeals.id, id));
+
+    if (!deal) {
+      return res.status(404).json({ error: "Deal not found" });
+    }
+
+    res.json(deal);
+  } catch (error) {
+    console.error("Get advisor deal error:", error);
+    res.status(500).json({ error: "Failed to fetch advisor deal" });
+  }
+});
+
+// POST /api/lender-invitations
+// Create lender invitations for an RFP
+router.post("/lender-invitations", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const invitationData: InsertLenderInvitation = req.body;
+    
+    const [newInvitation] = await db.insert(lenderInvitations)
+      .values(invitationData)
+      .returning();
+
+    res.json(newInvitation);
+  } catch (error) {
+    console.error("Create lender invitation error:", error);
+    res.status(500).json({ 
+      error: "Failed to create lender invitation",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/lender-invitations/:dealId
+// Get all lender invitations for a specific deal
+router.get("/lender-invitations/:dealId", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { dealId } = req.params;
+    const invitations = await db.select()
+      .from(lenderInvitations)
+      .where(eq(lenderInvitations.advisorDealId, dealId));
+
+    res.json(invitations);
+  } catch (error) {
+    console.error("Get lender invitations error:", error);
+    res.status(500).json({ error: "Failed to fetch lender invitations" });
   }
 });
 

@@ -35,6 +35,7 @@ import OnboardingComplete from "@/pages/onboarding-complete";
 import AdvisorDashboard from "@/pages/advisor-dashboard";
 import AdvisorSubmitDeal from "@/pages/advisor-submit-deal";
 import AdvisorActiveRFPs from "@/pages/advisor-active-rfps";
+import AdvisorDealDetail from "@/pages/advisor-deal-detail";
 import AdvisorMyClients from "@/pages/advisor-my-clients";
 import GPDashboard from "@/pages/gp-dashboard";
 import GPFacility from "@/pages/gp-facility";
@@ -214,6 +215,7 @@ function AppContent() {
               <Route path="/advisor" component={AdvisorDashboard} />
               <Route path="/advisor/submit-deal" component={AdvisorSubmitDeal} />
               <Route path="/advisor/active-rfps" component={AdvisorActiveRFPs} />
+              <Route path="/advisor/deals/:id" component={AdvisorDealDetail} />
               <Route path="/advisor/clients" component={AdvisorMyClients} />
               <Route path="/gp" component={GPDashboard} />
               <Route path="/gp/facility" component={GPFacility} />
