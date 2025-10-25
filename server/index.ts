@@ -1,11 +1,28 @@
 import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import * as Sentry from "@sentry/node";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
 
 const app = express();
+
+// Initialize Sentry for error tracking (production only)
+if (process.env.SENTRY_DSN && process.env.NODE_ENV === "production") {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || "development",
+    tracesSampleRate: 0.1, // Sample 10% of transactions for performance monitoring
+    sendDefaultPii: true, // Include request headers and user IP
+    integrations: [
+      Sentry.expressIntegration(), // Automatically instruments Express for request context
+    ],
+  });
+  
+  // Add Sentry middleware for error handler (added later after routes)
+  // Note: expressIntegration() auto-instruments requests when routes are registered
+}
 
 // Security: Helmet.js - Set security headers
 const isProduction = process.env.NODE_ENV === "production";
@@ -20,6 +37,8 @@ app.use(helmet({
         "'self'",
         "https://api.openai.com",
         "https://generativelanguage.googleapis.com",
+        "https://*.sentry.io", // Sentry dashboard
+        "https://*.ingest.sentry.io", // Sentry event ingestion
         ...(isProduction ? [] : ["ws:", "wss:"]) // WebSocket for Vite HMR in development
       ],
     },
@@ -98,6 +117,11 @@ app.use((req, res, next) => {
       environment: process.env.NODE_ENV || 'development'
     });
   });
+
+  // Sentry error handler must be before other error handlers
+  if (process.env.SENTRY_DSN && process.env.NODE_ENV === "production") {
+    Sentry.setupExpressErrorHandler(app);
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
