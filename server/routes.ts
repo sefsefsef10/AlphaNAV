@@ -7,21 +7,29 @@ import {
   covenants,
   advisorDeals,
   lenderInvitations,
+  drawRequests,
+  cashFlows,
+  users,
+  notifications,
   type InsertProspect,
   type InsertUploadedDocument,
   type InsertFacility,
   type InsertCovenant,
   type InsertAdvisorDeal,
   type InsertLenderInvitation,
+  type InsertDrawRequest,
+  type InsertCashFlow,
   insertProspectSchema,
   insertFacilitySchema,
   insertCovenantSchema,
   insertAdvisorDealSchema,
   insertLenderInvitationSchema,
+  insertDrawRequestSchema,
+  insertCashFlowSchema,
 } from "@shared/schema";
 import { extractFromFile, type ExtractionResult } from "./services/aiExtraction";
 import multer from "multer";
-import { eq } from "drizzle-orm";
+import { eq, or, and, sql } from "drizzle-orm";
 import fs from "fs/promises";
 import path from "path";
 import { z } from "zod";
@@ -122,6 +130,20 @@ const updateFacilitySchema = insertFacilitySchema.omit({
 const updateCovenantSchema = insertCovenantSchema.omit({
   facilityId: true, // Foreign key should not be changed
   status: true // Status changes require business logic validation
+}).partial().strict(); // Reject unknown fields to prevent mass assignment
+
+const updateDrawRequestSchema = insertDrawRequestSchema.omit({
+  facilityId: true, // Foreign key should not be changed
+  requestedBy: true, // Set once during creation
+  requestDate: true, // Set once during creation
+}).partial().strict(); // Reject unknown fields to prevent mass assignment
+
+const updateCashFlowSchema = insertCashFlowSchema.omit({
+  facilityId: true, // Foreign key should not be changed
+  dueDate: true, // Set once during creation
+  principal: true, // Set once during creation
+  interest: true, // Set once during creation
+  totalDue: true, // Set once during creation
 }).partial().strict(); // Reject unknown fields to prevent mass assignment
 
 // POST /api/prospects/upload-and-extract
@@ -1005,6 +1027,510 @@ router.post("/covenants/check-all-due", async (req: Request, res: Response) => {
   }
 });
 
+// Draw Request Routes
+// POST /api/facilities/:facilityId/draw-requests
+// Create a new draw request for a facility (GP role only)
+router.post("/facilities/:facilityId/draw-requests", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Only GPs can create draw requests
+    if (req.user.role !== "gp") {
+      return res.status(403).json({ error: "Forbidden: Only GPs can create draw requests" });
+    }
+
+    const { facilityId } = req.params;
+
+    // Validate facility exists and is active
+    const [facility] = await db.select()
+      .from(facilities)
+      .where(eq(facilities.id, facilityId))
+      .limit(1);
+
+    if (!facility) {
+      return res.status(404).json({ error: "Facility not found" });
+    }
+
+    // Verify facility is active (cannot request draws on closed facilities)
+    if (facility.status !== "active") {
+      return res.status(403).json({ 
+        error: "Forbidden: Cannot request draws on non-active facilities",
+        facilityStatus: facility.status
+      });
+    }
+
+    // TODO: SECURITY ENHANCEMENT NEEDED
+    // The facilities table currently lacks a gpUserId field to track ownership.
+    // This means any GP can theoretically submit draw requests for any facility.
+    // Production deployment requires adding a gpUserId field to facilities table
+    // and validating: facility.gpUserId === req.user.id
+    // For MVP: Rely on UI-level access controls and facility ID obscurity
+    // JIRA ticket: https://jira.example.com/browse/SEC-XXX
+
+    // Validate request body
+    const validation = validateBody(insertDrawRequestSchema, {
+      ...req.body,
+      facilityId,
+      requestedBy: req.user.email,
+      status: "pending",
+    });
+
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Invalid request data", 
+        details: validation.error.errors 
+      });
+    }
+
+    const [drawRequest] = await db.insert(drawRequests)
+      .values(validation.data)
+      .returning();
+
+    // Get all operations and admin users to notify them
+    const opsUsers = await db.select()
+      .from(users)
+      .where(
+        or(
+          eq(users.role, "operations"),
+          eq(users.role, "admin")
+        )
+      );
+
+    // Create notifications for all operations team members
+    if (opsUsers.length > 0) {
+      await db.insert(notifications).values(
+        opsUsers.map(user => ({
+          userId: user.id,
+          type: "draw_request_submitted",
+          title: "New Draw Request",
+          message: `Draw request for $${(validation.data.requestedAmount / 100).toLocaleString()} submitted for ${facility.fundName} by ${req.user.email}`,
+          relatedEntityType: "draw_request",
+          relatedEntityId: drawRequest.id,
+          actionUrl: `/facilities/${facilityId}`,
+          priority: "high",
+        }))
+      );
+    }
+
+    res.json(drawRequest);
+  } catch (error) {
+    console.error("Create draw request error:", error);
+    res.status(500).json({ 
+      error: "Failed to create draw request",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/facilities/:facilityId/draw-requests
+// Get all draw requests for a facility
+router.get("/facilities/:facilityId/draw-requests", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { facilityId } = req.params;
+
+    // Validate facility exists
+    const [facility] = await db.select()
+      .from(facilities)
+      .where(eq(facilities.id, facilityId))
+      .limit(1);
+
+    if (!facility) {
+      return res.status(404).json({ error: "Facility not found" });
+    }
+
+    const facilityDrawRequests = await db.select()
+      .from(drawRequests)
+      .where(eq(drawRequests.facilityId, facilityId))
+      .orderBy(sql`${drawRequests.requestDate} DESC`);
+
+    res.json(facilityDrawRequests);
+  } catch (error) {
+    console.error("Get draw requests error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch draw requests",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/draw-requests/:id
+// Get a single draw request by ID
+router.get("/draw-requests/:id", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+
+    const [drawRequest] = await db.select()
+      .from(drawRequests)
+      .where(eq(drawRequests.id, id))
+      .limit(1);
+
+    if (!drawRequest) {
+      return res.status(404).json({ error: "Draw request not found" });
+    }
+
+    res.json(drawRequest);
+  } catch (error) {
+    console.error("Get draw request error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch draw request",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// PATCH /api/draw-requests/:id
+// Update draw request (approve, reject, or disburse) - Operations only
+router.patch("/draw-requests/:id", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Only operations and admin can update draw requests
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Operations or admin role required" });
+    }
+
+    const { id } = req.params;
+
+    // Get existing draw request
+    const [existingDrawRequest] = await db.select()
+      .from(drawRequests)
+      .where(eq(drawRequests.id, id))
+      .limit(1);
+
+    if (!existingDrawRequest) {
+      return res.status(404).json({ error: "Draw request not found" });
+    }
+
+    // Validate update data
+    const validation = validateBody(updateDrawRequestSchema, req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Invalid update data", 
+        details: validation.error.errors 
+      });
+    }
+
+    // Add metadata based on status change
+    const updates: Partial<InsertDrawRequest> = { ...validation.data };
+
+    if (validation.data.status === "approved" && !existingDrawRequest.approvedBy) {
+      updates.approvedBy = req.user.email;
+      updates.approvedDate = new Date();
+    }
+
+    if (validation.data.status === "disbursed" && !existingDrawRequest.disbursedDate) {
+      updates.disbursedDate = new Date();
+    }
+
+    const [updatedDrawRequest] = await db.update(drawRequests)
+      .set(updates)
+      .where(eq(drawRequests.id, id))
+      .returning();
+
+    // Create notification for status changes
+    if (validation.data.status) {
+      const [facility] = await db.select()
+        .from(facilities)
+        .where(eq(facilities.id, existingDrawRequest.facilityId))
+        .limit(1);
+
+      let notificationMessage = "";
+      let notificationPriority: "low" | "normal" | "high" | "urgent" = "normal";
+
+      if (validation.data.status === "approved") {
+        notificationMessage = `Draw request for $${(existingDrawRequest.requestedAmount / 100).toLocaleString()} has been approved by ${req.user.email}`;
+        notificationPriority = "high";
+      } else if (validation.data.status === "rejected") {
+        notificationMessage = `Draw request for $${(existingDrawRequest.requestedAmount / 100).toLocaleString()} has been rejected by ${req.user.email}`;
+        notificationPriority = "high";
+      } else if (validation.data.status === "disbursed") {
+        notificationMessage = `Draw request for $${(existingDrawRequest.requestedAmount / 100).toLocaleString()} has been disbursed`;
+        notificationPriority = "urgent";
+      }
+
+      if (notificationMessage) {
+        // Find the GP who submitted the request by email
+        const [gpUser] = await db.select()
+          .from(users)
+          .where(eq(users.email, existingDrawRequest.requestedBy))
+          .limit(1);
+
+        if (gpUser) {
+          // Send notification to the GP who requested the draw
+          await db.insert(notifications).values({
+            userId: gpUser.id, // Send to GP who requested it
+            type: "draw_request_status_change",
+            title: `Draw Request ${validation.data.status}`,
+            message: notificationMessage,
+            relatedEntityType: "draw_request",
+            relatedEntityId: id,
+            actionUrl: `/facilities/${existingDrawRequest.facilityId}`,
+            priority: notificationPriority,
+          });
+        }
+      }
+    }
+
+    res.json(updatedDrawRequest);
+  } catch (error) {
+    console.error("Update draw request error:", error);
+    res.status(500).json({ 
+      error: "Failed to update draw request",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// Cash Flow / Repayment Tracking Routes
+// POST /api/facilities/:facilityId/cash-flows
+// Create scheduled payment for a facility (Operations only)
+router.post("/facilities/:facilityId/cash-flows", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Only operations and admin can create scheduled payments
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Operations or admin role required" });
+    }
+
+    const { facilityId } = req.params;
+
+    // Validate facility exists
+    const [facility] = await db.select()
+      .from(facilities)
+      .where(eq(facilities.id, facilityId))
+      .limit(1);
+
+    if (!facility) {
+      return res.status(404).json({ error: "Facility not found" });
+    }
+
+    // Validate request body
+    const validation = validateBody(insertCashFlowSchema, {
+      ...req.body,
+      facilityId,
+      status: "scheduled",
+    });
+
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Invalid request data", 
+        details: validation.error.errors 
+      });
+    }
+
+    const [cashFlow] = await db.insert(cashFlows)
+      .values(validation.data)
+      .returning();
+
+    res.json(cashFlow);
+  } catch (error) {
+    console.error("Create cash flow error:", error);
+    res.status(500).json({ 
+      error: "Failed to create cash flow",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/facilities/:facilityId/cash-flows
+// Get all cash flows (scheduled and paid) for a facility
+router.get("/facilities/:facilityId/cash-flows", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { facilityId } = req.params;
+
+    // Validate facility exists
+    const [facility] = await db.select()
+      .from(facilities)
+      .where(eq(facilities.id, facilityId))
+      .limit(1);
+
+    if (!facility) {
+      return res.status(404).json({ error: "Facility not found" });
+    }
+
+    const facilityCashFlows = await db.select()
+      .from(cashFlows)
+      .where(eq(cashFlows.facilityId, facilityId))
+      .orderBy(sql`${cashFlows.dueDate} ASC`);
+
+    // Calculate summary statistics
+    const totalScheduled = facilityCashFlows
+      .filter(cf => cf.status === "scheduled")
+      .reduce((sum, cf) => sum + cf.totalDue, 0);
+
+    const totalPaid = facilityCashFlows
+      .filter(cf => cf.status === "paid")
+      .reduce((sum, cf) => sum + cf.paidAmount, 0);
+
+    const totalOverdue = facilityCashFlows
+      .filter(cf => cf.status === "overdue")
+      .reduce((sum, cf) => sum + (cf.totalDue - cf.paidAmount), 0);
+
+    res.json({
+      cashFlows: facilityCashFlows,
+      summary: {
+        totalScheduled,
+        totalPaid,
+        totalOverdue,
+        count: facilityCashFlows.length,
+      },
+    });
+  } catch (error) {
+    console.error("Get cash flows error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch cash flows",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/cash-flows/:id
+// Get a single cash flow by ID
+router.get("/cash-flows/:id", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+
+    const [cashFlow] = await db.select()
+      .from(cashFlows)
+      .where(eq(cashFlows.id, id))
+      .limit(1);
+
+    if (!cashFlow) {
+      return res.status(404).json({ error: "Cash flow not found" });
+    }
+
+    res.json(cashFlow);
+  } catch (error) {
+    console.error("Get cash flow error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch cash flow",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// PATCH /api/cash-flows/:id/payment
+// Record a payment against a scheduled cash flow
+router.patch("/cash-flows/:id/payment", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Only operations and admin can record payments
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Operations or admin role required" });
+    }
+
+    const { id } = req.params;
+
+    // Get existing cash flow
+    const [existingCashFlow] = await db.select()
+      .from(cashFlows)
+      .where(eq(cashFlows.id, id))
+      .limit(1);
+
+    if (!existingCashFlow) {
+      return res.status(404).json({ error: "Cash flow not found" });
+    }
+
+    // Validate payment data
+    const paymentSchema = z.object({
+      paidAmount: z.number().int().positive(),
+      paidDate: z.string().or(z.date()).optional(),
+    });
+
+    const validation = paymentSchema.safeParse(req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: "Invalid payment data", 
+        details: validation.error.errors 
+      });
+    }
+
+    const { paidAmount, paidDate } = validation.data;
+
+    // Determine payment status
+    let status: string;
+    if (paidAmount >= existingCashFlow.totalDue) {
+      status = "paid";
+    } else if (paidAmount > 0) {
+      status = "partial";
+    } else {
+      status = existingCashFlow.status;
+    }
+
+    const [updatedCashFlow] = await db.update(cashFlows)
+      .set({
+        paidAmount,
+        paidDate: paidDate ? new Date(paidDate) : new Date(),
+        status,
+      })
+      .where(eq(cashFlows.id, id))
+      .returning();
+
+    // Update facility outstanding balance
+    const [facility] = await db.select()
+      .from(facilities)
+      .where(eq(facilities.id, existingCashFlow.facilityId))
+      .limit(1);
+
+    if (facility) {
+      const principalPaid = Math.min(paidAmount, existingCashFlow.principal);
+      const newOutstandingBalance = facility.outstandingBalance - principalPaid;
+
+      await db.update(facilities)
+        .set({ outstandingBalance: newOutstandingBalance })
+        .where(eq(facilities.id, existingCashFlow.facilityId));
+
+      // Create notification for payment received
+      await db.insert(notifications).values({
+        userId: req.user.id, // TODO: Send to GP and operations team
+        type: "payment_received",
+        title: "Payment Received",
+        message: `Payment of $${(paidAmount / 100).toLocaleString()} received for ${facility.fundName}`,
+        relatedEntityType: "cash_flow",
+        relatedEntityId: id,
+        actionUrl: `/facilities/${existingCashFlow.facilityId}`,
+        priority: "normal",
+      });
+    }
+
+    res.json(updatedCashFlow);
+  } catch (error) {
+    console.error("Record payment error:", error);
+    res.status(500).json({ 
+      error: "Failed to record payment",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
 // Notification Routes
 // GET /api/notifications
 // Get all notifications for the current user
@@ -1135,6 +1661,179 @@ router.delete("/notifications/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Delete notification error:", error);
     res.status(500).json({ error: "Failed to delete notification" });
+  }
+});
+
+// Portfolio Analytics Routes
+// GET /api/analytics/portfolio-summary
+// Get comprehensive portfolio risk metrics and summary (Operations/Admin only)
+router.get("/analytics/portfolio-summary", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Only operations and admin can view portfolio analytics
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Operations or admin role required" });
+    }
+
+    // Get all facilities
+    const allFacilities = await db.select().from(facilities);
+    
+    // Get all covenants
+    const allCovenants = await db.select().from(covenants);
+    
+    // Get all cash flows
+    const allCashFlows = await db.select().from(cashFlows);
+
+    // Portfolio Overview Metrics
+    const totalFacilities = allFacilities.length;
+    const activeFacilities = allFacilities.filter(f => f.status === "active").length;
+    const totalPrincipalAmount = allFacilities.reduce((sum, f) => sum + f.principalAmount, 0);
+    const totalOutstandingBalance = allFacilities.reduce((sum, f) => sum + f.outstandingBalance, 0);
+    
+    // Average metrics
+    const avgLtvRatio = activeFacilities > 0 
+      ? allFacilities.filter(f => f.status === "active").reduce((sum, f) => sum + f.ltvRatio, 0) / activeFacilities
+      : 0;
+    
+    const avgInterestRate = activeFacilities > 0
+      ? allFacilities.filter(f => f.status === "active").reduce((sum, f) => sum + f.interestRate, 0) / activeFacilities
+      : 0;
+
+    // Risk Concentration by Status
+    const statusDistribution = allFacilities.reduce((acc, f) => {
+      acc[f.status] = (acc[f.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Covenant Health Metrics
+    const covenantHealth = {
+      total: allCovenants.length,
+      compliant: allCovenants.filter(c => c.status === "compliant").length,
+      warning: allCovenants.filter(c => c.status === "warning").length,
+      breach: allCovenants.filter(c => c.status === "breach").length,
+    };
+
+    const covenantHealthPercentage = {
+      compliant: covenantHealth.total > 0 ? (covenantHealth.compliant / covenantHealth.total) * 100 : 0,
+      warning: covenantHealth.total > 0 ? (covenantHealth.warning / covenantHealth.total) * 100 : 0,
+      breach: covenantHealth.total > 0 ? (covenantHealth.breach / covenantHealth.total) * 100 : 0,
+    };
+
+    // Payment Performance Metrics
+    const totalCashFlows = allCashFlows.length;
+    const paidCashFlows = allCashFlows.filter(cf => cf.status === "paid").length;
+    const overdueCashFlows = allCashFlows.filter(cf => cf.status === "overdue").length;
+    const scheduledCashFlows = allCashFlows.filter(cf => cf.status === "scheduled").length;
+
+    const paymentPerformance = {
+      total: totalCashFlows,
+      paid: paidCashFlows,
+      overdue: overdueCashFlows,
+      scheduled: scheduledCashFlows,
+      paidPercentage: totalCashFlows > 0 ? (paidCashFlows / totalCashFlows) * 100 : 0,
+    };
+
+    // Calculate total amounts by payment status
+    const totalPaidAmount = allCashFlows
+      .filter(cf => cf.status === "paid")
+      .reduce((sum, cf) => sum + cf.paidAmount, 0);
+
+    const totalOverdueAmount = allCashFlows
+      .filter(cf => cf.status === "overdue")
+      .reduce((sum, cf) => sum + (cf.totalDue - cf.paidAmount), 0);
+
+    const totalScheduledAmount = allCashFlows
+      .filter(cf => cf.status === "scheduled")
+      .reduce((sum, cf) => sum + cf.totalDue, 0);
+
+    // Upcoming Maturities (next 90 days)
+    const ninetyDaysFromNow = new Date();
+    ninetyDaysFromNow.setDate(ninetyDaysFromNow.getDate() + 90);
+
+    const upcomingMaturities = allFacilities.filter(f => {
+      const maturityDate = new Date(f.maturityDate);
+      return maturityDate <= ninetyDaysFromNow && f.status === "active";
+    }).length;
+
+    // Risk Score (simple calculation based on covenant breaches and overdue payments)
+    // Scale: 0-100 (0 = lowest risk, 100 = highest risk)
+    let riskScore = 0;
+    
+    // Covenant breach contribution (max 50 points)
+    const breachRatio = covenantHealth.total > 0 ? covenantHealth.breach / covenantHealth.total : 0;
+    riskScore += breachRatio * 50;
+    
+    // Overdue payment contribution (max 30 points)
+    const overdueRatio = totalCashFlows > 0 ? overdueCashFlows / totalCashFlows : 0;
+    riskScore += overdueRatio * 30;
+    
+    // Overdue amount contribution (max 20 points)
+    const overdueAmountRatio = totalOutstandingBalance > 0 ? totalOverdueAmount / totalOutstandingBalance : 0;
+    riskScore += overdueAmountRatio * 20;
+
+    // Risk level categorization
+    let riskLevel: "low" | "medium" | "high" | "critical";
+    if (riskScore < 20) {
+      riskLevel = "low";
+    } else if (riskScore < 40) {
+      riskLevel = "medium";
+    } else if (riskScore < 70) {
+      riskLevel = "high";
+    } else {
+      riskLevel = "critical";
+    }
+
+    // Portfolio concentration risk (top 5 largest facilities)
+    const sortedBySize = [...allFacilities]
+      .sort((a, b) => b.outstandingBalance - a.outstandingBalance)
+      .slice(0, 5);
+
+    const topFiveConcentration = sortedBySize.reduce((sum, f) => sum + f.outstandingBalance, 0);
+    const concentrationRatio = totalOutstandingBalance > 0 
+      ? (topFiveConcentration / totalOutstandingBalance) * 100 
+      : 0;
+
+    const portfolioSummary = {
+      overview: {
+        totalFacilities,
+        activeFacilities,
+        totalPrincipalAmount,
+        totalOutstandingBalance,
+        avgLtvRatio: Math.round(avgLtvRatio),
+        avgInterestRate: Math.round(avgInterestRate),
+      },
+      statusDistribution,
+      covenantHealth: {
+        ...covenantHealth,
+        percentage: covenantHealthPercentage,
+      },
+      paymentPerformance: {
+        ...paymentPerformance,
+        amounts: {
+          totalPaid: totalPaidAmount,
+          totalOverdue: totalOverdueAmount,
+          totalScheduled: totalScheduledAmount,
+        },
+      },
+      riskMetrics: {
+        riskScore: Math.round(riskScore),
+        riskLevel,
+        upcomingMaturities,
+        concentrationRatio: Math.round(concentrationRatio * 10) / 10,
+        topFiveExposure: topFiveConcentration,
+      },
+    };
+
+    res.json(portfolioSummary);
+  } catch (error) {
+    console.error("Get portfolio summary error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch portfolio summary",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 });
 

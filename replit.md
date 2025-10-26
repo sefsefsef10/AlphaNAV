@@ -128,6 +128,17 @@ Preferred communication style: Simple, everyday language.
 - **Advisor Workflow**: 26-step test covering RFP process, anonymization, commission tracking
 - **GP Workflow**: 18-step test covering self-onboarding, draw requests, document vault
 
+## Known Limitations and Technical Debt
+
+### Security Enhancement Required (Pre-Production)
+- **Facility Ownership Validation (CRITICAL)**: The `facilities` table currently lacks a `gpUserId` field
+  - **Risk**: Any authenticated GP can theoretically submit draw requests for any facility (cross-tenant bypass)
+  - **Current Mitigation**: Active facility status check + UI-level access controls + facility ID obscurity
+  - **Required Fix**: Add `gpUserId` varchar field to facilities table
+  - **Implementation**: Update schema, run migration, add ownership validation in POST /api/facilities/:id/draw-requests
+  - **Priority**: HIGH - Must be completed before multi-tenant production deployment
+  - **Location**: server/routes.ts line 1067-1073 (documented with TODO comment)
+
 ### Production Deployment Remaining Tasks
 1. Configure Sentry DSN in production environment
 2. Set up Neon automated backups with PITR (7-day retention minimum)
