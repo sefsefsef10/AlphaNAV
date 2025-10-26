@@ -1,5 +1,7 @@
 // Gemini AI integration - reference: blueprint:javascript_gemini
 import { GoogleGenAI } from "@google/genai";
+import { PDFParse } from "pdf-parse";
+import mammoth from "mammoth";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
@@ -155,36 +157,71 @@ export async function extractFromFile(
     );
   }
 
-  // For now, handle text-based extraction
-  // TODO: Add PDF parsing, DOCX parsing for production
   let documentText = "";
 
-  if (fileType === "application/pdf") {
-    // For MVP, we'll pass the file directly to Gemini which can handle PDFs
-    // In production, you might want to use pdf-parse or similar
-    documentText = fileBuffer.toString("utf-8");
-  } else if (
-    fileType ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    fileType === "application/msword"
-  ) {
-    // For DOCX, we'd need mammoth or docx-parser
-    // For MVP, attempt text extraction
-    documentText = fileBuffer.toString("utf-8");
-  } else if (fileType === "text/plain") {
-    documentText = fileBuffer.toString("utf-8");
-  } else if (
-    fileType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-    fileType === "application/vnd.ms-excel"
-  ) {
-    // For Excel files
-    documentText = fileBuffer.toString("utf-8");
+  try {
+    if (fileType === "application/pdf") {
+      // Parse PDF using pdf-parse (v2.x class-based API)
+      console.log("Parsing PDF document...");
+      const parser = new PDFParse({ data: fileBuffer });
+      
+      try {
+        const result = await parser.getText();
+        documentText = result.text;
+        console.log(`PDF parsed: ${result.total || 0} pages, ${documentText.length} characters`);
+      } finally {
+        // Always destroy parser to free resources
+        await parser.destroy();
+      }
+    } else if (
+      fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+      // Parse DOCX using mammoth
+      console.log("Parsing DOCX document...");
+      const result = await mammoth.extractRawText({ buffer: fileBuffer });
+      documentText = result.value;
+      console.log(`DOCX parsed: ${documentText.length} characters`);
+      
+      if (result.messages && result.messages.length > 0) {
+        console.warn("DOCX parsing warnings:", result.messages);
+      }
+    } else if (fileType === "application/msword") {
+      // Legacy DOC format - attempt text extraction
+      // Note: Mammoth doesn't support .doc, only .docx
+      console.warn("Legacy .doc format detected, attempting basic text extraction");
+      documentText = fileBuffer.toString("utf-8");
+    } else if (fileType === "text/plain") {
+      // Plain text - direct conversion
+      documentText = fileBuffer.toString("utf-8");
+    } else if (
+      fileType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      fileType === "application/vnd.ms-excel"
+    ) {
+      // Excel files - basic text extraction
+      // For production, consider using xlsx library for structured data
+      console.warn("Excel file detected, using basic text extraction");
+      documentText = fileBuffer.toString("utf-8");
+    }
+  } catch (parseError) {
+    console.error("Document parsing error:", parseError);
+    throw new Error(
+      `Failed to parse document: ${parseError instanceof Error ? parseError.message : "Unknown parsing error"}`
+    );
   }
 
+  // Validate extracted text
   if (!documentText || documentText.trim().length === 0) {
-    throw new Error("Could not extract text from document");
+    throw new Error("Could not extract text from document - file may be empty or corrupted");
   }
 
+  // Limit text length for AI processing (Gemini has token limits)
+  const MAX_TEXT_LENGTH = 50000; // ~50K characters
+  if (documentText.length > MAX_TEXT_LENGTH) {
+    console.warn(`Document text truncated from ${documentText.length} to ${MAX_TEXT_LENGTH} characters`);
+    documentText = documentText.substring(0, MAX_TEXT_LENGTH);
+  }
+
+  console.log(`Sending ${documentText.length} characters to AI for extraction`);
   return extractFundData(documentText);
 }
 

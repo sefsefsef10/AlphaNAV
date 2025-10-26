@@ -5,6 +5,7 @@ import * as Sentry from "@sentry/node";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
+import { initializeScheduler } from "./scheduler";
 
 const app = express();
 
@@ -239,5 +240,9 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Initialize automated scheduled jobs (covenant monitoring, etc.)
+    initializeScheduler();
+    log("✓ Automated job scheduler initialized");
   });
 })();

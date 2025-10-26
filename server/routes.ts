@@ -894,6 +894,250 @@ router.get("/lender-invitations/:dealId", async (req: Request, res: Response) =>
   }
 });
 
+// Covenant Monitoring Routes
+import { 
+  checkCovenant, 
+  checkAllDueCovenants, 
+  manualCovenantCheck,
+  getCovenantBreachSummary 
+} from "./services/covenantMonitoring";
+
+// POST /api/covenants/:id/check
+// Manually check a specific covenant
+router.post("/covenants/:id/check", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    const { currentValue } = req.body;
+
+    if (typeof currentValue !== "number") {
+      return res.status(400).json({ error: "Current value must be a number" });
+    }
+
+    const result = await checkCovenant(id, currentValue, req.user.id);
+    res.json(result);
+  } catch (error) {
+    console.error("Check covenant error:", error);
+    res.status(500).json({ 
+      error: "Failed to check covenant",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// POST /api/facilities/:facilityId/check-covenants
+// Check all covenants for a facility
+router.post("/facilities/:facilityId/check-covenants", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { facilityId } = req.params;
+    const results = await manualCovenantCheck(facilityId, req.user.id);
+    
+    res.json({
+      facilityId,
+      covenantsChecked: results.length,
+      results,
+    });
+  } catch (error) {
+    console.error("Check facility covenants error:", error);
+    res.status(500).json({ 
+      error: "Failed to check facility covenants",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/facilities/:facilityId/covenant-summary
+// Get covenant breach summary for a facility
+router.get("/facilities/:facilityId/covenant-summary", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { facilityId } = req.params;
+    const summary = await getCovenantBreachSummary(facilityId);
+    
+    res.json(summary);
+  } catch (error) {
+    console.error("Get covenant summary error:", error);
+    res.status(500).json({ 
+      error: "Failed to get covenant summary",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// POST /api/covenants/check-all-due
+// Run automated check for all due covenants (admin only)
+router.post("/covenants/check-all-due", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Only allow operations and admin roles
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Admin or operations role required" });
+    }
+
+    const results = await checkAllDueCovenants();
+    
+    const breaches = results.filter((r) => r.breachDetected);
+    
+    res.json({
+      totalChecked: results.length,
+      breachesDetected: breaches.length,
+      results,
+    });
+  } catch (error) {
+    console.error("Check all due covenants error:", error);
+    res.status(500).json({ 
+      error: "Failed to check all due covenants",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// Notification Routes
+// GET /api/notifications
+// Get all notifications for the current user
+router.get("/notifications", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const userNotifications = await db.select()
+      .from(notifications)
+      .where(eq(notifications.userId, req.user.id))
+      .orderBy(sql`${notifications.createdAt} DESC`);
+
+    res.json(userNotifications);
+  } catch (error) {
+    console.error("Get notifications error:", error);
+    res.status(500).json({ error: "Failed to fetch notifications" });
+  }
+});
+
+// GET /api/notifications/unread
+// Get unread notifications count
+router.get("/notifications/unread", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const unread = await db.select()
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.userId, req.user.id),
+          eq(notifications.isRead, false)
+        )
+      );
+
+    res.json({ 
+      count: unread.length,
+      notifications: unread 
+    });
+  } catch (error) {
+    console.error("Get unread notifications error:", error);
+    res.status(500).json({ error: "Failed to fetch unread notifications" });
+  }
+});
+
+// PATCH /api/notifications/:id/read
+// Mark a notification as read
+router.patch("/notifications/:id/read", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    
+    const [notification] = await db.update(notifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notifications.id, id),
+          eq(notifications.userId, req.user.id)
+        )
+      )
+      .returning();
+
+    if (!notification) {
+      return res.status(404).json({ error: "Notification not found" });
+    }
+
+    res.json(notification);
+  } catch (error) {
+    console.error("Mark notification read error:", error);
+    res.status(500).json({ error: "Failed to mark notification as read" });
+  }
+});
+
+// POST /api/notifications/mark-all-read
+// Mark all notifications as read for current user
+router.post("/notifications/mark-all-read", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notifications.userId, req.user.id),
+          eq(notifications.isRead, false)
+        )
+      );
+
+    res.json({ success: true, message: "All notifications marked as read" });
+  } catch (error) {
+    console.error("Mark all notifications read error:", error);
+    res.status(500).json({ error: "Failed to mark all notifications as read" });
+  }
+});
+
+// DELETE /api/notifications/:id
+// Delete a notification
+router.delete("/notifications/:id", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { id } = req.params;
+    
+    const [deleted] = await db.delete(notifications)
+      .where(
+        and(
+          eq(notifications.id, id),
+          eq(notifications.userId, req.user.id)
+        )
+      )
+      .returning();
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Notification not found" });
+    }
+
+    res.json({ success: true, message: "Notification deleted" });
+  } catch (error) {
+    console.error("Delete notification error:", error);
+    res.status(500).json({ error: "Failed to delete notification" });
+  }
+});
+
 // Export router as registerRoutes function for compatibility
 import type { Express } from "express";
 import { createServer, type Server } from "http";
