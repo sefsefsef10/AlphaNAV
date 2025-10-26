@@ -117,6 +117,70 @@ Preferred communication style: Simple, everyday language.
   - Enables type-safe access to req.user.id, req.user.role, req.user.email
   - Prevents runtime errors from undefined user properties
 
+### API Enhancements (✅ Complete - October 2025)
+
+**GP Workflow APIs** (4 endpoints):
+- **POST /api/facilities/:id/draw-requests**: GPs submit capital deployment requests
+  - Role authorization: GP-only for creation, Operations/Admin for approval
+  - Status workflow: pending → approved → disbursed
+  - Automatic notifications to operations team on creation
+  - Automatic notifications to GPs on status updates
+  - Active facility validation and detailed approval metadata tracking
+
+- **GET /api/facilities/:id/draw-requests**: List all draw requests for a facility
+- **GET /api/draw-requests/:id**: Get single draw request details
+- **PATCH /api/draw-requests/:id**: Operations approve/reject/disburse requests
+
+**Cash Flow & Repayment APIs** (4 endpoints):
+- **POST /api/facilities/:id/cash-flows**: Create scheduled payment
+- **GET /api/facilities/:id/cash-flows**: Get all cash flows with summary statistics
+  - Returns totalScheduled, totalPaid, totalOverdue aggregations
+- **GET /api/cash-flows/:id**: Get single cash flow details
+- **PATCH /api/cash-flows/:id/payment**: Record payment receipt
+  - Automatic facility outstanding balance updates
+  - Payment status management: scheduled → paid/partial/overdue
+  - Generates payment notifications
+
+**Portfolio Analytics API** (1 endpoint):
+- **GET /api/analytics/portfolio-summary**: Comprehensive portfolio risk metrics
+  - Portfolio overview (facilities count, principal amounts, LTV, interest rates)
+  - Status distribution (active/prepaid/defaulted/matured)
+  - Covenant health dashboard (compliant/warning/breach percentages)
+  - Payment performance (paid/overdue/scheduled with dollar amounts)
+  - Risk scoring (0-100 scale based on breaches + overdue payments)
+  - Risk categorization (low/medium/high/critical)
+  - Concentration risk (top 5 facilities exposure percentage)
+  - Upcoming maturities (next 90 days)
+  - **Impact**: Real-time portfolio health monitoring for operations team
+
+**Advisor Workflow APIs** (3 endpoints):
+- **GET /api/advisor-deals/:id/compare-bids**: RFP bid comparison with intelligent scoring
+  - Fetches all term sheets for a deal and compares side-by-side
+  - Pricing parser handles both percentage and basis points formats (850bps = 8.5%)
+  - Composite scoring: pricing (35%), loan amount match (25%), LTV (25%), timeline (15%)
+  - Returns ranked bids with best-in-category identifiers
+  - Generates recommendation based on weighted scores
+  - Role authorization: Advisor/Operations/Admin only
+
+- **GET /api/advisor-deals/:id/commission**: Calculate advisor commission
+  - Tiered commission structure aligned with industry standards:
+    - Tier 1 (<$10M): 100 bps (1%)
+    - Tier 2 ($10M-$50M): 75 bps (0.75%)
+    - Tier 3 ($50M+): 50 bps (0.5%)
+  - Idempotent updates to advisorDeals.commissionEarned
+  - Returns formatted breakdown with dollar amounts and percentages
+  - Only applies to closed/won deals
+
+- **GET /api/advisors/:id/dashboard**: Comprehensive advisor performance analytics
+  - Summary metrics: total deals, active deals, closed deals, commissions, win rate
+  - Deal distribution by status with counts
+  - Top 5 deals by commission earned
+  - Active RFP tracking with term sheet counts and submission deadlines
+  - Recent activity (last 10 updated deals)
+  - Performance metrics (formatted commission totals, average per deal, win rate %)
+  - **Security**: Advisors restricted to their own dashboard; Operations/Admin can view all
+  - **Impact**: Enables advisor performance tracking and commission transparency
+
 ### Documentation (✅ Complete)
 - **DEPLOYMENT_CHECKLIST.md**: Comprehensive pre-launch checklist with rollback procedures
 - **SENTRY_SETUP.md**: Step-by-step Sentry configuration for production deployment
