@@ -1187,6 +1187,157 @@ router.get("/advisor-deals/:id/commission", async (req: Request, res: Response) 
   }
 });
 
+// GET /api/advisors/:advisorId/dashboard
+// Get comprehensive dashboard summary for an advisor
+router.get("/advisors/:advisorId/dashboard", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Only advisors and operations/admin can view advisor dashboards
+    if (!["advisor", "operations", "admin"].includes(req.user.role)) {
+      return res.status(403).json({ error: "Forbidden: Advisor or Operations role required" });
+    }
+
+    const { advisorId } = req.params;
+
+    // Security: Advisors can only view their own dashboard
+    // Operations/admin can view any advisor's dashboard
+    if (req.user.role === "advisor" && req.user.id !== advisorId) {
+      return res.status(403).json({ 
+        error: "Forbidden: Advisors can only access their own dashboard" 
+      });
+    }
+
+    // Fetch all deals for this advisor
+    const allDeals = await db.select()
+      .from(advisorDeals)
+      .where(eq(advisorDeals.advisorId, advisorId));
+
+    if (allDeals.length === 0) {
+      return res.json({
+        advisorId,
+        summary: {
+          totalDeals: 0,
+          activeDeals: 0,
+          closedDeals: 0,
+          totalCommissionsEarned: 0,
+          averageDaysToClose: 0,
+          winRate: 0,
+        },
+        dealsByStatus: {},
+        topDeals: [],
+        recentActivity: [],
+      });
+    }
+
+    // Calculate summary statistics
+    const statusCounts: Record<string, number> = {};
+    let totalCommissions = 0;
+    let closedDeals = 0;
+    let totalDaysToClose = 0;
+
+    for (const deal of allDeals) {
+      // Count by status
+      statusCounts[deal.status] = (statusCounts[deal.status] || 0) + 1;
+
+      // Track commissions
+      if (deal.commissionEarned) {
+        totalCommissions += deal.commissionEarned;
+      }
+
+      // Track days to close
+      if (deal.daysToClose) {
+        closedDeals++;
+        totalDaysToClose += deal.daysToClose;
+      }
+    }
+
+    const averageDaysToClose = closedDeals > 0 ? Math.round(totalDaysToClose / closedDeals) : 0;
+    const totalDeals = allDeals.length;
+    // Sum both "won" and "closed" status counts (not OR operation)
+    const wonDeals = (statusCounts["won"] || 0) + (statusCounts["closed"] || 0);
+    const winRate = totalDeals > 0 ? Math.round((wonDeals / totalDeals) * 100) : 0;
+
+    // Get top deals by commission
+    const topDealsByCommission = [...allDeals]
+      .filter(d => d.commissionEarned && d.commissionEarned > 0)
+      .sort((a, b) => (b.commissionEarned || 0) - (a.commissionEarned || 0))
+      .slice(0, 5)
+      .map(deal => ({
+        id: deal.id,
+        fundName: deal.gpFundName,
+        loanAmount: deal.loanAmount,
+        commissionEarned: deal.commissionEarned,
+        status: deal.status,
+        winner: deal.winner,
+      }));
+
+    // Get recent activity (most recently updated deals)
+    const recentActivity = [...allDeals]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 10)
+      .map(deal => ({
+        id: deal.id,
+        fundName: deal.gpFundName,
+        status: deal.status,
+        updatedAt: deal.updatedAt,
+        loanAmount: deal.loanAmount,
+      }));
+
+    // For each active deal, get term sheet count
+    const activeDeals = allDeals.filter(d => 
+      d.status === "active" || d.status === "in_progress" || d.status === "rfp_sent"
+    );
+    
+    const dealsWithTermSheetCounts = await Promise.all(
+      activeDeals.slice(0, 10).map(async (deal) => {
+        const termSheetCount = await db.select()
+          .from(termSheets)
+          .where(eq(termSheets.advisorDealId, deal.id));
+        
+        return {
+          id: deal.id,
+          fundName: deal.gpFundName,
+          status: deal.status,
+          loanAmount: deal.loanAmount,
+          termSheetCount: termSheetCount.length,
+          submissionDeadline: deal.submissionDeadline,
+        };
+      })
+    );
+
+    res.json({
+      advisorId,
+      summary: {
+        totalDeals,
+        activeDeals: activeDeals.length,
+        closedDeals: wonDeals,
+        totalCommissionsEarned: totalCommissions,
+        averageDaysToClose,
+        winRate,
+      },
+      dealsByStatus: statusCounts,
+      topDeals: topDealsByCommission,
+      activeDealsWithBids: dealsWithTermSheetCounts,
+      recentActivity,
+      performanceMetrics: {
+        totalCommissionsFormatted: `$${(totalCommissions / 1_000).toFixed(1)}K`,
+        averageCommissionPerDeal: wonDeals > 0 ? 
+          `$${(totalCommissions / wonDeals / 1_000).toFixed(1)}K` : "$0K",
+        winRateFormatted: `${winRate}%`,
+      },
+    });
+  } catch (error) {
+    console.error("Get advisor dashboard error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch advisor dashboard",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
 // POST /api/lender-invitations
 // Create lender invitations for an RFP
 router.post("/lender-invitations", async (req: Request, res: Response) => {
