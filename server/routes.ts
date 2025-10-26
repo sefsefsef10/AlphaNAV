@@ -7,6 +7,7 @@ import {
   covenants,
   advisorDeals,
   lenderInvitations,
+  termSheets,
   drawRequests,
   cashFlows,
   users,
@@ -860,6 +861,329 @@ router.get("/advisor-deals/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Get advisor deal error:", error);
     res.status(500).json({ error: "Failed to fetch advisor deal" });
+  }
+});
+
+// GET /api/advisor-deals/:id/compare-bids
+// Compare all term sheets for an advisor deal side-by-side
+router.get("/advisor-deals/:id/compare-bids", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Only advisors and operations/admin can view bid comparisons
+    if (!["advisor", "operations", "admin"].includes(req.user.role)) {
+      return res.status(403).json({ error: "Forbidden: Advisor or Operations role required" });
+    }
+
+    const { id } = req.params;
+
+    // Verify deal exists
+    const [deal] = await db.select()
+      .from(advisorDeals)
+      .where(eq(advisorDeals.id, id))
+      .limit(1);
+
+    if (!deal) {
+      return res.status(404).json({ error: "Deal not found" });
+    }
+
+    // Fetch all term sheets for this deal
+    const allTermSheets = await db.select()
+      .from(termSheets)
+      .where(eq(termSheets.advisorDealId, id));
+
+    if (allTermSheets.length === 0) {
+      return res.json({
+        dealId: id,
+        fundName: deal.gpFundName,
+        requestedAmount: deal.loanAmount,
+        termSheetCount: 0,
+        bids: [],
+        rankings: {
+          bestPricing: null,
+          bestLoanAmount: null,
+          bestLTV: null,
+          fastestClose: null,
+        },
+        recommendation: "No term sheets submitted yet",
+      });
+    }
+
+    // Parse pricing ranges and extract numerical values for comparison
+    const parsePricingRange = (pricingStr: string | null): { min: number; max: number; avg: number } => {
+      if (!pricingStr) return { min: 0, max: 0, avg: 0 };
+      
+      // Detect if pricing is in basis points (bps/bp) - convert to percentage
+      const isBasisPoints = /bps?/i.test(pricingStr);
+      
+      // Handle formats like "8.5-9.5%", "850-950bps", "8.5%", "850bps"
+      const numberMatch = pricingStr.match(/(\d+\.?\d*)/g);
+      if (!numberMatch) return { min: 0, max: 0, avg: 0 };
+      
+      let numbers = numberMatch.map(n => parseFloat(n));
+      
+      // Convert basis points to percentage (850 bps = 8.5%)
+      if (isBasisPoints) {
+        numbers = numbers.map(n => n / 100);
+      }
+      
+      if (numbers.length === 1) {
+        return { min: numbers[0], max: numbers[0], avg: numbers[0] };
+      }
+      
+      const min = Math.min(...numbers);
+      const max = Math.max(...numbers);
+      const avg = (min + max) / 2;
+      
+      return { min, max, avg };
+    };
+
+    // Score each term sheet
+    const scoredBids = allTermSheets.map((sheet) => {
+      const pricing = parsePricingRange(sheet.pricingRange);
+      
+      // Calculate individual scores (0-100 scale)
+      let pricingScore = 0;
+      let amountScore = 0;
+      let ltvScore = 0;
+      let timelineScore = 0;
+
+      // Pricing score (lower is better) - assume 5-15% range, normalize
+      if (pricing.avg > 0) {
+        const normalizedRate = Math.max(0, Math.min(100, (15 - pricing.avg) / 10 * 100));
+        pricingScore = normalizedRate;
+      }
+
+      // Loan amount score (closer to requested is better)
+      if (sheet.loanAmount && deal.loanAmount) {
+        const difference = Math.abs(sheet.loanAmount - deal.loanAmount);
+        const percentDiff = (difference / deal.loanAmount) * 100;
+        amountScore = Math.max(0, 100 - percentDiff);
+      }
+
+      // LTV score (higher is better) - assume 0-100% range
+      if (sheet.ltvRatio) {
+        ltvScore = sheet.ltvRatio; // Already in 0-100 range
+      }
+
+      // Timeline score (faster is better) - assume 0-180 days range
+      if (sheet.timelineToClose) {
+        timelineScore = Math.max(0, 100 - (sheet.timelineToClose / 180 * 100));
+      }
+
+      // Overall composite score (weighted average)
+      const overallScore = (
+        pricingScore * 0.35 +    // Pricing is most important (35%)
+        amountScore * 0.25 +     // Loan amount match (25%)
+        ltvScore * 0.25 +        // LTV ratio (25%)
+        timelineScore * 0.15     // Timeline (15%)
+      );
+
+      return {
+        ...sheet,
+        pricing: {
+          raw: sheet.pricingRange,
+          parsed: pricing,
+        },
+        scores: {
+          pricing: Math.round(pricingScore),
+          loanAmount: Math.round(amountScore),
+          ltv: Math.round(ltvScore),
+          timeline: Math.round(timelineScore),
+          overall: Math.round(overallScore),
+        },
+      };
+    });
+
+    // Sort by overall score (descending)
+    scoredBids.sort((a, b) => b.scores.overall - a.scores.overall);
+
+    // Identify best in each category
+    const bestPricing = [...scoredBids].sort((a, b) => b.scores.pricing - a.scores.pricing)[0];
+    const bestLoanAmount = [...scoredBids].sort((a, b) => b.scores.loanAmount - a.scores.loanAmount)[0];
+    const bestLTV = [...scoredBids].sort((a, b) => b.scores.ltv - a.scores.ltv)[0];
+    const fastestClose = [...scoredBids].sort((a, b) => b.scores.timeline - a.scores.timeline)[0];
+
+    // Generate recommendation
+    const topBid = scoredBids[0];
+    let recommendation = `Recommended: ${topBid.lenderName} with overall score of ${topBid.scores.overall}/100. `;
+    
+    const strengths: string[] = [];
+    if (topBid.id === bestPricing.id) strengths.push("best pricing");
+    if (topBid.id === bestLoanAmount.id) strengths.push("optimal loan amount");
+    if (topBid.id === bestLTV.id) strengths.push("highest LTV");
+    if (topBid.id === fastestClose.id) strengths.push("fastest close");
+    
+    if (strengths.length > 0) {
+      recommendation += `Strengths: ${strengths.join(", ")}.`;
+    }
+
+    res.json({
+      dealId: id,
+      fundName: deal.gpFundName,
+      requestedAmount: deal.loanAmount,
+      termSheetCount: allTermSheets.length,
+      bids: scoredBids,
+      rankings: {
+        bestPricing: {
+          lender: bestPricing.lenderName,
+          score: bestPricing.scores.pricing,
+          value: bestPricing.pricingRange,
+        },
+        bestLoanAmount: {
+          lender: bestLoanAmount.lenderName,
+          score: bestLoanAmount.scores.loanAmount,
+          value: bestLoanAmount.loanAmount,
+        },
+        bestLTV: {
+          lender: bestLTV.lenderName,
+          score: bestLTV.scores.ltv,
+          value: bestLTV.ltvRatio,
+        },
+        fastestClose: {
+          lender: fastestClose.lenderName,
+          score: fastestClose.scores.timeline,
+          value: fastestClose.timelineToClose,
+        },
+      },
+      recommendation,
+    });
+  } catch (error) {
+    console.error("Compare bids error:", error);
+    res.status(500).json({ 
+      error: "Failed to compare bids",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/advisor-deals/:id/commission
+// Calculate commission for a specific advisor deal
+router.get("/advisor-deals/:id/commission", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Only advisors and operations/admin can view commission details
+    if (!["advisor", "operations", "admin"].includes(req.user.role)) {
+      return res.status(403).json({ error: "Forbidden: Advisor or Operations role required" });
+    }
+
+    const { id } = req.params;
+
+    // Fetch the advisor deal
+    const [deal] = await db.select()
+      .from(advisorDeals)
+      .where(eq(advisorDeals.id, id))
+      .limit(1);
+
+    if (!deal) {
+      return res.status(404).json({ error: "Deal not found" });
+    }
+
+    // Check if deal has closed
+    if (deal.status !== "closed" && deal.status !== "won") {
+      return res.json({
+        dealId: id,
+        status: deal.status,
+        message: "Deal has not closed yet - commission not applicable",
+        commission: {
+          earned: 0,
+          basis: null,
+          rate: null,
+        },
+      });
+    }
+
+    // Check if there's a linked facility
+    let facilityAmount = 0;
+    if (deal.winner) {
+      const [facility] = await db.select()
+        .from(facilities)
+        .where(eq(facilities.advisorDealId, id))
+        .limit(1);
+
+      if (facility) {
+        facilityAmount = facility.principalAmount;
+      }
+    }
+
+    // Commission calculation logic
+    // Standard industry rates: 50-100 bps (0.5% - 1%) of loan amount
+    // Tier 1: <$10M = 100 bps (1%)
+    // Tier 2: $10M-$50M = 75 bps (0.75%)
+    // Tier 3: $50M+ = 50 bps (0.5%)
+    
+    const loanAmount = facilityAmount || deal.loanAmount || 0;
+    let commissionRate = 0;
+    let tier = "";
+
+    if (loanAmount === 0) {
+      return res.json({
+        dealId: id,
+        status: deal.status,
+        message: "No loan amount available for commission calculation",
+        commission: {
+          earned: 0,
+          basis: 0,
+          rate: 0,
+        },
+      });
+    }
+
+    if (loanAmount < 10_000_000) {
+      commissionRate = 100; // 100 basis points = 1%
+      tier = "Tier 1 (<$10M)";
+    } else if (loanAmount < 50_000_000) {
+      commissionRate = 75; // 75 basis points = 0.75%
+      tier = "Tier 2 ($10M-$50M)";
+    } else {
+      commissionRate = 50; // 50 basis points = 0.5%
+      tier = "Tier 3 ($50M+)";
+    }
+
+    // Calculate commission (basis points to percentage: divide by 10,000)
+    const commissionEarned = Math.round(loanAmount * (commissionRate / 10000));
+
+    // Update the deal with calculated commission if not already set
+    if (!deal.commissionEarned || deal.commissionEarned === 0) {
+      await db.update(advisorDeals)
+        .set({ 
+          commissionEarned,
+          updatedAt: new Date(),
+        })
+        .where(eq(advisorDeals.id, id));
+    }
+
+    res.json({
+      dealId: id,
+      fundName: deal.gpFundName,
+      status: deal.status,
+      winner: deal.winner,
+      closeDate: deal.closeDate,
+      loanAmount,
+      commission: {
+        earned: commissionEarned,
+        basis: loanAmount,
+        rate: commissionRate,
+        ratePercentage: (commissionRate / 100).toFixed(2) + "%",
+        tier,
+      },
+      breakdown: {
+        loanAmountFormatted: `$${(loanAmount / 1_000_000).toFixed(1)}M`,
+        commissionRateBps: `${commissionRate} bps`,
+        commissionEarnedFormatted: `$${(commissionEarned / 1_000).toFixed(1)}K`,
+      },
+    });
+  } catch (error) {
+    console.error("Calculate commission error:", error);
+    res.status(500).json({ 
+      error: "Failed to calculate commission",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
   }
 });
 
