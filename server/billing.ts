@@ -12,8 +12,9 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
 }
 
+// Let Stripe SDK use its default API version for compatibility
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-09-30.clover",
+  typescript: true,
 });
 
 /**
@@ -51,7 +52,7 @@ export async function getOrCreateStripeCustomer(userId: string) {
 }
 
 /**
- * Create subscription for user
+ * Create subscription for user with transaction handling
  */
 export async function createSubscription(userId: string, tier: 'starter' | 'professional' | 'enterprise') {
   // Get subscription plan
@@ -70,55 +71,87 @@ export async function createSubscription(userId: string, tier: 'starter' | 'prof
   // Get or create Stripe customer
   const customerId = await getOrCreateStripeCustomer(userId);
 
-  // Create Stripe subscription
-  const stripeSubscription = await stripe.subscriptions.create({
-    customer: customerId,
-    items: [{
-      price: plan.stripePriceId,
-    }],
-    payment_behavior: 'default_incomplete',
-    payment_settings: { save_default_payment_method: 'on_subscription' },
-    expand: ['latest_invoice.payment_intent'],
-  });
+  let stripeSubscription: any;
+  let subscription: any;
 
-  // Store subscription in database
-  const [subscription] = await db
-    .insert(subscriptions)
-    .values({
-      userId,
-      stripeSubscriptionId: stripeSubscription.id,
-      stripeCustomerId: customerId,
-      stripePriceId: plan.stripePriceId,
-      tier,
-      status: stripeSubscription.status,
-      currentPeriodStart: new Date((stripeSubscription as any).current_period_start * 1000),
-      currentPeriodEnd: new Date((stripeSubscription as any).current_period_end * 1000),
-      cancelAtPeriodEnd: (stripeSubscription as any).cancel_at_period_end || false,
-      trialStart: (stripeSubscription as any).trial_start ? new Date((stripeSubscription as any).trial_start * 1000) : null,
-      trialEnd: (stripeSubscription as any).trial_end ? new Date((stripeSubscription as any).trial_end * 1000) : null,
-    })
-    .returning();
+  try {
+    // Create Stripe subscription
+    stripeSubscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{
+        price: plan.stripePriceId,
+      }],
+      payment_behavior: 'default_incomplete',
+      payment_settings: { save_default_payment_method: 'on_subscription' },
+      expand: ['latest_invoice.payment_intent'],
+    });
 
-  // Update user with subscription ID
-  await db
-    .update(users)
-    .set({ stripeSubscriptionId: stripeSubscription.id })
-    .where(eq(users.id, userId));
+    // Store subscription in database - if this fails, we need to cancel the Stripe subscription
+    try {
+      [subscription] = await db
+        .insert(subscriptions)
+        .values({
+          userId,
+          stripeSubscriptionId: stripeSubscription.id,
+          stripeCustomerId: customerId,
+          stripePriceId: plan.stripePriceId,
+          tier,
+          status: stripeSubscription.status,
+          currentPeriodStart: new Date((stripeSubscription as any).current_period_start * 1000),
+          currentPeriodEnd: new Date((stripeSubscription as any).current_period_end * 1000),
+          cancelAtPeriodEnd: (stripeSubscription as any).cancel_at_period_end || false,
+          trialStart: (stripeSubscription as any).trial_start ? new Date((stripeSubscription as any).trial_start * 1000) : null,
+          trialEnd: (stripeSubscription as any).trial_end ? new Date((stripeSubscription as any).trial_end * 1000) : null,
+        })
+        .returning();
 
-  // Get client secret from payment intent
-  const latestInvoice = stripeSubscription.latest_invoice;
-  let clientSecret: string | null = null;
-  if (latestInvoice && typeof latestInvoice === 'object') {
-    const paymentIntent = (latestInvoice as any).payment_intent;
-    if (paymentIntent && typeof paymentIntent === 'object') {
-      clientSecret = (paymentIntent as any).client_secret || null;
+      // Update user with subscription ID - if this fails, delete the subscription record
+      try {
+        await db
+          .update(users)
+          .set({ stripeSubscriptionId: stripeSubscription.id })
+          .where(eq(users.id, userId));
+      } catch (userUpdateError) {
+        // Delete the subscription record we just created
+        await db
+          .delete(subscriptions)
+          .where(eq(subscriptions.stripeSubscriptionId, stripeSubscription.id));
+        throw userUpdateError;
+      }
+
+    } catch (dbError) {
+      // Rollback: Cancel the Stripe subscription since we couldn't save it to the database
+      console.error('Failed to save subscription to database, rolling back Stripe subscription:', dbError);
+      try {
+        await stripe.subscriptions.cancel(stripeSubscription.id);
+      } catch (rollbackError) {
+        console.error('Failed to rollback Stripe subscription:', rollbackError);
+      }
+      throw new Error('Failed to create subscription: Database error. Stripe subscription has been canceled.');
     }
-  }
 
-  return {
-    subscription,
-    clientSecret,
-  };
+    // Get client secret from payment intent
+    const latestInvoice = stripeSubscription.latest_invoice;
+    let clientSecret: string | null = null;
+    if (latestInvoice && typeof latestInvoice === 'object') {
+      const paymentIntent = (latestInvoice as any).payment_intent;
+      if (paymentIntent && typeof paymentIntent === 'object') {
+        clientSecret = (paymentIntent as any).client_secret || null;
+      }
+    }
+
+    return {
+      subscription,
+      clientSecret,
+    };
+  } catch (error) {
+    // If Stripe subscription creation failed, just re-throw
+    if (!stripeSubscription) {
+      throw error;
+    }
+    // Otherwise, error was already handled in the rollback logic above
+    throw error;
+  }
 }
 
 /**
@@ -134,7 +167,7 @@ export async function getUserSubscription(userId: string) {
 }
 
 /**
- * Update subscription (upgrade/downgrade)
+ * Update subscription (upgrade/downgrade) with rollback handling
  */
 export async function updateSubscription(userId: string, newTier: 'starter' | 'professional' | 'enterprise') {
   const subscription = await getUserSubscription(userId);
@@ -142,6 +175,10 @@ export async function updateSubscription(userId: string, newTier: 'starter' | 'p
   if (!subscription) {
     throw new Error("No active subscription found");
   }
+
+  // Store old values for potential rollback
+  const oldTier = subscription.tier;
+  const oldPriceId = subscription.stripePriceId;
 
   // Get new plan
   const [newPlan] = await db
@@ -156,33 +193,65 @@ export async function updateSubscription(userId: string, newTier: 'starter' | 'p
     throw new Error(`Subscription plan "${newTier}" not found`);
   }
 
-  // Update Stripe subscription
-  const stripeSubscription = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
-  const updatedSubscription = await stripe.subscriptions.update(
-    subscription.stripeSubscriptionId,
-    {
-      items: [{
-        id: stripeSubscription.items.data[0].id,
-        price: newPlan.stripePriceId,
-      }],
-      proration_behavior: 'create_prorations',
+  let stripeSubscription: any;
+  let updatedSubscription: any;
+
+  try {
+    // Update Stripe subscription
+    stripeSubscription = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+    updatedSubscription = await stripe.subscriptions.update(
+      subscription.stripeSubscriptionId,
+      {
+        items: [{
+          id: stripeSubscription.items.data[0].id,
+          price: newPlan.stripePriceId,
+        }],
+        proration_behavior: 'create_prorations',
+      }
+    );
+
+    // Update database - if this fails, we need to rollback the Stripe subscription
+    try {
+      await db
+        .update(subscriptions)
+        .set({
+          stripePriceId: newPlan.stripePriceId,
+          tier: newTier,
+          status: updatedSubscription.status,
+          currentPeriodStart: new Date((updatedSubscription as any).current_period_start * 1000),
+          currentPeriodEnd: new Date((updatedSubscription as any).current_period_end * 1000),
+          updatedAt: new Date(),
+        })
+        .where(eq(subscriptions.userId, userId));
+
+    } catch (dbError) {
+      // Rollback: Revert the Stripe subscription to the old plan
+      console.error('Failed to update subscription in database, rolling back Stripe subscription:', dbError);
+      try {
+        await stripe.subscriptions.update(
+          subscription.stripeSubscriptionId,
+          {
+            items: [{
+              id: stripeSubscription.items.data[0].id,
+              price: oldPriceId,
+            }],
+          }
+        );
+      } catch (rollbackError) {
+        console.error('Failed to rollback Stripe subscription:', rollbackError);
+      }
+      throw new Error('Failed to update subscription: Database error. Stripe subscription has been reverted.');
     }
-  );
 
-  // Update database
-  await db
-    .update(subscriptions)
-    .set({
-      stripePriceId: newPlan.stripePriceId,
-      tier: newTier,
-      status: updatedSubscription.status,
-      currentPeriodStart: new Date((updatedSubscription as any).current_period_start * 1000),
-      currentPeriodEnd: new Date((updatedSubscription as any).current_period_end * 1000),
-      updatedAt: new Date(),
-    })
-    .where(eq(subscriptions.userId, userId));
-
-  return await getUserSubscription(userId);
+    return await getUserSubscription(userId);
+  } catch (error) {
+    // If Stripe update failed, just re-throw
+    if (!updatedSubscription) {
+      throw error;
+    }
+    // Otherwise, error was already handled in the rollback logic above
+    throw error;
+  }
 }
 
 /**
