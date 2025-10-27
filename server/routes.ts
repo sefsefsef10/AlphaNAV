@@ -362,6 +362,16 @@ router.post("/prospects/from-extraction", async (req: Request, res: Response) =>
 
     const extraction = document.extractedData as ExtractionResult;
 
+    // AUTOMATION: Enforce 95% confidence threshold
+    if (extraction.confidence.overall < 95) {
+      return res.status(400).json({
+        error: "Extraction confidence too low",
+        details: `AI extraction confidence (${extraction.confidence.overall}%) below 95% threshold. Manual review required.`,
+        confidence: extraction.confidence,
+        extraction: extraction,
+      });
+    }
+
     // Create prospect from extraction data (with user overrides)
     const prospectData: InsertProspect = {
       fundName: overrides?.fundName || extraction.fundName || "Unknown Fund",
@@ -393,9 +403,43 @@ router.post("/prospects/from-extraction", async (req: Request, res: Response) =>
       .set({ prospectId: prospect.id })
       .where(eq(uploadedDocuments.id, documentId));
 
+    // AUTOMATION: Calculate eligibility score
+    const { calculateEligibilityScore } = await import("./services/eligibilityScoring");
+    const eligibilityScore = calculateEligibilityScore({
+      fundSize: prospect.fundSize,
+      vintage: prospect.vintage,
+      gpTrackRecord: prospect.gpTrackRecord,
+      portfolioCount: prospect.portfolioCount,
+      sectors: prospect.sectors as string[] | null,
+    });
+
+    // AUTOMATION: Detect risk flags
+    const { assessAllRisks } = await import("./services/riskFlags");
+    const riskAssessment = assessAllRisks({
+      portfolioCount: prospect.portfolioCount,
+      sectors: prospect.sectors as string[] | null,
+      fundSize: prospect.fundSize || 0,
+      vintage: prospect.vintage,
+    });
+
+    // Update prospect with automated assessments
+    const [updatedProspect] = await db.update(prospects)
+      .set({
+        eligibilityStatus: eligibilityScore.recommendation,
+        eligibilityNotes: `Eligibility Score: ${eligibilityScore.overall}/10\n\n${eligibilityScore.reasoning.join('\n')}\n\nRisk Assessment: ${riskAssessment.overall.toUpperCase()} (${riskAssessment.score}/100)\n${riskAssessment.summary}\n\nRisk Flags:\n${riskAssessment.flags.map(f => `- [${f.severity.toUpperCase()}] ${f.title}: ${f.description}`).join('\n') || 'None'}`,
+        overallScore: Math.round(eligibilityScore.overall * 10), // Convert 0-10 to 0-100
+        updatedAt: new Date(),
+      })
+      .where(eq(prospects.id, prospect.id))
+      .returning();
+
     res.json({
-      prospect,
-      message: "Prospect created successfully from extraction",
+      prospect: updatedProspect,
+      automation: {
+        eligibilityScore,
+        riskAssessment,
+      },
+      message: "Prospect created successfully from extraction with automated scoring",
     });
 
   } catch (error) {
@@ -532,6 +576,209 @@ router.delete("/prospects/:id", async (req: Request, res: Response) => {
     res.status(500).json({ 
       error: "Failed to delete prospect",
       details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// ===== AUTOMATION API ENDPOINTS =====
+
+// POST /api/automation/ltv-calculator
+// Calculate LTV with stress testing
+router.post("/automation/ltv-calculator", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { requestedLoan, currentNav, maxLtvThreshold, stressTestThreshold } = req.body;
+
+    if (!requestedLoan || !currentNav) {
+      return res.status(400).json({ 
+        error: "Missing required parameters: requestedLoan, currentNav" 
+      });
+    }
+
+    const { calculateLTV } = await import("./services/ltvCalculator");
+    const ltvCalculation = calculateLTV({
+      requestedLoan,
+      currentNav,
+      maxLtvThreshold,
+      stressTestThreshold,
+    });
+
+    res.json(ltvCalculation);
+  } catch (error) {
+    console.error("LTV calculation error:", error);
+    res.status(500).json({
+      error: "Failed to calculate LTV",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+// POST /api/automation/risk-assessment
+// Assess portfolio risks with automated flag detection
+router.post("/automation/risk-assessment", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const params = req.body;
+
+    const { assessAllRisks } = await import("./services/riskFlags");
+    const riskAssessment = assessAllRisks(params);
+
+    res.json(riskAssessment);
+  } catch (error) {
+    console.error("Risk assessment error:", error);
+    res.status(500).json({
+      error: "Failed to assess risks",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+// POST /api/automation/eligibility-score
+// Calculate eligibility score for a prospect
+router.post("/automation/eligibility-score", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { fundSize, vintage, gpTrackRecord, portfolioCount, sectors } = req.body;
+
+    const { calculateEligibilityScore } = await import("./services/eligibilityScoring");
+    const eligibilityScore = calculateEligibilityScore({
+      fundSize,
+      vintage,
+      gpTrackRecord,
+      portfolioCount,
+      sectors,
+    });
+
+    res.json(eligibilityScore);
+  } catch (error) {
+    console.error("Eligibility score error:", error);
+    res.status(500).json({
+      error: "Failed to calculate eligibility score",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+// POST /api/automation/validate-extraction
+// Run accuracy validation against ground truth dataset
+router.post("/automation/validate-extraction", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Require operations or admin role for validation
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ 
+        error: "Forbidden: Only operations/admin can run validation tests" 
+      });
+    }
+
+    const { datasetId } = req.body;
+
+    if (!datasetId) {
+      return res.status(400).json({ error: "Missing required parameter: datasetId" });
+    }
+
+    const { runValidation } = await import("./services/aiValidation");
+    const validationResult = await runValidation(datasetId);
+
+    res.json(validationResult);
+  } catch (error) {
+    console.error("Validation error:", error);
+    res.status(500).json({
+      error: "Failed to run validation",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+// POST /api/automation/validate-all
+// Run validation on all active ground truth datasets
+router.post("/automation/validate-all", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Require operations or admin role for validation
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ 
+        error: "Forbidden: Only operations/admin can run validation tests" 
+      });
+    }
+
+    const { runAllValidations } = await import("./services/aiValidation");
+    const validationResults = await runAllValidations();
+
+    res.json({
+      totalTests: validationResults.length,
+      passed: validationResults.filter(r => r.passed).length,
+      failed: validationResults.filter(r => !r.passed).length,
+      averageAccuracy: validationResults.reduce((sum, r) => sum + r.accuracyOverall, 0) / validationResults.length,
+      results: validationResults,
+    });
+  } catch (error) {
+    console.error("Validation error:", error);
+    res.status(500).json({
+      error: "Failed to run validation tests",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+// GET /api/automation/accuracy-metrics
+// Get accuracy metrics from validation runs
+router.get("/automation/accuracy-metrics", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Require operations or admin role
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ 
+        error: "Forbidden: Only operations/admin can view accuracy metrics" 
+      });
+    }
+
+    const recentRuns = await db.select()
+      .from(validationRuns)
+      .orderBy(validationRuns.runAt)
+      .limit(100);
+
+    if (recentRuns.length === 0) {
+      return res.json({
+        totalRuns: 0,
+        averageAccuracy: 0,
+        passed95Percent: 0,
+        recentRuns: [],
+      });
+    }
+
+    const accuracies = recentRuns.map(r => parseFloat(r.accuracyOverall));
+    const passed = recentRuns.filter(r => parseFloat(r.accuracyOverall) >= 95).length;
+
+    res.json({
+      totalRuns: recentRuns.length,
+      averageAccuracy: accuracies.reduce((a, b) => a + b, 0) / accuracies.length,
+      passed95Percent: (passed / recentRuns.length) * 100,
+      recentRuns: recentRuns.slice(-10), // Last 10 runs
+    });
+  } catch (error) {
+    console.error("Accuracy metrics error:", error);
+    res.status(500).json({
+      error: "Failed to fetch accuracy metrics",
+      details: error instanceof Error ? error.message : "Unknown error",
     });
   }
 });

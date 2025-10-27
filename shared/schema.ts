@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, jsonb, integer, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, integer, boolean, index, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -657,3 +657,159 @@ export const insertLeadSchema = createInsertSchema(leads).omit({
 
 export type InsertLead = z.infer<typeof insertLeadSchema>;
 export type Lead = typeof leads.$inferSelect;
+
+// AI Validation & Accuracy Tracking
+
+// Ground truth datasets for AI validation testing
+export const groundTruthDatasets = pgTable("ground_truth_datasets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // e.g., "Test Fund Alpha Capital 2020"
+  description: text("description"),
+  documentPath: text("document_path").notNull(), // Path to test document
+  documentType: varchar("document_type").notNull(), // pdf, docx, etc.
+  
+  // Expected correct values (ground truth)
+  expectedFundName: text("expected_fund_name"),
+  expectedFundSize: numeric("expected_fund_size"), // AUM in dollars
+  expectedVintage: integer("expected_vintage"),
+  expectedPortfolioCount: integer("expected_portfolio_count"),
+  expectedSectors: text("expected_sectors").array(),
+  expectedGpName: text("expected_gp_name"),
+  expectedGpFirmName: text("expected_gp_firm_name"),
+  expectedGpTrackRecord: text("expected_gp_track_record"),
+  expectedFundStructure: text("expected_fund_structure"),
+  expectedStrategy: text("expected_strategy"),
+  expectedGeography: text("expected_geography"),
+  expectedContactName: text("expected_contact_name"),
+  expectedContactEmail: text("expected_contact_email"),
+  expectedContactPhone: text("expected_contact_phone"),
+  
+  // Metadata
+  active: boolean("active").notNull().default(true), // Can be disabled for testing
+  difficulty: varchar("difficulty").notNull().default("medium"), // easy, medium, hard
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_ground_truth_active").on(table.active),
+  index("idx_ground_truth_difficulty").on(table.difficulty),
+]);
+
+// Individual validation test runs
+export const validationRuns = pgTable("validation_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  datasetId: varchar("dataset_id").notNull().references(() => groundTruthDatasets.id, { onDelete: "cascade" }),
+  
+  // Extracted values from AI
+  extractedFundName: text("extracted_fund_name"),
+  extractedFundSize: numeric("extracted_fund_size"),
+  extractedVintage: integer("extracted_vintage"),
+  extractedPortfolioCount: integer("extracted_portfolio_count"),
+  extractedSectors: text("extracted_sectors").array(),
+  extractedGpName: text("extracted_gp_name"),
+  extractedGpFirmName: text("extracted_gp_firm_name"),
+  extractedGpTrackRecord: text("extracted_gp_track_record"),
+  extractedFundStructure: text("extracted_fund_structure"),
+  extractedStrategy: text("extracted_strategy"),
+  extractedGeography: text("extracted_geography"),
+  extractedContactName: text("extracted_contact_name"),
+  extractedContactEmail: text("extracted_contact_email"),
+  extractedContactPhone: text("extracted_contact_phone"),
+  
+  // Confidence scores from AI
+  confidenceOverall: integer("confidence_overall"),
+  confidenceFundName: integer("confidence_fund_name"),
+  confidenceFundSize: integer("confidence_fund_size"),
+  confidenceVintage: integer("confidence_vintage"),
+  confidencePortfolioCount: integer("confidence_portfolio_count"),
+  confidenceGpInfo: integer("confidence_gp_info"),
+  
+  // Accuracy results (calculated by comparing to ground truth)
+  accuracyOverall: numeric("accuracy_overall"), // 0-100%
+  accuracyFundName: boolean("accuracy_fund_name"), // exact match
+  accuracyFundSize: boolean("accuracy_fund_size"), // within tolerance
+  accuracyVintage: boolean("accuracy_vintage"), // exact match
+  accuracyPortfolioCount: boolean("accuracy_portfolio_count"), // exact match
+  accuracySectors: numeric("accuracy_sectors"), // % of sectors matched
+  accuracyGpName: boolean("accuracy_gp_name"),
+  accuracyGpFirmName: boolean("accuracy_gp_firm_name"),
+  accuracyStrategy: boolean("accuracy_strategy"),
+  accuracyGeography: boolean("accuracy_geography"),
+  accuracyContactInfo: boolean("accuracy_contact_info"),
+  
+  // Performance metrics
+  processingTimeMs: integer("processing_time_ms"),
+  modelVersion: varchar("model_version").notNull().default("gemini-2.0-flash-exp"),
+  
+  // Run metadata
+  runType: varchar("run_type").notNull().default("automated"), // automated, manual
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_validation_runs_dataset").on(table.datasetId),
+  index("idx_validation_runs_accuracy").on(table.accuracyOverall),
+  index("idx_validation_runs_created").on(table.createdAt),
+]);
+
+// Aggregate accuracy metrics over time
+export const accuracyMetrics = pgTable("accuracy_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Time period
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  // Aggregate accuracy scores (0-100%)
+  overallAccuracy: numeric("overall_accuracy").notNull(),
+  fundNameAccuracy: numeric("fund_name_accuracy").notNull(),
+  fundSizeAccuracy: numeric("fund_size_accuracy").notNull(),
+  vintageAccuracy: numeric("vintage_accuracy").notNull(),
+  portfolioCountAccuracy: numeric("portfolio_count_accuracy").notNull(),
+  sectorsAccuracy: numeric("sectors_accuracy").notNull(),
+  gpInfoAccuracy: numeric("gp_info_accuracy").notNull(),
+  strategyAccuracy: numeric("strategy_accuracy").notNull(),
+  geographyAccuracy: numeric("geography_accuracy").notNull(),
+  contactInfoAccuracy: numeric("contact_info_accuracy").notNull(),
+  
+  // Confidence score statistics
+  avgConfidenceScore: numeric("avg_confidence_score").notNull(),
+  highConfidenceCount: integer("high_confidence_count").notNull(), // >= 91
+  mediumConfidenceCount: integer("medium_confidence_count").notNull(), // 71-90
+  lowConfidenceCount: integer("low_confidence_count").notNull(), // < 71
+  
+  // Volume metrics
+  totalRuns: integer("total_runs").notNull(),
+  passedRuns: integer("passed_runs").notNull(), // >= 95% accuracy
+  failedRuns: integer("failed_runs").notNull(), // < 95% accuracy
+  
+  // Performance metrics
+  avgProcessingTimeMs: numeric("avg_processing_time_ms"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_accuracy_metrics_period").on(table.periodStart, table.periodEnd),
+  index("idx_accuracy_metrics_overall").on(table.overallAccuracy),
+]);
+
+export const insertGroundTruthDatasetSchema = createInsertSchema(groundTruthDatasets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertValidationRunSchema = createInsertSchema(validationRuns).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAccuracyMetricSchema = createInsertSchema(accuracyMetrics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertGroundTruthDataset = z.infer<typeof insertGroundTruthDatasetSchema>;
+export type GroundTruthDataset = typeof groundTruthDatasets.$inferSelect;
+export type InsertValidationRun = z.infer<typeof insertValidationRunSchema>;
+export type ValidationRun = typeof validationRuns.$inferSelect;
+export type InsertAccuracyMetric = z.infer<typeof insertAccuracyMetricSchema>;
+export type AccuracyMetric = typeof accuracyMetrics.$inferSelect;
