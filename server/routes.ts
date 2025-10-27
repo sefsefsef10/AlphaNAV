@@ -48,6 +48,7 @@ import batchDocumentsRouter from "./routes/batchDocuments";
 import oauthRouter from "./routes/oauthRoutes";
 import publicApiRouter from "./routes/publicApiRoutes";
 import apiClientRouter from "./routes/apiClientRoutes";
+import fundAdminRouter from "./routes/fundAdminRoutes";
 
 const router = Router();
 
@@ -58,6 +59,9 @@ router.use("/documents", batchDocumentsRouter);
 router.use("/oauth", oauthRouter); // Public OAuth endpoints (token, introspect, revoke)
 router.use("/oauth", apiClientRouter); // Protected API client management endpoints
 router.use("/v1/public", publicApiRouter); // Versioned public API with OAuth protection
+
+// Mount fund admin integration routes
+router.use("/", fundAdminRouter);
 
 // ========================================
 // NEW FEATURE ENDPOINTS (10-Feature Expansion)
