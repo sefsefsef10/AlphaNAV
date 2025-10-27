@@ -49,6 +49,10 @@ import UnderwritingDashboardPage from "@/pages/operations/underwriting";
 import FacilitiesPage from "@/pages/operations/facilities";
 import CovenantMonitoringPage from "@/pages/operations/covenant-monitoring";
 import AccuracyMetricsPage from "@/pages/operations/accuracy-metrics";
+import BatchUploadPage from "@/pages/operations/batch-upload";
+import PortfolioCompaniesPage from "@/pages/operations/portfolio-companies";
+import LenderDirectoryPage from "@/pages/operations/lender-directory";
+import MarketIntelligencePage from "@/pages/operations/market-intelligence";
 import NotFound from "@/pages/not-found";
 import MarketingHome from "@/pages/marketing/home";
 import SolutionsPage from "@/pages/marketing/solutions";
@@ -227,6 +231,10 @@ function AppContent() {
               <Route path="/operations/facilities" component={FacilitiesPage} />
               <Route path="/operations/covenant-monitoring" component={CovenantMonitoringPage} />
               <Route path="/operations/accuracy-metrics" component={AccuracyMetricsPage} />
+              <Route path="/operations/batch-upload" component={BatchUploadPage} />
+              <Route path="/operations/portfolio-companies" component={PortfolioCompaniesPage} />
+              <Route path="/operations/lender-directory" component={LenderDirectoryPage} />
+              <Route path="/operations/market-intelligence" component={MarketIntelligencePage} />
               <Route path="/advisor" component={AdvisorDashboard} />
               <Route path="/advisor/submit-deal" component={AdvisorSubmitDeal} />
               <Route path="/advisor/active-rfps" component={AdvisorActiveRFPs} />

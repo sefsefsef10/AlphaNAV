@@ -117,4 +117,31 @@ router.get("/batch/:batchId", async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/documents/batch/recent - Get recent batches
+router.get("/batch/recent", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { db } = await import("../db");
+    const { uploadedDocumentBatches } = await import("@shared/schema");
+    const { sql } = await import("drizzle-orm");
+    
+    const batches = await db
+      .select()
+      .from(uploadedDocumentBatches)
+      .orderBy(sql`${uploadedDocumentBatches.createdAt} DESC`)
+      .limit(20);
+    
+    res.json(batches);
+  } catch (error) {
+    console.error("Get recent batches error:", error);
+    res.status(500).json({
+      error: "Failed to get recent batches",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
 export default router;

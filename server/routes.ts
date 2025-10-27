@@ -16,6 +16,10 @@ import {
   subscriptions,
   invoices,
   validationRuns,
+  portfolioCompanies,
+  lenderDirectory,
+  marketIntelligence,
+  competitorIntelligence,
   type InsertProspect,
   type InsertUploadedDocument,
   type InsertFacility,
@@ -46,6 +50,54 @@ const router = Router();
 
 // Mount batch documents routes
 router.use("/documents", batchDocumentsRouter);
+
+// ========================================
+// NEW FEATURE ENDPOINTS (10-Feature Expansion)
+// ========================================
+
+// Portfolio Companies - AI-extracted companies from fund documents
+router.get("/portfolio/companies", async (req: Request, res: Response) => {
+  try {
+    const companies = await db.select().from(portfolioCompanies).orderBy(sql`${portfolioCompanies.companyName} ASC`);
+    return res.json(companies);
+  } catch (error: any) {
+    console.error("Error fetching portfolio companies:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Lender Directory - Manage lending partners
+router.get("/lenders", async (req: Request, res: Response) => {
+  try {
+    const lenders = await db.select().from(lenderDirectory).orderBy(sql`${lenderDirectory.lenderName} ASC`);
+    return res.json(lenders);
+  } catch (error: any) {
+    console.error("Error fetching lenders:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Market Intelligence - Track market data and trends
+router.get("/market-intelligence", async (req: Request, res: Response) => {
+  try {
+    const data = await db.select().from(marketIntelligence).orderBy(sql`${marketIntelligence.asOfDate} DESC`).limit(100);
+    return res.json(data);
+  } catch (error: any) {
+    console.error("Error fetching market intelligence:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Competitor Intelligence - Track competitor deals
+router.get("/competitor-intelligence", async (req: Request, res: Response) => {
+  try {
+    const data = await db.select().from(competitorIntelligence).orderBy(sql`${competitorIntelligence.reportedDate} DESC`).limit(50);
+    return res.json(data);
+  } catch (error: any) {
+    console.error("Error fetching competitor intelligence:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
 
 // Allowed file types for document uploads
 const ALLOWED_MIME_TYPES = [

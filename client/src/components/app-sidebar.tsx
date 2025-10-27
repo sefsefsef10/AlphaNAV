@@ -1,4 +1,4 @@
-import { LayoutDashboard, GitBranch, FileText, Scale, TrendingUp, Activity, DollarSign, GraduationCap, Settings, Users, Target, Building2, BarChart3 } from "lucide-react";
+import { LayoutDashboard, GitBranch, FileText, Scale, TrendingUp, Activity, DollarSign, GraduationCap, Settings, Users, Target, Building2, BarChart3, Upload, Building, Database } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -67,6 +67,26 @@ const operationsNavItems = [
     title: "Legal Templates",
     url: "/legal",
     icon: Scale,
+  },
+  {
+    title: "Batch Upload",
+    url: "/operations/batch-upload",
+    icon: Upload,
+  },
+  {
+    title: "Portfolio Companies",
+    url: "/operations/portfolio-companies",
+    icon: Building,
+  },
+  {
+    title: "Lender Directory",
+    url: "/operations/lender-directory",
+    icon: Building2,
+  },
+  {
+    title: "Market Intelligence",
+    url: "/operations/market-intelligence",
+    icon: Database,
   },
 ];
 
