@@ -32,6 +32,70 @@ export const users = pgTable("users", {
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
+// Multi-Factor Authentication tables
+export const mfaSettings = pgTable("mfa_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique(),
+  enabled: boolean("enabled").notNull().default(false),
+  totpSecret: varchar("totp_secret"), // Encrypted TOTP secret for authenticator apps
+  backupPhone: varchar("backup_phone"), // For SMS backup (optional)
+  smsEnabled: boolean("sms_enabled").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertMfaSettingsSchema = createInsertSchema(mfaSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMfaSettings = z.infer<typeof insertMfaSettingsSchema>;
+export type MfaSettings = typeof mfaSettings.$inferSelect;
+
+// Backup recovery codes for MFA
+export const mfaBackupCodes = pgTable("mfa_backup_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  code: varchar("code").notNull(), // Hashed backup code
+  used: boolean("used").notNull().default(false),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_backup_codes_user_id").on(table.userId),
+]);
+
+export const insertMfaBackupCodeSchema = createInsertSchema(mfaBackupCodes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMfaBackupCode = z.infer<typeof insertMfaBackupCodeSchema>;
+export type MfaBackupCode = typeof mfaBackupCodes.$inferSelect;
+
+// MFA verification sessions (track 2FA challenges)
+export const mfaSessions = pgTable("mfa_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  verified: boolean("verified").notNull().default(false),
+  verifiedAt: timestamp("verified_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_mfa_sessions_user_id").on(table.userId),
+  index("idx_mfa_sessions_expires_at").on(table.expiresAt),
+]);
+
+export const insertMfaSessionSchema = createInsertSchema(mfaSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMfaSession = z.infer<typeof insertMfaSessionSchema>;
+export type MfaSession = typeof mfaSessions.$inferSelect;
+
 export const onboardingSessions = pgTable("onboarding_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   fundName: text("fund_name").notNull(),
