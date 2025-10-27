@@ -101,6 +101,11 @@ const advisorNavItems = [
     url: "/advisor/clients",
     icon: Users,
   },
+  {
+    title: "Market Intelligence",
+    url: "/advisor/market-intelligence",
+    icon: Database,
+  },
 ];
 
 const externalNavItems = [

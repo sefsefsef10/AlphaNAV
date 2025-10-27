@@ -4,13 +4,13 @@ import { subscriptionPlans } from "@shared/schema";
 /**
  * Seed subscription plans for AlphaNAV billing
  * 
- * Pricing Strategy:
- * - Starter: $499/month - For GPs testing NAV lending (1-3 facilities)
- * - Professional: $1,999/month - For active NAV borrowers (4-10 facilities)
- * - Enterprise: $4,999/month - For large firms + lenders (unlimited)
+ * Pricing Strategy (Per Business Plan):
+ * - Starter: $2,500/month - For GPs testing NAV lending (up to 5 facilities)
+ * - Professional: $7,500/month - For active NAV borrowers (up to 20 facilities)
+ * - Enterprise: Custom pricing - For large firms + lenders (unlimited facilities)
  * 
  * Value Prop: Platform saves 100 bps ($306K) on $100M portfolio
- * Even Enterprise tier = 1.6% of annual savings
+ * Even Enterprise tier = <2% of annual savings
  */
 
 export async function seedSubscriptionPlans() {
@@ -32,14 +32,14 @@ export async function seedSubscriptionPlans() {
         tier: "starter",
         stripePriceId: process.env.STRIPE_PRICE_ID_STARTER || "price_starter_placeholder",
         stripeProductId: process.env.STRIPE_PRODUCT_ID_STARTER || "prod_starter_placeholder",
-        price: 49900, // $499/month
+        price: 250000, // $2,500/month (per business plan)
         currency: "usd",
-        maxFacilities: 3,
+        maxFacilities: 5, // Per business plan requirement
         maxUsers: 2,
         maxStorage: 10, // 10 GB
         aiExtractions: 50, // 50 AI extractions per month
         features: [
-          "Up to 3 NAV facilities",
+          "Up to 5 NAV facilities",
           "2 team members",
           "50 AI document extractions/month",
           "Covenant monitoring & alerts",
@@ -55,14 +55,14 @@ export async function seedSubscriptionPlans() {
         tier: "professional",
         stripePriceId: process.env.STRIPE_PRICE_ID_PROFESSIONAL || "price_professional_placeholder",
         stripeProductId: process.env.STRIPE_PRODUCT_ID_PROFESSIONAL || "prod_professional_placeholder",
-        price: 199900, // $1,999/month
+        price: 750000, // $7,500/month (per business plan)
         currency: "usd",
-        maxFacilities: 10,
+        maxFacilities: 20, // Per business plan requirement
         maxUsers: 10,
         maxStorage: 50, // 50 GB
         aiExtractions: 200, // 200 AI extractions per month
         features: [
-          "Up to 10 NAV facilities",
+          "Up to 20 NAV facilities",
           "10 team members",
           "200 AI document extractions/month",
           "Automated covenant monitoring",
@@ -81,12 +81,12 @@ export async function seedSubscriptionPlans() {
         tier: "enterprise",
         stripePriceId: process.env.STRIPE_PRICE_ID_ENTERPRISE || "price_enterprise_placeholder",
         stripeProductId: process.env.STRIPE_PRODUCT_ID_ENTERPRISE || "prod_enterprise_placeholder",
-        price: 499900, // $4,999/month
+        price: 0, // Custom pricing (quoted per customer)
         currency: "usd",
-        maxFacilities: 999, // Unlimited (soft cap)
-        maxUsers: 999, // Unlimited (soft cap)
+        maxFacilities: -1, // Unlimited (-1 indicates no limit)
+        maxUsers: -1, // Unlimited
         maxStorage: 500, // 500 GB
-        aiExtractions: 1000, // 1000 AI extractions per month
+        aiExtractions: 1000, // 1000+ AI extractions per month
         features: [
           "Unlimited NAV facilities",
           "Unlimited team members",
@@ -113,10 +113,10 @@ export async function seedSubscriptionPlans() {
     await db.insert(subscriptionPlans).values(plans);
 
     console.log(`✅ Successfully seeded ${plans.length} subscription plans`);
-    console.log("\nPricing Tiers:");
-    console.log("- Starter: $499/month (1-3 facilities)");
-    console.log("- Professional: $1,999/month (4-10 facilities)");
-    console.log("- Enterprise: $4,999/month (unlimited)");
+    console.log("\nPricing Tiers (Per Business Plan):");
+    console.log("- Starter: $2,500/month (up to 5 facilities)");
+    console.log("- Professional: $7,500/month (up to 20 facilities)");
+    console.log("- Enterprise: Custom pricing (unlimited facilities)");
     console.log("\n⚠️  IMPORTANT: Update Stripe Price IDs in environment variables:");
     console.log("- STRIPE_PRICE_ID_STARTER");
     console.log("- STRIPE_PRICE_ID_PROFESSIONAL");

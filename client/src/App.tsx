@@ -32,6 +32,7 @@ import AdvisorSubmitDeal from "@/pages/advisor-submit-deal";
 import AdvisorActiveRFPs from "@/pages/advisor-active-rfps";
 import AdvisorDealDetail from "@/pages/advisor-deal-detail";
 import AdvisorMyClients from "@/pages/advisor-my-clients";
+import AdvisorMarketIntelligence from "@/pages/advisor/market-intelligence";
 import GPDashboard from "@/pages/gp-dashboard";
 import GPFacility from "@/pages/gp-facility";
 import OperationsDashboard from "@/pages/operations-dashboard";
@@ -234,6 +235,7 @@ function AppContent() {
               <Route path="/advisor/active-rfps" component={AdvisorActiveRFPs} />
               <Route path="/advisor/deals/:id" component={AdvisorDealDetail} />
               <Route path="/advisor/clients" component={AdvisorMyClients} />
+              <Route path="/advisor/market-intelligence" component={AdvisorMarketIntelligence} />
               <Route path="/gp" component={GPDashboard} />
               <Route path="/gp/facility" component={GPFacility} />
               <Route component={NotFound} />

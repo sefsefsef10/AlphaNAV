@@ -46,6 +46,7 @@ import type { Facility, DrawRequest, CashFlow } from "@shared/schema";
 import { insertDrawRequestSchema } from "@shared/schema";
 import { FacilityDocuments } from "@/components/facility-documents";
 import { FacilityMessaging } from "@/components/facility-messaging";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 
 export default function GPFacility() {
   const { toast } = useToast();
@@ -141,6 +142,9 @@ export default function GPFacility() {
           />
         </Dialog>
       </div>
+
+      {/* Upgrade Prompt - Show if approaching/exceeding limits */}
+      <UpgradePrompt />
 
       {/* Facility Overview Cards */}
       <div className="grid gap-4 md:grid-cols-4">

@@ -950,6 +950,23 @@ router.post("/facilities", async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    // Feature Gate: Check subscription limits (GP users only)
+    if (req.user.role === "gp") {
+      const { canCreateFacility } = await import("./services/subscriptionService");
+      const subscriptionCheck = await canCreateFacility(req.user.id);
+      
+      if (!subscriptionCheck.allowed) {
+        return res.status(403).json({ 
+          error: "Facility limit reached",
+          message: subscriptionCheck.message,
+          tier: subscriptionCheck.currentTier,
+          limits: subscriptionCheck.limits,
+          usage: subscriptionCheck.usage,
+          upgradeRequired: true
+        });
+      }
+    }
+
     // Validate request body
     const validation = validateBody(insertFacilitySchema, req.body);
     if (!validation.success) {
@@ -1015,6 +1032,39 @@ router.patch("/facilities/:id", async (req: Request, res: Response) => {
     console.error("Update facility error:", error);
     res.status(500).json({ 
       error: "Failed to update facility",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/subscription/check
+// Check current subscription status and limits
+router.get("/subscription/check", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { shouldShowUpgradePrompt, canCreateFacility } = await import("./services/subscriptionService");
+    
+    const [upgradePrompt, facilityCheck] = await Promise.all([
+      shouldShowUpgradePrompt(req.user.id),
+      canCreateFacility(req.user.id)
+    ]);
+
+    res.json({
+      upgradePrompt,
+      subscription: {
+        tier: facilityCheck.currentTier,
+        limits: facilityCheck.limits,
+        usage: facilityCheck.usage,
+      }
+    });
+
+  } catch (error) {
+    console.error("Subscription check error:", error);
+    res.status(500).json({ 
+      error: "Failed to check subscription",
       details: error instanceof Error ? error.message : "Unknown error"
     });
   }
