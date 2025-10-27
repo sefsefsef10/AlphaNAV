@@ -49,6 +49,7 @@ import PortfolioCompaniesPage from "@/pages/operations/portfolio-companies";
 import LenderDirectoryPage from "@/pages/operations/lender-directory";
 import MarketIntelligencePage from "@/pages/operations/market-intelligence";
 import ApiClientsPage from "@/pages/operations/api-clients";
+import FundAdminPage from "@/pages/operations/fund-admin";
 import NotFound from "@/pages/not-found";
 import MarketingHome from "@/pages/marketing/home";
 import SolutionsPage from "@/pages/marketing/solutions";
@@ -227,6 +228,7 @@ function AppContent() {
               <Route path="/operations/lender-directory" component={LenderDirectoryPage} />
               <Route path="/operations/market-intelligence" component={MarketIntelligencePage} />
               <Route path="/operations/api-clients" component={ApiClientsPage} />
+              <Route path="/operations/fund-admin" component={FundAdminPage} />
               <Route path="/advisor" component={AdvisorDashboard} />
               <Route path="/advisor/submit-deal" component={AdvisorSubmitDeal} />
               <Route path="/advisor/active-rfps" component={AdvisorActiveRFPs} />

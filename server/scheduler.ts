@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { checkAllDueCovenants } from "./services/covenantMonitoring";
+import { syncAllActiveFundAdmins } from "./services/fundAdminSync";
 
 /**
  * Initialize all scheduled jobs for AlphaNAV
@@ -51,14 +52,29 @@ export function initializeScheduler() {
     }
   });
 
-  console.log("✓ Automated covenant monitoring scheduled:");
-  console.log("  - Daily check: Every day at 2:00 AM");
-  console.log("  - Business hours check: Mon-Fri at 8am, 12pm, 4pm");
+  // Run fund administrator NAV sync daily at 3 AM (after covenant monitoring)
+  // "0 3 * * *" = Every day at 3:00 AM
+  const fundAdminSyncJob = cron.schedule("0 3 * * *", async () => {
+    console.log("Running automated fund admin NAV sync...");
+    
+    try {
+      await syncAllActiveFundAdmins();
+      console.log("✓ Fund admin sync completed successfully");
+    } catch (error) {
+      console.error("Fund admin sync job failed:", error);
+    }
+  });
+
+  console.log("✓ Automated jobs scheduled:");
+  console.log("  - Covenant monitoring: Every day at 2:00 AM");
+  console.log("  - Business hours covenant check: Mon-Fri at 8am, 12pm, 4pm");
+  console.log("  - Fund admin NAV sync: Every day at 3:00 AM");
 
   // Return job objects for potential manual control
   return {
     covenantMonitoringJob,
     frequentCheckJob,
+    fundAdminSyncJob,
   };
 }
 
@@ -69,5 +85,6 @@ export function stopScheduler(jobs: ReturnType<typeof initializeScheduler>) {
   console.log("Stopping all scheduled jobs...");
   jobs.covenantMonitoringJob.stop();
   jobs.frequentCheckJob.stop();
+  jobs.fundAdminSyncJob.stop();
   console.log("✓ All scheduled jobs stopped");
 }
