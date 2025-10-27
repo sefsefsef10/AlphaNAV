@@ -45,12 +45,18 @@ Preferred communication style: Simple, everyday language.
 - Job scheduler infrastructure using `node-cron` for automated tasks like covenant checks.
 
 ### Testing Infrastructure
-- **HTTP Integration Tests**: 28 automated tests across 9 test groups (100% pass rate)
+- **HTTP Integration Tests**: 42 automated tests across 11 test groups (100% pass rate)
   - Multi-tenant isolation (GPs access only own facilities)
   - Authorization enforcement (draw requests, cash flows, documents, covenants)
   - Operations/Admin bypass validation
   - Portfolio analytics access control
   - Edge case handling (404, 401 responses)
+  - **Automation Endpoints**: 14 tests for automation API (server/tests/automation-endpoints.api.test.ts)
+    - LTV Calculator with stress testing (baseline/moderate/severe scenarios)
+    - Risk Assessment with automated flag detection
+    - Eligibility Scoring system (strong/review/decline recommendations)
+    - AI Accuracy Metrics (operations/admin only)
+    - Authorization controls (401/403 enforcement)
 - **Test Authentication**: Production-safe bypass (NODE_ENV=test only) with header injection
 - **Test Fixtures**: 5 deterministic test facilities (facility-1 through facility-5) with GP ownership
 - **CI/CD Automation**: GitHub Actions workflow for automated test execution on push/PR
