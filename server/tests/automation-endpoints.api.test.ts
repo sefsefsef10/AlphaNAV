@@ -51,6 +51,11 @@ async function runTests() {
   console.log("║  Automation API Endpoints Integration Tests             ║");
   console.log("╚══════════════════════════════════════════════════════════╝\n");
 
+  // Wait for routes to be registered (they're set up asynchronously in server/index.ts)
+  console.log("Waiting for routes to initialize...");
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  console.log("Routes initialized.\n");
+
   try {
     const opsUser = await setupTestUser();
     const authHeader = { "x-test-user-id": opsUser.id, "x-test-user-role": opsUser.role };
@@ -338,9 +343,5 @@ async function runTests() {
   }
 }
 
-// Run tests if this file is executed directly
-if (require.main === module) {
-  runTests();
-}
-
-export { runTests };
+// Run tests
+runTests();
