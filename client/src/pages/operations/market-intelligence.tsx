@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TrendingUp, TrendingDown, Activity, BarChart3, DollarSign, Users } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, BarChart3, DollarSign, Users, Loader2, AlertCircle } from "lucide-react";
 
 interface MarketData {
   id: string;
@@ -50,12 +50,12 @@ export default function MarketIntelligencePage() {
   const [geographyFilter, setGeographyFilter] = useState<string>("all");
 
   // Fetch market intelligence data
-  const { data: marketData = [], isLoading: loadingMarket } = useQuery<MarketData[]>({
+  const { data: marketData = [], isLoading: loadingMarket, error: marketError } = useQuery<MarketData[]>({
     queryKey: ["/api/market-intelligence"],
   });
 
   // Fetch competitor intelligence
-  const { data: competitorData = [], isLoading: loadingCompetitors } = useQuery<CompetitorData[]>({
+  const { data: competitorData = [], isLoading: loadingCompetitors, error: competitorError } = useQuery<CompetitorData[]>({
     queryKey: ["/api/competitor-intelligence"],
   });
 
@@ -215,7 +215,17 @@ export default function MarketIntelligencePage() {
         </CardHeader>
         <CardContent>
           {loadingMarket ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : marketError ? (
+            <div className="text-center py-8">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-2" />
+              <p className="text-sm text-destructive">Failed to load market data</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {marketError instanceof Error ? marketError.message : "Unknown error"}
+              </p>
+            </div>
           ) : filteredMarketData.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
               No market data available
@@ -278,7 +288,17 @@ export default function MarketIntelligencePage() {
         </CardHeader>
         <CardContent>
           {loadingCompetitors ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : competitorError ? (
+            <div className="text-center py-8">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-2" />
+              <p className="text-sm text-destructive">Failed to load competitor data</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {competitorError instanceof Error ? competitorError.message : "Unknown error"}
+              </p>
+            </div>
           ) : competitorData.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
               No competitor data available

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Building2, Search, TrendingUp, DollarSign } from "lucide-react";
+import { Building2, Search, TrendingUp, DollarSign, Loader2, AlertCircle } from "lucide-react";
 
 interface PortfolioCompany {
   id: string;
@@ -39,7 +39,7 @@ export default function PortfolioCompaniesPage() {
   const [sectorFilter, setSectorFilter] = useState<string>("all");
 
   // Fetch portfolio companies
-  const { data: companies = [], isLoading } = useQuery<PortfolioCompany[]>({
+  const { data: companies = [], isLoading, error } = useQuery<PortfolioCompany[]>({
     queryKey: ["/api/portfolio/companies"],
   });
 
@@ -167,7 +167,17 @@ export default function PortfolioCompaniesPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-2" />
+              <p className="text-sm text-destructive">Failed to load portfolio companies</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {error instanceof Error ? error.message : "Unknown error"}
+              </p>
+            </div>
           ) : filteredCompanies.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
               No companies found

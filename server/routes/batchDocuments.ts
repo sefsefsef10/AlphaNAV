@@ -32,7 +32,7 @@ const upload = multer({
 // POST /api/documents/batch - Upload multiple documents
 router.post("/batch", upload.array("files", 50), async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -100,7 +100,7 @@ router.post("/batch", upload.array("files", 50), async (req: Request, res: Respo
 // GET /api/documents/batch/:batchId - Get batch status
 router.get("/batch/:batchId", async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -120,7 +120,7 @@ router.get("/batch/:batchId", async (req: Request, res: Response) => {
 // GET /api/documents/batch/recent - Get recent batches
 router.get("/batch/recent", async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 

@@ -36,7 +36,7 @@ export default function BatchUploadPage() {
   const { toast } = useToast();
 
   // Fetch recent batches
-  const { data: batches = [] } = useQuery<BatchUpload[]>({
+  const { data: batches = [], isLoading: batchesLoading, error: batchesError } = useQuery<BatchUpload[]>({
     queryKey: ["/api/documents/batch/recent"],
   });
 
@@ -86,8 +86,11 @@ export default function BatchUploadPage() {
   const handleUpload = async () => {
     if (selectedFiles.length === 0) return;
     setUploading(true);
-    await uploadMutation.mutateAsync(selectedFiles);
-    setUploading(false);
+    try {
+      await uploadMutation.mutateAsync(selectedFiles);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const removeFile = (index: number) => {
@@ -208,7 +211,19 @@ export default function BatchUploadPage() {
           <CardDescription>View status of recent batch uploads</CardDescription>
         </CardHeader>
         <CardContent>
-          {batches.length === 0 ? (
+          {batchesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : batchesError ? (
+            <div className="text-center py-8">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-2" />
+              <p className="text-sm text-destructive">Failed to load batches</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {batchesError instanceof Error ? batchesError.message : "Unknown error"}
+              </p>
+            </div>
+          ) : batches.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
               No batches uploaded yet
             </p>

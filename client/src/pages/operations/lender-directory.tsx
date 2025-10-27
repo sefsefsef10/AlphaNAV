@@ -31,7 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Plus, Search, Mail, Phone, ExternalLink, User, Calendar } from "lucide-react";
+import { Building2, Plus, Search, Mail, Phone, ExternalLink, User, Calendar, Loader2, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface Lender {
@@ -62,7 +62,7 @@ export default function LenderDirectoryPage() {
   const { toast } = useToast();
 
   // Fetch lenders
-  const { data: lenders = [], isLoading } = useQuery<Lender[]>({
+  const { data: lenders = [], isLoading, error } = useQuery<Lender[]>({
     queryKey: ["/api/lenders"],
   });
 
@@ -218,7 +218,17 @@ export default function LenderDirectoryPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-2" />
+              <p className="text-sm text-destructive">Failed to load lenders</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {error instanceof Error ? error.message : "Unknown error"}
+              </p>
+            </div>
           ) : filteredLenders.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
               No lenders found

@@ -58,6 +58,10 @@ router.use("/documents", batchDocumentsRouter);
 // Portfolio Companies - AI-extracted companies from fund documents
 router.get("/portfolio/companies", async (req: Request, res: Response) => {
   try {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
     const companies = await db.select().from(portfolioCompanies).orderBy(sql`${portfolioCompanies.companyName} ASC`);
     return res.json(companies);
   } catch (error: any) {
@@ -69,6 +73,10 @@ router.get("/portfolio/companies", async (req: Request, res: Response) => {
 // Lender Directory - Manage lending partners
 router.get("/lenders", async (req: Request, res: Response) => {
   try {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
     const lenders = await db.select().from(lenderDirectory).orderBy(sql`${lenderDirectory.lenderName} ASC`);
     return res.json(lenders);
   } catch (error: any) {
@@ -80,6 +88,10 @@ router.get("/lenders", async (req: Request, res: Response) => {
 // Market Intelligence - Track market data and trends
 router.get("/market-intelligence", async (req: Request, res: Response) => {
   try {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
     const data = await db.select().from(marketIntelligence).orderBy(sql`${marketIntelligence.asOfDate} DESC`).limit(100);
     return res.json(data);
   } catch (error: any) {
@@ -91,6 +103,10 @@ router.get("/market-intelligence", async (req: Request, res: Response) => {
 // Competitor Intelligence - Track competitor deals
 router.get("/competitor-intelligence", async (req: Request, res: Response) => {
   try {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
     const data = await db.select().from(competitorIntelligence).orderBy(sql`${competitorIntelligence.reportedDate} DESC`).limit(50);
     return res.json(data);
   } catch (error: any) {
