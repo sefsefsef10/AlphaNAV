@@ -2,36 +2,15 @@
  * Multi-Tenant Security HTTP Integration Tests
  * Tests actual production HTTP endpoints with authenticated requests
  * 
- * Run: tsx server/tests/security-http.test.ts
+ * Run: NODE_ENV=test tsx server/tests/security-http.test.ts
  */
 
+// CRITICAL: Set NODE_ENV=test BEFORE importing the app
+// This activates the test authentication bypass middleware in server/index.ts
+process.env.NODE_ENV = 'test';
+
 import request from "supertest";
-import express from "express";
-import { registerRoutes } from "../routes";
-import { testUsers } from "./helpers/testAuth";
-
-// Create test app instance
-const testApp = express();
-testApp.use(express.json());
-
-// Test authentication middleware - injects test user into req.user
-testApp.use((req, _res, next) => {
-  const userId = req.header("X-Test-User-ID");
-  const userRole = req.header("X-Test-User-Role");
-  
-  if (userId && userRole) {
-    req.user = {
-      id: userId,
-      role: userRole,
-      email: `${userId}@test.com`,
-      firstName: "Test",
-      lastName: "User",
-      createdAt: new Date(),
-      updatedAt: new Date()
-    } as Express.User;
-  }
-  next();
-});
+import { app } from "../index";
 
 // Test results tracking
 interface TestResult {
@@ -57,11 +36,11 @@ async function runTests() {
   console.log("╚══════════════════════════════════════════════════════════╝\n");
 
   try {
-    // Initialize routes
-    await registerRoutes(testApp);
+    // Wait for app initialization
+    await new Promise(resolve => setTimeout(resolve, 2000));
     console.log("✓ Test app initialized with production routes\n");
 
-    // Test data - facilities owned by different GPs
+    // Test data - facilities owned by different GPs (matching seeded data)
     const facilities = {
       gp1: ["facility-1", "facility-2"], // Owned by Av82cL
       gp2: ["facility-3", "facility-4"], // Owned by FG9ujq
@@ -72,7 +51,7 @@ async function runTests() {
 
     // GP1 accesses own facilities - should succeed (200)
     for (const facilityId of facilities.gp1) {
-      const res = await request(testApp)
+      const res = await request(app)
         .get(`/api/facilities/${facilityId}`)
         .set("X-Test-User-ID", "Av82cL")
         .set("X-Test-User-Role", "gp");
@@ -82,7 +61,7 @@ async function runTests() {
 
     // GP1 tries to access GP2's facilities - should fail (403)
     for (const facilityId of facilities.gp2) {
-      const res = await request(testApp)
+      const res = await request(app)
         .get(`/api/facilities/${facilityId}`)
         .set("X-Test-User-ID", "Av82cL")
         .set("X-Test-User-Role", "gp");
@@ -94,7 +73,7 @@ async function runTests() {
 
     // GP2 accesses own facilities - should succeed (200)
     for (const facilityId of facilities.gp2) {
-      const res = await request(testApp)
+      const res = await request(app)
         .get(`/api/facilities/${facilityId}`)
         .set("X-Test-User-ID", "FG9ujq")
         .set("X-Test-User-Role", "gp");
@@ -104,7 +83,7 @@ async function runTests() {
 
     // GP2 tries to access GP1's facilities - should fail (403)
     for (const facilityId of facilities.gp1) {
-      const res = await request(testApp)
+      const res = await request(app)
         .get(`/api/facilities/${facilityId}`)
         .set("X-Test-User-ID", "FG9ujq")
         .set("X-Test-User-Role", "gp");
@@ -117,7 +96,7 @@ async function runTests() {
     // Operations can access all facilities - should succeed (200)
     const allFacilities = [...facilities.gp1, ...facilities.gp2, ...facilities.gp3];
     for (const facilityId of allFacilities) {
-      const res = await request(testApp)
+      const res = await request(app)
         .get(`/api/facilities/${facilityId}`)
         .set("X-Test-User-ID", "ops-user-1")
         .set("X-Test-User-Role", "operations");
@@ -128,35 +107,51 @@ async function runTests() {
     console.log("\nTEST GROUP 4: Draw Request Endpoints\n");
 
     // GP1 creates draw request for own facility - should succeed
-    const drawRes1 = await request(testApp)
+    const drawRes1 = await request(app)
       .post(`/api/facilities/facility-1/draw-requests`)
       .set("X-Test-User-ID", "Av82cL")
       .set("X-Test-User-Role", "gp")
       .send({
-        amount: 1000000,
-        purpose: "Capital deployment test",
-        requestedDisbursementDate: "2025-12-01"
+        requestedAmount: 1000000,
+        purpose: "Capital deployment test"
       });
     
-    logTest("GP1 POST /api/facilities/facility-1/draw-requests (own)", drawRes1.status, 201);
+    logTest("GP1 POST /api/facilities/facility-1/draw-requests (own)", drawRes1.status, 200);
 
     // GP1 tries to create draw request for GP2's facility - should fail
-    const drawRes2 = await request(testApp)
+    const drawRes2 = await request(app)
       .post(`/api/facilities/facility-3/draw-requests`)
       .set("X-Test-User-ID", "Av82cL")
       .set("X-Test-User-Role", "gp")
       .send({
-        amount: 500000,
-        purpose: "Unauthorized test",
-        requestedDisbursementDate: "2025-12-01"
+        requestedAmount: 500000,
+        purpose: "Unauthorized test"
       });
     
     logTest("GP1 POST /api/facilities/facility-3/draw-requests (other GP)", drawRes2.status, 403);
 
-    console.log("\nTEST GROUP 5: Edge Cases\n");
+    console.log("\nTEST GROUP 5: Cash Flow Endpoints\n");
+
+    // GP1 accesses own facility's cash flows - should succeed
+    const cashFlowRes1 = await request(app)
+      .get("/api/facilities/facility-1/cash-flows")
+      .set("X-Test-User-ID", "Av82cL")
+      .set("X-Test-User-Role", "gp");
+    
+    logTest("GP1 GET /api/facilities/facility-1/cash-flows (own)", cashFlowRes1.status, 200);
+
+    // GP1 tries to access GP2's cash flows - should fail
+    const cashFlowRes2 = await request(app)
+      .get("/api/facilities/facility-3/cash-flows")
+      .set("X-Test-User-ID", "Av82cL")
+      .set("X-Test-User-Role", "gp");
+    
+    logTest("GP1 GET /api/facilities/facility-3/cash-flows (other GP)", cashFlowRes2.status, 403);
+
+    console.log("\nTEST GROUP 6: Edge Cases\n");
 
     // Non-existent facility - should return 404
-    const notFoundRes = await request(testApp)
+    const notFoundRes = await request(app)
       .get("/api/facilities/nonexistent-id")
       .set("X-Test-User-ID", "Av82cL")
       .set("X-Test-User-Role", "gp");
@@ -164,7 +159,7 @@ async function runTests() {
     logTest("GP1 GET /api/facilities/nonexistent-id", notFoundRes.status, 404);
 
     // Unauthenticated request - should return 401
-    const unauthRes = await request(testApp)
+    const unauthRes = await request(app)
       .get("/api/facilities/facility-1");
     
     logTest("Unauthenticated GET /api/facilities/facility-1", unauthRes.status, 401);
@@ -198,8 +193,11 @@ async function runTests() {
       console.log("  ✓ GP users can access their own facilities (200)");
       console.log("  ✓ GP users CANNOT access other GPs' facilities (403)");
       console.log("  ✓ Operations users can access all facilities (200)");
+      console.log("  ✓ Draw request authorization enforced");
+      console.log("  ✓ Cash flow access authorization enforced");
       console.log("  ✓ Non-existent facilities return 404");
       console.log("  ✓ Unauthenticated requests return 401\n");
+      console.log("🔒 Multi-tenant data isolation VERIFIED at HTTP layer\n");
       process.exit(0);
     }
 

@@ -161,6 +161,29 @@ if (isProduction) {
   });
 }
 
+// Test authentication bypass - ONLY active in NODE_ENV=test
+// This allows HTTP integration tests to inject authenticated users
+if (process.env.NODE_ENV === 'test') {
+  app.use((req, res, next) => {
+    const userId = req.header('X-Test-User-ID');
+    const userRole = req.header('X-Test-User-Role');
+    
+    if (userId && userRole) {
+      req.user = {
+        id: userId,
+        role: userRole as 'gp' | 'operations' | 'advisor' | 'admin',
+        email: `${userId}@test.com`,
+        firstName: 'Test',
+        lastName: 'User',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as Express.User;
+      log(`[TEST AUTH] Injected test user: ${userId} (${userRole})`);
+    }
+    next();
+  });
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -225,7 +248,8 @@ app.use((req, res, next) => {
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
-  } else {
+  } else if (process.env.NODE_ENV !== 'test') {
+    // Skip static file serving in test mode (no frontend build needed for API tests)
     serveStatic(app);
   }
 
@@ -233,18 +257,22 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-    
-    // Initialize automated scheduled jobs (covenant monitoring, etc.)
-    initializeScheduler();
-    log("✓ Automated job scheduler initialized");
-  });
+  
+  // Skip server startup in test mode (for HTTP integration tests using supertest)
+  if (process.env.NODE_ENV !== 'test') {
+    const port = parseInt(process.env.PORT || '5000', 10);
+    server.listen({
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    }, () => {
+      log(`serving on port ${port}`);
+      
+      // Initialize automated scheduled jobs (covenant monitoring, etc.)
+      initializeScheduler();
+      log("✓ Automated job scheduler initialized");
+    });
+  }
 })();
 
 // Export app for testing

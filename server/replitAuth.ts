@@ -242,6 +242,12 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  // Test authentication bypass: In test mode, allow pre-injected test users
+  // This enables HTTP integration tests via supertest without session complexity
+  if (process.env.NODE_ENV === 'test' && req.user) {
+    return next();
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {
