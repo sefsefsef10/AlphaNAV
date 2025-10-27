@@ -48,15 +48,24 @@ AlphaNAV is a comprehensive NAV (Net Asset Value) lending operations platform de
 - `read:analytics` - Access portfolio analytics
 - `read:covenants` - View covenant compliance
 
-**Security Features**:
-- Client secrets hashed with bcrypt (10 rounds)
-- Bearer token authentication
-- Scope-based authorization
-- Organization-level data isolation
-- Rate limiting per client
-- Comprehensive audit logging
+**Security Features** (Production-Ready ✅):
+- **Bcrypt Hashing**: Client secrets hashed with bcrypt (10 rounds), all async operations
+- **Token Security**: 
+  - Access tokens: 1-hour expiry, bearer authentication only
+  - Refresh tokens: 30-day expiry, rotation on use with revocation
+  - Separate validation: `verifyAccessToken()` rejects refresh tokens, `verifyRefreshToken()` rejects access tokens
+  - No token type confusion possible
+- **Rate Limiting**: Efficient COUNT(*) queries per client (default: 1000 req/hour)
+- **Authorization**: Scope-based access control with organization-level data isolation
+- **Audit Logging**: Comprehensive API usage tracking for analytics and compliance
 
-**Integration Ready**: External fund administrators, portfolio management systems, and analytics platforms can now programmatically integrate with AlphaNAV using industry-standard OAuth2.
+**OAuth2 Endpoints**:
+- `POST /oauth/token` - Issue access + refresh tokens (client credentials)
+- `POST /oauth/token/refresh` - Rotate refresh token (revokes old, issues new pair)
+- `POST /oauth/introspect` - Introspect any token (access or refresh)
+- `POST /oauth/revoke` - Revoke any token
+
+**Integration Ready**: External fund administrators, portfolio management systems, and analytics platforms can now programmatically integrate with AlphaNAV using industry-standard OAuth2. All security vulnerabilities resolved and architect-approved for production deployment.
 
 ---
 
