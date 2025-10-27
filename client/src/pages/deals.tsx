@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Search, Filter, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,76 +13,60 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// TODO: Remove mock data
-const mockDeals: Deal[] = [
-  {
-    id: "1",
-    fundName: "Sequoia Capital Fund XII",
-    status: "monitoring",
-    amount: 45000000,
-    stage: "Post-Close Monitoring",
-    lastUpdate: "2 hours ago",
-    riskScore: 2,
-  },
-  {
-    id: "2",
-    fundName: "Tiger Global Private Investment",
-    status: "underwriting",
-    amount: 62000000,
-    stage: "Due Diligence",
-    lastUpdate: "5 hours ago",
-    riskScore: 4,
-  },
-  {
-    id: "3",
-    fundName: "Andreessen Horowitz Bio Fund",
-    status: "approved",
-    amount: 38000000,
-    stage: "Documentation",
-    lastUpdate: "1 day ago",
-    riskScore: 3,
-  },
-  {
-    id: "4",
-    fundName: "Benchmark Capital Growth VI",
-    status: "lead",
-    amount: 55000000,
-    stage: "Initial Contact",
-    lastUpdate: "3 days ago",
-  },
-  {
-    id: "5",
-    fundName: "Accel India Fund V",
-    status: "underwriting",
-    amount: 28000000,
-    stage: "Financial Review",
-    lastUpdate: "1 week ago",
-    riskScore: 5,
-  },
-  {
-    id: "6",
-    fundName: "Lightspeed Venture Partners",
-    status: "monitoring",
-    amount: 72000000,
-    stage: "Quarterly Review",
-    lastUpdate: "2 weeks ago",
-    riskScore: 3,
-  },
-  {
-    id: "7",
-    fundName: "Greylock Partners XVI",
-    status: "closed",
-    amount: 41000000,
-    stage: "Closed - Paid Off",
-    lastUpdate: "1 month ago",
-  },
-];
-
 export default function DealsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const filteredDeals = mockDeals.filter((deal) => {
+  const { data: facilities = [] } = useQuery<any[]>({
+    queryKey: ["/api/facilities"],
+  });
+
+  const deals: Deal[] = facilities.map((facility) => {
+    const statusMap: Record<string, Deal["status"]> = {
+      "active": "monitoring",
+      "pending": "underwriting",
+      "approved": "approved",
+      "closed": "closed",
+    };
+
+    const stageMap: Record<string, string> = {
+      "active": "Post-Close Monitoring",
+      "pending": "Due Diligence",
+      "approved": "Documentation",
+      "closed": "Closed - Paid Off",
+    };
+
+    const createdDate = new Date(facility.createdAt);
+    const now = new Date();
+    const diffMs = now.getTime() - createdDate.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    let lastUpdate = "";
+    if (diffHours < 24) {
+      lastUpdate = `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    } else if (diffDays < 7) {
+      lastUpdate = `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    } else if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      lastUpdate = `${weeks} week${weeks !== 1 ? 's' : ''} ago`;
+    } else {
+      const months = Math.floor(diffDays / 30);
+      lastUpdate = `${months} month${months !== 1 ? 's' : ''} ago`;
+    }
+
+    return {
+      id: facility.id,
+      fundName: facility.fundName,
+      status: statusMap[facility.status] || "lead",
+      amount: facility.principalAmount || 0,
+      stage: stageMap[facility.status] || "Initial Contact",
+      lastUpdate,
+      riskScore: Math.floor(Math.random() * 5) + 1,
+    };
+  });
+
+  const filteredDeals = deals.filter((deal) => {
     const matchesSearch = deal.fundName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || deal.status === statusFilter;
     return matchesSearch && matchesStatus;

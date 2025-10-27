@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Target, RefreshCw, Download, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,82 +13,28 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-
-// TODO: Remove mock data
-const mockFunds: FundScore[] = [
-  {
-    id: "1",
-    fundName: "Accel Partners Growth VII",
-    fundSize: 850000000,
-    stage: "Fund IV-V (Mature)",
-    loanNeedScore: 9,
-    borrowerQualityScore: 9,
-    engagementScore: 8,
-    overallScore: 8.7,
-    recommendation: "high-priority",
-    linkedInUrl: "https://linkedin.com/company/accel",
-  },
-  {
-    id: "2",
-    fundName: "Index Ventures Tech Fund",
-    fundSize: 620000000,
-    stage: "Fund III-IV (Growth)",
-    loanNeedScore: 8,
-    borrowerQualityScore: 8,
-    engagementScore: 7,
-    overallScore: 7.7,
-    recommendation: "high-priority",
-    linkedInUrl: "https://linkedin.com/company/indexventures",
-  },
-  {
-    id: "3",
-    fundName: "FirstMark Capital VI",
-    fundSize: 475000000,
-    stage: "Fund IV-V (Mature)",
-    loanNeedScore: 7,
-    borrowerQualityScore: 8,
-    engagementScore: 6,
-    overallScore: 7.0,
-    recommendation: "medium-priority",
-  },
-  {
-    id: "4",
-    fundName: "Canaan Partners Bio Fund",
-    fundSize: 320000000,
-    stage: "Fund II-III (Established)",
-    loanNeedScore: 6,
-    borrowerQualityScore: 7,
-    engagementScore: 6,
-    overallScore: 6.3,
-    recommendation: "medium-priority",
-  },
-  {
-    id: "5",
-    fundName: "NEA Venture Partners",
-    fundSize: 1200000000,
-    stage: "Fund V+ (Very Mature)",
-    loanNeedScore: 5,
-    borrowerQualityScore: 9,
-    engagementScore: 5,
-    overallScore: 6.3,
-    recommendation: "monitor",
-  },
-  {
-    id: "6",
-    fundName: "Emergence Capital IV",
-    fundSize: 280000000,
-    stage: "Fund I-II (Early)",
-    loanNeedScore: 4,
-    borrowerQualityScore: 6,
-    engagementScore: 5,
-    overallScore: 5.0,
-    recommendation: "low-priority",
-  },
-];
+import type { Prospect } from "@shared/schema";
 
 export default function OriginationPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+
+  const { data: prospectsData = [] } = useQuery<Prospect[]>({
+    queryKey: ["/api/prospects"],
+  });
+
+  const funds: FundScore[] = prospectsData.map((prospect) => ({
+    id: prospect.id,
+    fundName: prospect.fundName,
+    fundSize: prospect.fundSize || 0,
+    stage: prospect.stage || "Unknown",
+    loanNeedScore: prospect.loanNeedScore || 0,
+    borrowerQualityScore: prospect.borrowerQualityScore || 0,
+    engagementScore: prospect.engagementScore || 0,
+    overallScore: prospect.overallScore || 0,
+    recommendation: (prospect.recommendation as FundScore["recommendation"]) || "monitor",
+    linkedInUrl: prospect.linkedInUrl || undefined,
+  }));
 
   const handleRunAnalysis = () => {
     setIsAnalyzing(true);
@@ -97,13 +44,13 @@ export default function OriginationPage() {
     }, 2000);
   };
 
-  const filteredFunds = mockFunds.filter((fund) => {
+  const filteredFunds = funds.filter((fund) => {
     if (priorityFilter === "all") return true;
     return fund.recommendation === priorityFilter;
   });
 
-  const highPriorityCount = mockFunds.filter(f => f.recommendation === "high-priority").length;
-  const mediumPriorityCount = mockFunds.filter(f => f.recommendation === "medium-priority").length;
+  const highPriorityCount = funds.filter(f => f.recommendation === "high-priority").length;
+  const mediumPriorityCount = funds.filter(f => f.recommendation === "medium-priority").length;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -135,7 +82,7 @@ export default function OriginationPage() {
             <p className="text-sm font-medium text-muted-foreground">Funds Identified</p>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold font-mono tabular-nums">{mockFunds.length}</p>
+            <p className="text-2xl font-bold font-mono tabular-nums">{funds.length}</p>
             <p className="text-xs text-muted-foreground mt-1">This quarter</p>
           </CardContent>
         </Card>
