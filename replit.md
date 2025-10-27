@@ -98,3 +98,30 @@ Preferred communication style: Simple, everyday language.
 - Add regression tests for email collision scenarios in user authentication
 - Extend analytics integration tests to validate API response shapes
 - Monitor production logs for auth edge cases (e.g., missing email from OIDC providers)
+
+## Mock Data Replacement Progress (October 2025)
+
+### Priority 0 Fix: Replace Mock Data with Real API Calls
+
+**Completed (2/5 pages):**
+1. ✅ **monitoring.tsx** - Fully connected to real APIs
+   - Added 3 new monitoring API endpoints: GET /api/monitoring/covenants, GET /api/monitoring/health-scores, GET /api/monitoring/stats
+   - Replaced all mock covenants, health scores, and alerts with real data from backend
+   - Implemented mutations for acknowledging alerts and running manual covenant checks
+   - All stats (compliant/warning/breach counts and percentages) now use real data
+
+2. ✅ **dashboard.tsx** - Partially connected to real APIs
+   - KPI cards (Total Portfolio, Active Deals, Avg Deal Size, Risk Alerts) now use real data from /api/analytics/portfolio-summary
+   - Pipeline health (Lead Identification, Underwriting, Approved, Monitoring) now shows real counts from prospects and facilities
+   - Recent deals table now uses real facility data
+   - **REMAINING**: Portfolio chart still uses mock time-series data (only last point is real)
+
+**Remaining Work (3/5 pages):**
+3. ⏳ **deals.tsx** - Needs to fetch from /api/facilities and convert to deals format
+4. ⏳ **deal-pipeline.tsx** - Needs to fetch from /api/deals filtered by stage  
+5. ⏳ **origination.tsx** - Needs to fetch from /api/prospects
+
+**Backend API Enhancements Needed:**
+- Add time-series portfolio data endpoint for historical portfolio chart
+- Add canonical stage and risk score fields to facilities API to avoid client-side synthesis
+- Implement predictive breach model endpoint for monitoring predictions panel (currently empty)

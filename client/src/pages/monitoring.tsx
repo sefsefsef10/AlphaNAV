@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Calendar, Play, Download, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,158 +16,73 @@ import { RiskAlertPanel, RiskAlert } from "@/components/risk-alert-panel";
 import { PredictiveBreachPanel, BreachPrediction } from "@/components/predictive-breach-panel";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-
-// TODO: Remove mock data
-const mockCovenants: Covenant[] = [
-  {
-    id: "1",
-    dealName: "Sequoia Capital Fund XII",
-    covenantType: "Debt/EBITDA Ratio",
-    threshold: "≤ 3.5x",
-    currentValue: "3.2x",
-    status: "compliant",
-    lastChecked: "2 hours ago",
-  },
-  {
-    id: "2",
-    dealName: "Tiger Global Private Investment",
-    covenantType: "Interest Coverage",
-    threshold: "≥ 2.0x",
-    currentValue: "1.8x",
-    status: "warning",
-    lastChecked: "5 hours ago",
-  },
-  {
-    id: "3",
-    dealName: "Lightspeed Venture Partners",
-    covenantType: "Debt/EBITDA Ratio",
-    threshold: "≤ 4.0x",
-    currentValue: "4.3x",
-    status: "breach",
-    lastChecked: "1 day ago",
-  },
-];
-
-const mockHealthScores: HealthMetric[] = [
-  {
-    id: "1",
-    dealName: "Sequoia Capital Fund XII",
-    score: 85,
-    trend: "up",
-    category: "excellent",
-    lastUpdate: "Updated 2 hours ago",
-  },
-  {
-    id: "2",
-    dealName: "Tiger Global Private Investment",
-    score: 72,
-    trend: "stable",
-    category: "good",
-    lastUpdate: "Updated 5 hours ago",
-  },
-  {
-    id: "3",
-    dealName: "Andreessen Horowitz Bio Fund",
-    score: 68,
-    trend: "down",
-    category: "good",
-    lastUpdate: "Updated 1 day ago",
-  },
-  {
-    id: "4",
-    dealName: "Lightspeed Venture Partners",
-    score: 45,
-    trend: "down",
-    category: "fair",
-    lastUpdate: "Updated 1 day ago",
-  },
-];
-
-const mockAlerts: RiskAlert[] = [
-  {
-    id: "1",
-    dealName: "Lightspeed Venture Partners",
-    severity: "critical",
-    message: "Debt/EBITDA ratio exceeded covenant threshold (4.3x vs 4.0x limit)",
-    timestamp: "1 day ago",
-    acknowledged: false,
-  },
-  {
-    id: "2",
-    dealName: "Tiger Global Private Investment",
-    severity: "high",
-    message: "Interest coverage approaching threshold (1.8x vs 2.0x minimum)",
-    timestamp: "5 hours ago",
-    acknowledged: false,
-  },
-  {
-    id: "3",
-    dealName: "Benchmark Capital Growth VI",
-    severity: "medium",
-    message: "Quarterly financial report overdue by 3 days",
-    timestamp: "3 days ago",
-    acknowledged: true,
-  },
-];
-
-const mockPredictions: BreachPrediction[] = [
-  {
-    id: "pred-1",
-    dealName: "Tiger Global Private Investment",
-    covenantType: "Interest Coverage Ratio",
-    currentValue: "1.8x",
-    threshold: "≥ 2.0x",
-    predictedValue: "1.6x",
-    breachProbability: 78,
-    timeframe: "Q3 2024",
-    riskLevel: "high",
-    notificationSent: false,
-  },
-  {
-    id: "pred-2",
-    dealName: "Benchmark Capital Growth VI",
-    covenantType: "Debt/EBITDA Ratio",
-    currentValue: "3.8x",
-    threshold: "≤ 4.0x",
-    predictedValue: "4.2x",
-    breachProbability: 65,
-    timeframe: "Q4 2024",
-    riskLevel: "medium",
-    notificationSent: false,
-  },
-  {
-    id: "pred-3",
-    dealName: "Greylock Partners XIV",
-    covenantType: "Minimum Cash Balance",
-    currentValue: "$15.2M",
-    threshold: "≥ $12M",
-    predictedValue: "$11.5M",
-    breachProbability: 42,
-    timeframe: "Q3 2024",
-    riskLevel: "medium",
-    notificationSent: false,
-  },
-];
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function MonitoringPage() {
-  const [alerts, setAlerts] = useState(mockAlerts);
-  const [predictions, setPredictions] = useState(mockPredictions);
   const [isRunning, setIsRunning] = useState(false);
   const { toast } = useToast();
 
+  // Fetch covenants data
+  const { data: covenants = [], isLoading: covenantsLoading } = useQuery<Covenant[]>({
+    queryKey: ["/api/monitoring/covenants"],
+  });
+
+  // Fetch health scores
+  const { data: healthScores = [], isLoading: healthLoading } = useQuery<HealthMetric[]>({
+    queryKey: ["/api/monitoring/health-scores"],
+  });
+
+  // Fetch monitoring stats
+  const { data: stats } = useQuery<{
+    compliantDeals: number;
+    compliantPercentage: number;
+    warningDeals: number;
+    warningPercentage: number;
+    breachDeals: number;
+    breachPercentage: number;
+    totalCovenants: number;
+  }>({
+    queryKey: ["/api/monitoring/stats"],
+  });
+
+  // Fetch notifications for alerts
+  const { data: notifications = [] } = useQuery<any[]>({
+    queryKey: ["/api/notifications"],
+  });
+
+  // Convert notifications to risk alerts format
+  const alerts: RiskAlert[] = notifications
+    .filter((n: any) => n.type === "covenant_warning" || n.type === "covenant_breach")
+    .map((n: any) => ({
+      id: n.id,
+      dealName: n.title,
+      severity: n.type === "covenant_breach" ? "critical" : n.type === "covenant_warning" ? "high" : "medium",
+      message: n.message,
+      timestamp: new Date(n.createdAt).toLocaleDateString(),
+      acknowledged: n.isRead,
+    }));
+
+  // Mutation for acknowledging alerts
+  const acknowledgeMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      const res = await apiRequest("PATCH", `/api/notifications/${notificationId}/read`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    },
+  });
+
+  // Mock predictions (TODO: Implement prediction model in backend)
+  const predictions: BreachPrediction[] = [];
+
   const handleAcknowledge = (id: string) => {
-    setAlerts(prev => prev.map(alert => 
-      alert.id === id ? { ...alert, acknowledged: true } : alert
-    ));
+    acknowledgeMutation.mutate(id);
   };
 
   const handleSendWarning = (id: string) => {
     const prediction = predictions.find(p => p.id === id);
     if (!prediction) return;
-
-    setPredictions(prev => prev.map(p => 
-      p.id === id ? { ...p, notificationSent: true } : p
-    ));
 
     toast({
       title: "Warning Sent Successfully",
@@ -183,12 +99,31 @@ export default function MonitoringPage() {
     });
   };
 
+  // Mutation for running manual monitoring checks
+  const runMonitoringMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/covenants/check-all-due");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/monitoring/covenants"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/monitoring/health-scores"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/monitoring/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      toast({
+        title: "Monitoring Checks Complete",
+        description: "All covenant compliance checks have been run successfully.",
+      });
+    },
+  });
+
   const handleRunMonitoring = () => {
     setIsRunning(true);
-    console.log("Running quarterly monitoring checks...");
-    setTimeout(() => {
-      setIsRunning(false);
-    }, 2000);
+    runMonitoringMutation.mutate(undefined, {
+      onSettled: () => {
+        setIsRunning(false);
+      },
+    });
   };
 
   return (
@@ -235,9 +170,9 @@ export default function MonitoringPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline justify-between">
-              <p className="text-2xl font-bold font-mono tabular-nums">18</p>
+              <p className="text-2xl font-bold font-mono tabular-nums" data-testid="stat-compliant-deals">{stats?.compliantDeals || 0}</p>
               <Badge variant="outline" className="bg-success/20 text-success border-success/50">
-                75%
+                {stats?.compliantPercentage || 0}%
               </Badge>
             </div>
           </CardContent>
@@ -248,9 +183,9 @@ export default function MonitoringPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline justify-between">
-              <p className="text-2xl font-bold font-mono tabular-nums">4</p>
+              <p className="text-2xl font-bold font-mono tabular-nums" data-testid="stat-warning-deals">{stats?.warningDeals || 0}</p>
               <Badge variant="outline" className="bg-warning/20 text-warning border-warning/50">
-                17%
+                {stats?.warningPercentage || 0}%
               </Badge>
             </div>
           </CardContent>
@@ -261,9 +196,9 @@ export default function MonitoringPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline justify-between">
-              <p className="text-2xl font-bold font-mono tabular-nums">2</p>
+              <p className="text-2xl font-bold font-mono tabular-nums" data-testid="stat-breach-deals">{stats?.breachDeals || 0}</p>
               <Badge variant="outline" className="bg-danger/20 text-danger border-danger/50">
-                8%
+                {stats?.breachPercentage || 0}%
               </Badge>
             </div>
           </CardContent>
@@ -277,8 +212,8 @@ export default function MonitoringPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
-          <CovenantTracker covenants={mockCovenants} />
-          <HealthScoreCard metrics={mockHealthScores} />
+          <CovenantTracker covenants={covenants} />
+          <HealthScoreCard metrics={healthScores} />
         </div>
 
         <div className="space-y-6">

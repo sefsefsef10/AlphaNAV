@@ -1853,6 +1853,142 @@ router.post("/covenants/check-all-due", async (req: Request, res: Response) => {
   }
 });
 
+// Monitoring Dashboard Routes
+// GET /api/monitoring/covenants
+// Get all covenants across all facilities with aggregated data
+router.get("/monitoring/covenants", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Get all facilities with their covenants
+    const allFacilities = await db.select().from(facilities).orderBy(facilities.createdAt);
+    const allCovenants = await db.select().from(covenants).orderBy(covenants.createdAt);
+
+    // Map covenants to facilities and format for frontend
+    const covenantData = allCovenants.map(covenant => {
+      const facility = allFacilities.find(f => f.id === covenant.facilityId);
+      const operatorSymbol = covenant.thresholdOperator === "less_than" || covenant.thresholdOperator === "less_than_equal" ? "≤" : "≥";
+      return {
+        id: covenant.id,
+        dealName: facility?.fundName || "Unknown Fund",
+        covenantType: covenant.covenantType,
+        threshold: `${operatorSymbol} ${covenant.thresholdValue}`,
+        currentValue: `${covenant.currentValue ?? "N/A"}`,
+        status: covenant.status,
+        lastChecked: covenant.lastChecked ? `${Math.round((Date.now() - new Date(covenant.lastChecked).getTime()) / (1000 * 60 * 60))} hours ago` : "Never",
+      };
+    });
+
+    res.json(covenantData);
+  } catch (error) {
+    console.error("Get monitoring covenants error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch monitoring covenants",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/monitoring/health-scores
+// Get facility health scores and metrics
+router.get("/monitoring/health-scores", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const allFacilities = await db.select().from(facilities).orderBy(facilities.createdAt);
+
+    // Calculate health scores for each facility
+    const healthScores = await Promise.all(allFacilities.map(async (facility) => {
+      // Get covenants for this facility
+      const facilityCovenants = await db.select()
+        .from(covenants)
+        .where(eq(covenants.facilityId, facility.id));
+
+      // Calculate health score based on covenant compliance
+      const totalCovenants = facilityCovenants.length;
+      const compliantCovenants = facilityCovenants.filter(c => c.status === "compliant").length;
+      const warningCovenants = facilityCovenants.filter(c => c.status === "warning").length;
+      const breachCovenants = facilityCovenants.filter(c => c.status === "breach").length;
+
+      // Score calculation: 100 for compliant, 50 for warning, 0 for breach
+      let score = 75; // Default score
+      if (totalCovenants > 0) {
+        score = Math.round((compliantCovenants * 100 + warningCovenants * 50) / totalCovenants);
+      }
+
+      // Determine trend (simplified - based on recent checks)
+      let trend: "up" | "down" | "stable" = "stable";
+      if (warningCovenants > 0 || breachCovenants > 0) {
+        trend = "down";
+      } else if (compliantCovenants === totalCovenants) {
+        trend = "up";
+      }
+
+      // Determine category
+      let category: "excellent" | "good" | "fair" | "poor";
+      if (score >= 85) category = "excellent";
+      else if (score >= 70) category = "good";
+      else if (score >= 50) category = "fair";
+      else category = "poor";
+
+      return {
+        id: facility.id,
+        dealName: facility.fundName,
+        score,
+        trend,
+        category,
+        lastUpdate: `Updated ${Math.round((Date.now() - new Date(facility.updatedAt).getTime()) / (1000 * 60 * 60))} hours ago`,
+      };
+    }));
+
+    res.json(healthScores);
+  } catch (error) {
+    console.error("Get health scores error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch health scores",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/monitoring/stats
+// Get monitoring statistics
+router.get("/monitoring/stats", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const allFacilities = await db.select().from(facilities);
+    const allCovenants = await db.select().from(covenants);
+
+    const compliantCount = allCovenants.filter(c => c.status === "compliant").length;
+    const warningCount = allCovenants.filter(c => c.status === "warning").length;
+    const breachCount = allCovenants.filter(c => c.status === "breach").length;
+    const total = allCovenants.length;
+
+    res.json({
+      compliantDeals: allFacilities.filter(f => f.status === "active").length,
+      compliantPercentage: total > 0 ? Math.round((compliantCount / total) * 100) : 0,
+      warningDeals: warningCount,
+      warningPercentage: total > 0 ? Math.round((warningCount / total) * 100) : 0,
+      breachDeals: breachCount,
+      breachPercentage: total > 0 ? Math.round((breachCount / total) * 100) : 0,
+      totalCovenants: total,
+    });
+  } catch (error) {
+    console.error("Get monitoring stats error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch monitoring stats",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
 // Draw Request Routes
 // POST /api/facilities/:facilityId/draw-requests
 // Create a new draw request for a facility (GP role only)
