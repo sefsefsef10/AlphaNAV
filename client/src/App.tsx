@@ -48,6 +48,7 @@ import ProspectDetailPage from "@/pages/operations/prospect-detail";
 import UnderwritingDashboardPage from "@/pages/operations/underwriting";
 import FacilitiesPage from "@/pages/operations/facilities";
 import CovenantMonitoringPage from "@/pages/operations/covenant-monitoring";
+import AccuracyMetricsPage from "@/pages/operations/accuracy-metrics";
 import NotFound from "@/pages/not-found";
 import MarketingHome from "@/pages/marketing/home";
 import SolutionsPage from "@/pages/marketing/solutions";
@@ -225,6 +226,7 @@ function AppContent() {
               <Route path="/operations/underwriting" component={UnderwritingDashboardPage} />
               <Route path="/operations/facilities" component={FacilitiesPage} />
               <Route path="/operations/covenant-monitoring" component={CovenantMonitoringPage} />
+              <Route path="/operations/accuracy-metrics" component={AccuracyMetricsPage} />
               <Route path="/advisor" component={AdvisorDashboard} />
               <Route path="/advisor/submit-deal" component={AdvisorSubmitDeal} />
               <Route path="/advisor/active-rfps" component={AdvisorActiveRFPs} />

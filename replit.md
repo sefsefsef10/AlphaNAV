@@ -83,7 +83,10 @@ Preferred communication style: Simple, everyday language.
 - **Accuracy Calculation Service** (server/services/aiValidation.ts): String comparison with Levenshtein distance algorithm, number comparison with 10% tolerance, sector accuracy percentage calculation, field-by-field accuracy tracking
 - **Weighted Accuracy Scoring**: 20% fundName, 20% fundSize, 15% vintage, 10% portfolioCount, 10% sectors, 15% GP info, 7% strategy/geography/contact
 - **95% Accuracy Threshold**: Validation passes only when overall accuracy >= 95%
-- **Confidence Threshold Enforcement**: Prospect creation rejects AI extractions with <95% confidence (integrated at line 369-376 in server/routes.ts)
+- **Confidence Threshold Enforcement**: Prospect creation rejects AI extractions below confidence threshold (integrated at line 368-378 in server/routes.ts)
+  - **Configurable via Environment Variable**: AI_CONFIDENCE_THRESHOLD (default: 95)
+  - Set to lower value (e.g., 90) for more permissive intake, or higher (e.g., 98) for stricter quality control
+- **Accuracy Metrics Dashboard**: Frontend page at /operations/accuracy-metrics displays AI performance trends, field-level accuracy, validation run history
 - **Validation API Endpoints**: POST /api/automation/validate-extraction, POST /api/automation/validate-all, GET /api/automation/accuracy-metrics
 
 ### 10-Point Eligibility Scoring System

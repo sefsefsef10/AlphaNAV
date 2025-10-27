@@ -15,6 +15,7 @@ import {
   leads,
   subscriptions,
   invoices,
+  validationRuns,
   type InsertProspect,
   type InsertUploadedDocument,
   type InsertFacility,
@@ -362,13 +363,15 @@ router.post("/prospects/from-extraction", async (req: Request, res: Response) =>
 
     const extraction = document.extractedData as ExtractionResult;
 
-    // AUTOMATION: Enforce 95% confidence threshold
-    if (extraction.confidence.overall < 95) {
+    // AUTOMATION: Enforce confidence threshold (configurable via AI_CONFIDENCE_THRESHOLD env var)
+    const confidenceThreshold = parseInt(process.env.AI_CONFIDENCE_THRESHOLD || '95', 10);
+    if (extraction.confidence.overall < confidenceThreshold) {
       return res.status(400).json({
         error: "Extraction confidence too low",
-        details: `AI extraction confidence (${extraction.confidence.overall}%) below 95% threshold. Manual review required.`,
+        details: `AI extraction confidence (${extraction.confidence.overall}%) below ${confidenceThreshold}% threshold. Manual review required.`,
         confidence: extraction.confidence,
         extraction: extraction,
+        threshold: confidenceThreshold,
       });
     }
 
@@ -753,7 +756,7 @@ router.get("/automation/accuracy-metrics", async (req: Request, res: Response) =
 
     const recentRuns = await db.select()
       .from(validationRuns)
-      .orderBy(validationRuns.runAt)
+      .orderBy(validationRuns.createdAt)
       .limit(100);
 
     if (recentRuns.length === 0) {
@@ -765,8 +768,10 @@ router.get("/automation/accuracy-metrics", async (req: Request, res: Response) =
       });
     }
 
-    const accuracies = recentRuns.map(r => parseFloat(r.accuracyOverall));
-    const passed = recentRuns.filter(r => parseFloat(r.accuracyOverall) >= 95).length;
+    const accuracies = recentRuns
+      .filter(r => r.accuracyOverall !== null)
+      .map(r => parseFloat(r.accuracyOverall!));
+    const passed = recentRuns.filter(r => r.accuracyOverall !== null && parseFloat(r.accuracyOverall!) >= 95).length;
 
     res.json({
       totalRuns: recentRuns.length,

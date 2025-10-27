@@ -44,6 +44,11 @@ const operationsNavItems = [
     icon: Activity,
   },
   {
+    title: "AI Accuracy",
+    url: "/operations/accuracy-metrics",
+    icon: Target,
+  },
+  {
     title: "Analytics",
     url: "/analytics",
     icon: BarChart3,
