@@ -567,14 +567,21 @@ router.get("/facilities/:id", async (req: Request, res: Response) => {
 
     const { id } = req.params;
 
-    const [facility] = await db.select()
-      .from(facilities)
-      .where(eq(facilities.id, id))
-      .limit(1);
+    // SECURITY: Validate facility ownership for GP users
+    const ownershipCheck = await validateFacilityOwnership(
+      id,
+      req.user,
+      "view this facility"
+    );
 
-    if (!facility) {
-      return res.status(404).json({ error: "Facility not found" });
+    if (!ownershipCheck.success) {
+      return res.status(ownershipCheck.status).json({ 
+        error: ownershipCheck.error,
+        message: ownershipCheck.message 
+      });
     }
+
+    const facility = ownershipCheck.facility;
 
     // Get related covenants
     const facilityCovenants = await db.select()
@@ -768,15 +775,21 @@ router.post("/facilities/:id/generate-document", async (req: Request, res: Respo
     const { id } = req.params;
     const { documentType, config } = req.body;
 
-    // Get facility data
-    const [facility] = await db.select()
-      .from(facilities)
-      .where(eq(facilities.id, id))
-      .limit(1);
+    // SECURITY: Validate facility ownership for GP users
+    const ownershipCheck = await validateFacilityOwnership(
+      id,
+      req.user,
+      "generate legal documents"
+    );
 
-    if (!facility) {
-      return res.status(404).json({ error: "Facility not found" });
+    if (!ownershipCheck.success) {
+      return res.status(ownershipCheck.status).json({ 
+        error: ownershipCheck.error,
+        message: ownershipCheck.message 
+      });
     }
+
+    const facility = ownershipCheck.facility;
 
     // Import document generator functions
     const { generateLoanAgreement, generateTermSheet, generateComplianceReport } = 
@@ -1486,6 +1499,21 @@ router.post("/facilities/:facilityId/check-covenants", async (req: Request, res:
     }
 
     const { facilityId } = req.params;
+
+    // SECURITY: Validate facility ownership for GP users
+    const ownershipCheck = await validateFacilityOwnership(
+      facilityId,
+      req.user,
+      "check covenant compliance"
+    );
+
+    if (!ownershipCheck.success) {
+      return res.status(ownershipCheck.status).json({ 
+        error: ownershipCheck.error,
+        message: ownershipCheck.message 
+      });
+    }
+
     const results = await manualCovenantCheck(facilityId, req.user.id);
     
     res.json({
@@ -1511,6 +1539,21 @@ router.get("/facilities/:facilityId/covenant-summary", async (req: Request, res:
     }
 
     const { facilityId } = req.params;
+
+    // SECURITY: Validate facility ownership for GP users
+    const ownershipCheck = await validateFacilityOwnership(
+      facilityId,
+      req.user,
+      "view covenant compliance summary"
+    );
+
+    if (!ownershipCheck.success) {
+      return res.status(ownershipCheck.status).json({ 
+        error: ownershipCheck.error,
+        message: ownershipCheck.message 
+      });
+    }
+
     const summary = await getCovenantBreachSummary(facilityId);
     
     res.json(summary);
@@ -1901,14 +1944,18 @@ router.get("/facilities/:facilityId/cash-flows", async (req: Request, res: Respo
 
     const { facilityId } = req.params;
 
-    // Validate facility exists
-    const [facility] = await db.select()
-      .from(facilities)
-      .where(eq(facilities.id, facilityId))
-      .limit(1);
+    // SECURITY: Validate facility ownership for GP users
+    const ownershipCheck = await validateFacilityOwnership(
+      facilityId,
+      req.user,
+      "view payment schedules"
+    );
 
-    if (!facility) {
-      return res.status(404).json({ error: "Facility not found" });
+    if (!ownershipCheck.success) {
+      return res.status(ownershipCheck.status).json({ 
+        error: ownershipCheck.error,
+        message: ownershipCheck.message 
+      });
     }
 
     const facilityCashFlows = await db.select()
@@ -1964,6 +2011,20 @@ router.get("/cash-flows/:id", async (req: Request, res: Response) => {
 
     if (!cashFlow) {
       return res.status(404).json({ error: "Cash flow not found" });
+    }
+
+    // SECURITY: Validate facility ownership for GP users
+    const ownershipCheck = await validateFacilityOwnership(
+      cashFlow.facilityId,
+      req.user,
+      "view this payment"
+    );
+
+    if (!ownershipCheck.success) {
+      return res.status(ownershipCheck.status).json({ 
+        error: ownershipCheck.error,
+        message: ownershipCheck.message 
+      });
     }
 
     res.json(cashFlow);
