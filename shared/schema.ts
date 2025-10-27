@@ -55,8 +55,65 @@ export const insertOnboardingSessionSchema = createInsertSchema(onboardingSessio
 export type InsertOnboardingSession = z.infer<typeof insertOnboardingSessionSchema>;
 export type OnboardingSession = typeof onboardingSessions.$inferSelect;
 
+// Batch upload tracking
+export const uploadedDocumentBatches = pgTable("uploaded_document_batches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  uploadedBy: varchar("uploaded_by").notNull(),
+  sessionId: varchar("session_id"), // Optional: link to onboarding session
+  facilityId: varchar("facility_id"), // Optional: link to facility
+  prospectId: varchar("prospect_id"), // Optional: link to prospect
+  totalFiles: integer("total_files").notNull(),
+  processedFiles: integer("processed_files").notNull().default(0),
+  failedFiles: integer("failed_files").notNull().default(0),
+  status: text("status").notNull().default("uploading"), // uploading, processing, completed, failed
+  metadata: jsonb("metadata"), // Additional batch metadata
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertUploadedDocumentBatchSchema = createInsertSchema(uploadedDocumentBatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUploadedDocumentBatch = z.infer<typeof insertUploadedDocumentBatchSchema>;
+export type UploadedDocumentBatch = typeof uploadedDocumentBatches.$inferSelect;
+
+// Document processing jobs for async queue
+export const documentProcessingJobs = pgTable("document_processing_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id"),
+  documentId: varchar("document_id").notNull(),
+  jobType: text("job_type").notNull(), // extract_data, parse_legal, extract_companies
+  status: text("status").notNull().default("queued"), // queued, processing, completed, failed, cancelled
+  priority: integer("priority").notNull().default(5), // 1-10, higher = more urgent
+  attempts: integer("attempts").notNull().default(0),
+  maxAttempts: integer("max_attempts").notNull().default(3),
+  processingStartedAt: timestamp("processing_started_at"),
+  processingCompletedAt: timestamp("processing_completed_at"),
+  result: jsonb("result"),
+  error: text("error"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_processing_jobs_batch_id").on(table.batchId),
+  index("idx_processing_jobs_document_id").on(table.documentId),
+  index("idx_processing_jobs_status").on(table.status),
+]);
+
+export const insertDocumentProcessingJobSchema = createInsertSchema(documentProcessingJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDocumentProcessingJob = z.infer<typeof insertDocumentProcessingJobSchema>;
+export type DocumentProcessingJob = typeof documentProcessingJobs.$inferSelect;
+
 export const uploadedDocuments = pgTable("uploaded_documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  batchId: varchar("batch_id"), // Link to batch if part of batch upload
   sessionId: varchar("session_id"), // For onboarding documents
   facilityId: varchar("facility_id"), // For facility documents
   prospectId: varchar("prospect_id"), // For prospect documents
@@ -65,15 +122,19 @@ export const uploadedDocuments = pgTable("uploaded_documents", {
   fileType: text("file_type").notNull(),
   fileSize: integer("file_size").notNull(),
   storageUrl: text("storage_url").notNull(),
+  checksum: text("checksum"), // SHA256 checksum for deduplication
+  storageProvider: text("storage_provider").notNull().default("replit"), // replit, s3, gcs
   extractedData: jsonb("extracted_data"),
   extractionConfidence: integer("extraction_confidence"), // 0-100 confidence score
   processingStatus: text("processing_status").notNull().default("pending"), // pending, processing, completed, failed
   processingError: text("processing_error"), // Error message if failed
   uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
 }, (table) => [
+  index("idx_uploaded_documents_batch_id").on(table.batchId),
   index("idx_uploaded_documents_session_id").on(table.sessionId),
   index("idx_uploaded_documents_facility_id").on(table.facilityId),
   index("idx_uploaded_documents_prospect_id").on(table.prospectId),
+  index("idx_uploaded_documents_checksum").on(table.checksum),
 ]);
 
 export const insertUploadedDocumentSchema = createInsertSchema(uploadedDocuments).omit({
