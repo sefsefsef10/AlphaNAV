@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { checkAllDueCovenants } from "./services/covenantMonitoring";
 import { syncAllActiveFundAdmins } from "./services/fundAdminSync";
+import { cleanupExpiredMFASessions } from "./services/mfaService";
 
 /**
  * Initialize all scheduled jobs for AlphaNAV
@@ -73,16 +74,33 @@ export function initializeScheduler() {
     }
   });
 
+  // Cleanup expired MFA sessions hourly
+  // "0 * * * *" = Every hour at minute 0
+  const mfaCleanupJob = cron.schedule("0 * * * *", async () => {
+    console.log("Running MFA session cleanup...");
+    
+    try {
+      const cleaned = await cleanupExpiredMFASessions();
+      if (cleaned > 0) {
+        console.log(`MFA cleanup: Removed ${cleaned} expired sessions`);
+      }
+    } catch (error) {
+      console.error("MFA cleanup job failed:", error);
+    }
+  });
+
   console.log("✓ Automated jobs scheduled:");
   console.log("  - Covenant monitoring: Every day at 2:00 AM");
   console.log("  - Business hours covenant check: Mon-Fri at 8am, 12pm, 4pm");
   console.log("  - Fund admin NAV sync: Every day at 3:00 AM");
+  console.log("  - MFA session cleanup: Every hour");
 
   // Return job objects for potential manual control
   return {
     covenantMonitoringJob,
     frequentCheckJob,
     fundAdminSyncJob,
+    mfaCleanupJob,
   };
 }
 
@@ -94,5 +112,6 @@ export function stopScheduler(jobs: ReturnType<typeof initializeScheduler>) {
   jobs.covenantMonitoringJob.stop();
   jobs.frequentCheckJob.stop();
   jobs.fundAdminSyncJob.stop();
+  jobs.mfaCleanupJob.stop();
   console.log("✓ All scheduled jobs stopped");
 }
