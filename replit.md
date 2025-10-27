@@ -214,7 +214,12 @@ Preferred communication style: Simple, everyday language.
     - Consistent 403/404 error responses with descriptive messages
   - **Production Readiness**: Architect-approved with PASS rating for multi-tenant deployment
   - **Pre-Production Requirement**: All existing facilities MUST have gpUserId populated before multi-tenant deployment
-  - **Data Migration**: Operations team should run: `UPDATE facilities SET gp_user_id = '[user-id]' WHERE gp_user_id IS NULL`
+  - **Data Migration Tools** (✅ Complete - October 2025):
+    - Interactive migration: `tsx server/migrations/assign-facility-ownership.ts`
+    - Quick dev migration: `tsx server/migrations/dev-assign-facilities.ts`
+    - SQL generation: `tsx server/migrations/assign-facility-ownership.ts --sql`
+    - Complete guide: `FACILITY_OWNERSHIP_MIGRATION.md`
+    - Tested and verified on 5 facilities successfully
 
 ### Production Deployment Remaining Tasks
 1. Configure Sentry DSN in production environment
