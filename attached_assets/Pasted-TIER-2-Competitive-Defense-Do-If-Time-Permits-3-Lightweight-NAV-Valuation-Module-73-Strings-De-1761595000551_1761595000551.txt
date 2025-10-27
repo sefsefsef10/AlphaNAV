@@ -1,0 +1,130 @@
+TIER 2: Competitive Defense (Do If Time Permits)
+3. Lightweight NAV Valuation Module (73 Strings Defense)
+Why It Matters:
+
+73 Strings' biggest advantage is their 73 Value valuation suite
+You don't need to match them, but absence is a red flag for enterprise buyers
+NAV lending requires quarterly NAV marks—you should facilitate this
+What to Build:
+
+Simplified Valuation Workflow (NOT full DCF like 73 Strings)
+
+Features:
+✅ Mark-to-Market NAV Tracking
+   - Upload quarterly NAV statements (PDF/Excel)
+   - AI extraction of NAV value, date, portfolio company count
+   - Historical NAV trend chart
+
+✅ LTV Auto-Recalculation
+   - New NAV: $180M (down from $200M)
+   - Outstanding loan: $10M
+   - New LTV: 5.6% (was 5.0%)
+   - Covenant status: ✅ Compliant (threshold: 15%)
+
+✅ Portfolio Company Roll-Up
+   - Extract individual holding values
+   - Flag concentration risk (single holding >20% of NAV)
+   - Alert if top 3 holdings declined >30%
+
+DON'T Build:
+❌ Full DCF modeling (73 Strings territory)
+❌ Comp analysis (not needed for NAV lending)
+❌ Waterfall calculations (GP/LP splits)
+Implementation:
+
+Effort: 25-35 hours
+Tech: Extend portfolioExtraction.ts service
+Schema: Already exists (portfolio_holdings table)
+Business Impact:
+
+Removes objection: "You can't track NAV values over time"
+Enables automated LTV covenant monitoring (your core value prop)
+Does NOT compete with 73 Strings (they do full valuations, you do NAV tracking)
+Verdict: 🟡 NICE TO HAVE - Closes a gap but not critical for differentiation.
+
+4. Market Intelligence Dashboard (Advisor Power Tool)
+Current Status: Schema exists (market_intelligence table) but NO UI IMPLEMENTATION
+
+Why It Matters:
+
+Advisors need "What's market pricing?" to negotiate for GPs
+73 Strings doesn't serve advisors (you do)
+Network effects: More deals → better market data → more advisors
+What to Build:
+
+Advisor Market Intelligence Page
+
+Real-Time Benchmarks (Anonymized):
+1. NAV Lending Pricing Trends
+   - Median LTV by fund size: $100M-$200M → 12% LTV
+   - Interest rate spread: SOFR + 6.5% - 8.5%
+   - Avg time to term sheet: 6.2 days
+
+2. Deal Volume Tracker
+   - NAV facilities closed this quarter: 47 deals
+   - Total volume: $2.3B (up 18% YoY)
+   - By sector: Tech 32%, Healthcare 28%, Industrials 22%
+
+3. Lender Appetite Index
+   - "High appetite" lenders: 12 active
+   - Avg bid count per RFP: 4.3 lenders
+   - Win rate by lender (anonymized)
+
+4. Commission Benchmarking
+   - Median advisor fee: 62 bps
+   - Range: 50-75 bps
+   - By deal size: <$20M → 75 bps, >$50M → 50 bps
+
+Data Sources:
+- Internal: AlphaNAV deals (as volume grows)
+- External: Scrape press releases, PitchBook, Preqin
+- AI-enriched: Gemini extracts pricing from public filings
+Implementation:
+
+Effort: 20-30 hours (UI + data aggregation)
+Tech: Build client/src/pages/market-intelligence.tsx (file exists but may be incomplete)
+Schema: ✅ Already exists (market_intelligence table in schema.ts)
+Business Impact:
+
+Advisor stickiness: Advisors need market data to negotiate → platform lock-in
+Network effects: More advisors → more deals → better data
+Differentiation: 73 Strings has no advisor tools
+Verdict: 🟡 RECOMMEND IF TARGETING ADVISORS - High ROI for marketplace dynamics.
+
+5. 73 Strings API Integration (Complementary Positioning)
+Why It Matters:
+
+Positions AlphaNAV as "best-of-breed NAV module" vs. "73 Strings replacement"
+Enterprise customers often have 73 Strings already—let them use both
+Integration partnership → acquisition conversation
+What to Build:
+
+"Powered by 73 Strings" Integration
+
+Workflow:
+1. AlphaNAV customer also uses 73 Strings for broad portfolio monitoring
+2. When NAV deal closes, push facility data to 73 Strings via API
+3. 73 Strings monitors covenant compliance
+4. 73 Strings pushes breach alerts back to AlphaNAV
+5. AlphaNAV triggers lender notifications + GP communications
+
+Technical:
+✅ OAuth connection to 73 Strings API (if they offer public API)
+✅ Bi-directional sync: Facilities, covenants, NAV values
+✅ "Import from 73 Strings" button in AlphaNAV UI
+
+Strategic Benefit:
+- AlphaNAV: "We integrate with 73 Strings" (credibility)
+- 73 Strings: Sees AlphaNAV data → realizes acquisition opportunity
+Implementation:
+
+Effort: 40-60 hours (depends on 73 Strings API availability)
+Risk: 73 Strings may not have public API (enterprise only)
+Alternative: Build generic "Export to 73 Strings CSV" format
+Business Impact:
+
+Partnership path: Joint marketing → acquisition discussions
+Enterprise sales: "We work with your existing tools"
+Acquisition catalyst: 73 Strings sees your customer overlap
+Verdict: 🟢 STRATEGIC PLAY - Low effort if API exists, high acquisition signal.
+

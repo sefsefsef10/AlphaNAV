@@ -6,6 +6,7 @@ import { mfaSettings, mfaBackupCodes, mfaSessions } from "@shared/schema";
 import { eq, and, lt } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { encrypt, decrypt } from "./encryption";
 
 const APP_NAME = "AlphaNAV";
 const BACKUP_CODE_COUNT = 10;
@@ -84,13 +85,16 @@ export async function enableMFA(
 
   // Store MFA settings and backup codes in transaction
   await db.transaction(async (tx: NodePgDatabase<any>) => {
+    // Encrypt TOTP secret before storing
+    const encryptedSecret = encrypt(secret);
+    
     // Upsert MFA settings
     await tx
       .insert(mfaSettings)
       .values({
         userId,
         enabled: true,
-        totpSecret: secret,
+        totpSecret: encryptedSecret,
         backupPhone: backupPhone || null,
         smsEnabled: false,
       })
@@ -98,7 +102,7 @@ export async function enableMFA(
         target: mfaSettings.userId,
         set: {
           enabled: true,
-          totpSecret: secret,
+          totpSecret: encryptedSecret,
           backupPhone: backupPhone || null,
           updatedAt: new Date(),
         },
@@ -138,9 +142,12 @@ export async function verifyMFACode(
     return verifyBackupCode(userId, code, ipAddress, userAgent);
   }
 
+  // Decrypt TOTP secret before verification
+  const decryptedSecret = decrypt(settings.totpSecret);
+
   // Verify TOTP code
   const verified = speakeasy.totp.verify({
-    secret: settings.totpSecret,
+    secret: decryptedSecret,
     encoding: "base32",
     token: code,
     window: 2,
@@ -218,9 +225,14 @@ async function createMFASession(
 }
 
 /**
- * Verify MFA session is valid
+ * Verify MFA session is valid and matches client context
  */
-export async function verifyMFASession(sessionId: string, userId: string): Promise<boolean> {
+export async function verifyMFASession(
+  sessionId: string,
+  userId: string,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<boolean> {
   const [session] = await db
     .select()
     .from(mfaSessions)
@@ -238,6 +250,18 @@ export async function verifyMFASession(sessionId: string, userId: string): Promi
 
   // Check if expired
   if (new Date() > session.expiresAt) {
+    return false;
+  }
+
+  // Bind session to client context (IP + User-Agent)
+  // If either IP or User-Agent changes, invalidate the session
+  if (ipAddress && session.ipAddress && ipAddress !== session.ipAddress) {
+    console.warn(`MFA session ${sessionId}: IP mismatch (expected ${session.ipAddress}, got ${ipAddress})`);
+    return false;
+  }
+
+  if (userAgent && session.userAgent && userAgent !== session.userAgent) {
+    console.warn(`MFA session ${sessionId}: User-Agent mismatch`);
     return false;
   }
 

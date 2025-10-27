@@ -36,8 +36,10 @@ export async function requireMFA(
       });
     }
 
-    // Verify the MFA session is still valid
-    const sessionValid = await verifyMFASession(mfaSessionId, req.user.id);
+    // Verify the MFA session is still valid and matches client context
+    const ipAddress = req.ip;
+    const userAgent = req.get("user-agent");
+    const sessionValid = await verifyMFASession(mfaSessionId, req.user.id, ipAddress, userAgent);
 
     if (!sessionValid) {
       // Session expired or invalid, clear it

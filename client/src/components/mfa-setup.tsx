@@ -86,11 +86,15 @@ export function MFASetup() {
     },
   });
 
-  // Disable MFA
+  // Disable MFA (requires verification code)
+  const [disableCode, setDisableCode] = useState("");
+  const [showDisablePrompt, setShowDisablePrompt] = useState(false);
+  
   const disableMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (verificationCode: string) => {
       return apiRequest("/api/mfa/disable", {
         method: "POST",
+        body: JSON.stringify({ verificationCode }),
       });
     },
     onSuccess: () => {
@@ -112,11 +116,15 @@ export function MFASetup() {
     },
   });
 
-  // Regenerate backup codes
+  // Regenerate backup codes (requires verification code)
+  const [regenerateCode, setRegenerateCode] = useState("");
+  const [showRegeneratePrompt, setShowRegeneratePrompt] = useState(false);
+  
   const regenerateCodesMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (verificationCode: string) => {
       const response = await apiRequest("/api/mfa/regenerate-codes", {
         method: "POST",
+        body: JSON.stringify({ verificationCode }),
       });
       return response as { backupCodes: string[] };
     },
@@ -201,7 +209,7 @@ export function MFASetup() {
             </div>
             <Button
               variant="outline"
-              onClick={() => regenerateCodesMutation.mutate()}
+              onClick={() => setShowRegeneratePrompt(true)}
               disabled={regenerateCodesMutation.isPending}
               data-testid="button-regenerate-codes"
             >
@@ -224,13 +232,110 @@ export function MFASetup() {
         <CardFooter>
           <Button
             variant="destructive"
-            onClick={() => disableMutation.mutate()}
+            onClick={() => setShowDisablePrompt(true)}
             disabled={disableMutation.isPending}
             data-testid="button-disable-mfa"
           >
             Disable MFA
           </Button>
         </CardFooter>
+        
+        {/* Disable MFA Verification Prompt */}
+        {showDisablePrompt && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Confirm MFA Disable</CardTitle>
+                <CardDescription>
+                  Enter your current MFA code to disable two-factor authentication
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Label htmlFor="disable-code">Verification Code</Label>
+                <Input
+                  id="disable-code"
+                  placeholder="000000"
+                  value={disableCode}
+                  onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  maxLength={6}
+                  data-testid="input-disable-code"
+                />
+              </CardContent>
+              <CardFooter className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDisablePrompt(false);
+                    setDisableCode("");
+                  }}
+                  data-testid="button-cancel-disable"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    disableMutation.mutate(disableCode);
+                    setShowDisablePrompt(false);
+                    setDisableCode("");
+                  }}
+                  disabled={disableCode.length !== 6 || disableMutation.isPending}
+                  data-testid="button-confirm-disable"
+                >
+                  Disable MFA
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        )}
+        
+        {/* Regenerate Codes Verification Prompt */}
+        {showRegeneratePrompt && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Confirm Regeneration</CardTitle>
+                <CardDescription>
+                  Enter your current MFA code to regenerate backup codes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Label htmlFor="regenerate-code">Verification Code</Label>
+                <Input
+                  id="regenerate-code"
+                  placeholder="000000"
+                  value={regenerateCode}
+                  onChange={(e) => setRegenerateCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  maxLength={6}
+                  data-testid="input-regenerate-code"
+                />
+              </CardContent>
+              <CardFooter className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowRegeneratePrompt(false);
+                    setRegenerateCode("");
+                  }}
+                  data-testid="button-cancel-regenerate"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    regenerateCodesMutation.mutate(regenerateCode);
+                    setShowRegeneratePrompt(false);
+                    setRegenerateCode("");
+                  }}
+                  disabled={regenerateCode.length !== 6 || regenerateCodesMutation.isPending}
+                  data-testid="button-confirm-regenerate"
+                >
+                  Regenerate
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        )}
       </Card>
     );
   }

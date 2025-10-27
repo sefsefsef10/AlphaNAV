@@ -11,8 +11,17 @@ import {
   regenerateBackupCodes,
   getRemainingBackupCodeCount,
 } from "../services/mfaService";
+import {
+  mfaVerifyLimiter,
+  mfaEnrollLimiter,
+  mfaRegenerateLimiter,
+  mfaGeneralLimiter,
+} from "../middleware/mfaRateLimiting";
 
 export const mfaRouter = Router();
+
+// Apply general rate limiting to all MFA endpoints
+mfaRouter.use(mfaGeneralLimiter);
 
 /**
  * GET /api/mfa/status
@@ -75,7 +84,7 @@ const enableMFASchema = z.object({
   backupPhone: z.string().optional(),
 });
 
-mfaRouter.post("/enable", async (req, res) => {
+mfaRouter.post("/enable", mfaEnrollLimiter, async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -121,7 +130,7 @@ const verifyMFASchema = z.object({
   code: z.string().min(6),
 });
 
-mfaRouter.post("/verify", async (req, res) => {
+mfaRouter.post("/verify", mfaVerifyLimiter, async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -168,12 +177,41 @@ mfaRouter.post("/verify", async (req, res) => {
 
 /**
  * POST /api/mfa/disable
- * Disable MFA for current user
+ * Disable MFA for current user (requires re-verification)
  */
-mfaRouter.post("/disable", async (req, res) => {
+const disableMFASchema = z.object({
+  verificationCode: z.string().min(6), // Require fresh MFA code
+});
+
+mfaRouter.post("/disable", mfaVerifyLimiter, async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const validation = disableMFASchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: "Verification code required to disable MFA",
+        details: validation.error.issues,
+      });
+    }
+
+    const { verificationCode } = validation.data;
+
+    // Verify MFA code before allowing disable
+    const verifyResult = await verifyMFACode(
+      req.user.id,
+      verificationCode,
+      req.ip,
+      req.get("user-agent")
+    );
+
+    if (!verifyResult.success) {
+      return res.status(403).json({
+        error: "Invalid verification code",
+        message: "You must verify your identity before disabling MFA",
+      });
     }
 
     await disableMFA(req.user.id);
@@ -196,12 +234,41 @@ mfaRouter.post("/disable", async (req, res) => {
 
 /**
  * POST /api/mfa/regenerate-codes
- * Regenerate backup recovery codes
+ * Regenerate backup recovery codes (requires re-verification)
  */
-mfaRouter.post("/regenerate-codes", async (req, res) => {
+const regenerateCodesSchema = z.object({
+  verificationCode: z.string().min(6), // Require fresh MFA code
+});
+
+mfaRouter.post("/regenerate-codes", mfaRegenerateLimiter, async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const validation = regenerateCodesSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: "Verification code required to regenerate backup codes",
+        details: validation.error.issues,
+      });
+    }
+
+    const { verificationCode } = validation.data;
+
+    // Verify MFA code before allowing regeneration
+    const verifyResult = await verifyMFACode(
+      req.user.id,
+      verificationCode,
+      req.ip,
+      req.get("user-agent")
+    );
+
+    if (!verifyResult.success) {
+      return res.status(403).json({
+        error: "Invalid verification code",
+        message: "You must verify your identity before regenerating backup codes",
+      });
     }
 
     const newCodes = await regenerateBackupCodes(req.user.id);
