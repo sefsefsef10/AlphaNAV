@@ -50,6 +50,8 @@ import publicApiRouter from "./routes/publicApiRoutes";
 import apiClientRouter from "./routes/apiClientRoutes";
 import fundAdminRouter from "./routes/fundAdminRoutes";
 import { mfaRouter } from "./routes/mfaRoutes";
+import { marketIntelligenceRouter } from "./routes/marketIntelligenceRoutes";
+import { navValuationRouter } from "./routes/navValuationRoutes";
 
 const router = Router();
 
@@ -66,6 +68,12 @@ router.use("/", fundAdminRouter);
 
 // Mount MFA routes
 router.use("/mfa", mfaRouter);
+
+// Mount market intelligence routes
+router.use("/market-intelligence", marketIntelligenceRouter);
+
+// Mount NAV valuation routes
+router.use("/nav-valuation", navValuationRouter);
 
 // ========================================
 // NEW FEATURE ENDPOINTS (10-Feature Expansion)

@@ -56,7 +56,7 @@ export default function MarketIntelligencePage() {
 
   // Fetch competitor intelligence
   const { data: competitorData = [], isLoading: loadingCompetitors, error: competitorError } = useQuery<CompetitorData[]>({
-    queryKey: ["/api/competitor-intelligence"],
+    queryKey: ["/api/market-intelligence/competitors"],
   });
 
   // Filter market data
