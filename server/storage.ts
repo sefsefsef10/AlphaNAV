@@ -183,6 +183,8 @@ export class MemStorage implements IStorage {
       profileImageUrl: userData.profileImageUrl || null,
       role: userData.role || "gp",
       advisorId: userData.advisorId || null,
+      stripeCustomerId: userData.stripeCustomerId || null,
+      stripeSubscriptionId: userData.stripeSubscriptionId || null,
       createdAt: userData.createdAt || new Date(),
       updatedAt: userData.updatedAt || new Date(),
     };
