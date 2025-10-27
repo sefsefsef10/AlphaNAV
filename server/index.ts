@@ -246,3 +246,6 @@ app.use((req, res, next) => {
     log("✓ Automated job scheduler initialized");
   });
 })();
+
+// Export app for testing
+export { app };
