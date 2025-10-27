@@ -23,6 +23,8 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").notNull().default("gp"), // 'advisor', 'gp', 'operations', 'admin'
   advisorId: varchar("advisor_id"), // Link to advisors table if role is 'advisor'
+  stripeCustomerId: varchar("stripe_customer_id").unique(), // Stripe customer ID
+  stripeSubscriptionId: varchar("stripe_subscription_id"), // Current active subscription ID
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -508,3 +510,117 @@ export const insertGeneratedDocumentSchema = createInsertSchema(generatedDocumen
 
 export type InsertGeneratedDocument = z.infer<typeof insertGeneratedDocumentSchema>;
 export type GeneratedDocument = typeof generatedDocuments.$inferSelect;
+
+// Subscriptions (billing and plan management)
+export const subscriptions = pgTable("subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique(),
+  stripeSubscriptionId: varchar("stripe_subscription_id").notNull().unique(),
+  stripeCustomerId: varchar("stripe_customer_id").notNull(),
+  stripePriceId: varchar("stripe_price_id").notNull(),
+  tier: text("tier").notNull(), // 'starter', 'professional', 'enterprise'
+  status: text("status").notNull(), // 'active', 'past_due', 'canceled', 'incomplete', 'trialing'
+  currentPeriodStart: timestamp("current_period_start").notNull(),
+  currentPeriodEnd: timestamp("current_period_end").notNull(),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+  trialStart: timestamp("trial_start"),
+  trialEnd: timestamp("trial_end"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_subscriptions_user_id").on(table.userId),
+  index("idx_subscriptions_status").on(table.status),
+]);
+
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+export type Subscription = typeof subscriptions.$inferSelect;
+
+// Usage Tracking (metered billing for API calls, AI extractions, etc.)
+export const usageRecords = pgTable("usage_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  subscriptionId: varchar("subscription_id").notNull(),
+  metricType: text("metric_type").notNull(), // 'api_calls', 'ai_extractions', 'documents_generated', 'storage_gb'
+  quantity: integer("quantity").notNull(), // Number of units consumed
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  facilityId: varchar("facility_id"), // Optional link to specific facility
+  metadata: jsonb("metadata"), // Additional context
+}, (table) => [
+  index("idx_usage_records_user_id_timestamp").on(table.userId, table.timestamp),
+  index("idx_usage_records_subscription_id").on(table.subscriptionId),
+  index("idx_usage_records_metric_type").on(table.metricType),
+]);
+
+export const insertUsageRecordSchema = createInsertSchema(usageRecords).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertUsageRecord = z.infer<typeof insertUsageRecordSchema>;
+export type UsageRecord = typeof usageRecords.$inferSelect;
+
+// Invoices (billing history)
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  subscriptionId: varchar("subscription_id"),
+  stripeInvoiceId: varchar("stripe_invoice_id").notNull().unique(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  amount: integer("amount").notNull(), // Amount in cents
+  currency: text("currency").notNull().default("usd"),
+  status: text("status").notNull(), // 'draft', 'open', 'paid', 'uncollectible', 'void'
+  invoiceNumber: text("invoice_number"),
+  invoicePdf: text("invoice_pdf"), // URL to PDF
+  hostedInvoiceUrl: text("hosted_invoice_url"), // Stripe hosted invoice page
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  paidAt: timestamp("paid_at"),
+  dueDate: timestamp("due_date"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_invoices_user_id_created_at").on(table.userId, table.createdAt),
+  index("idx_invoices_subscription_id").on(table.subscriptionId),
+  index("idx_invoices_status").on(table.status),
+]);
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
+
+// Subscription Plans (pricing tiers and limits)
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(), // 'Starter', 'Professional', 'Enterprise'
+  tier: text("tier").notNull().unique(), // 'starter', 'professional', 'enterprise'
+  stripePriceId: varchar("stripe_price_id").notNull().unique(),
+  stripeProductId: varchar("stripe_product_id").notNull(),
+  price: integer("price").notNull(), // Monthly price in cents
+  currency: text("currency").notNull().default("usd"),
+  maxFacilities: integer("max_facilities").notNull(), // Maximum number of facilities
+  maxUsers: integer("max_users").notNull(), // Maximum team members
+  maxStorage: integer("max_storage").notNull(), // Max storage in GB
+  aiExtractions: integer("ai_extractions").notNull(), // AI extractions per month
+  features: jsonb("features").notNull(), // List of included features
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
