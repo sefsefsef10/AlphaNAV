@@ -148,7 +148,100 @@ async function runTests() {
     
     logTest("GP1 GET /api/facilities/facility-3/cash-flows (other GP)", cashFlowRes2.status, 403);
 
-    console.log("\nTEST GROUP 6: Edge Cases\n");
+    console.log("\nTEST GROUP 6: Document Generation Endpoints\n");
+
+    // GP1 generates document for own facility - should succeed
+    const docGenRes1 = await request(app)
+      .post("/api/facilities/facility-1/generate-document")
+      .set("X-Test-User-ID", "Av82cL")
+      .set("X-Test-User-Role", "gp")
+      .send({
+        documentType: "loan-agreement",
+        config: {
+          includeCovenants: true,
+          includeSchedule: true
+        }
+      });
+    
+    logTest("GP1 POST /api/facilities/facility-1/generate-document (own)", docGenRes1.status, 200);
+
+    // GP1 tries to generate document for GP2's facility - should fail
+    const docGenRes2 = await request(app)
+      .post("/api/facilities/facility-3/generate-document")
+      .set("X-Test-User-ID", "Av82cL")
+      .set("X-Test-User-Role", "gp")
+      .send({
+        documentType: "loan-agreement",
+        config: {}
+      });
+    
+    logTest("GP1 POST /api/facilities/facility-3/generate-document (other GP)", docGenRes2.status, 403);
+
+    // Operations generates document for any facility - should succeed
+    const docGenRes3 = await request(app)
+      .post("/api/facilities/facility-3/generate-document")
+      .set("X-Test-User-ID", "ops-user-1")
+      .set("X-Test-User-Role", "operations")
+      .send({
+        documentType: "term-sheet",
+        config: {}
+      });
+    
+    logTest("OPS POST /api/facilities/facility-3/generate-document", docGenRes3.status, 200);
+
+    console.log("\nTEST GROUP 7: Covenant Endpoints\n");
+
+    // GP1 checks covenants for own facility - should succeed
+    const covCheckRes1 = await request(app)
+      .post("/api/facilities/facility-1/check-covenants")
+      .set("X-Test-User-ID", "Av82cL")
+      .set("X-Test-User-Role", "gp");
+    
+    logTest("GP1 POST /api/facilities/facility-1/check-covenants (own)", covCheckRes1.status, 200);
+
+    // GP1 tries to check covenants for GP2's facility - should fail
+    const covCheckRes2 = await request(app)
+      .post("/api/facilities/facility-3/check-covenants")
+      .set("X-Test-User-ID", "Av82cL")
+      .set("X-Test-User-Role", "gp");
+    
+    logTest("GP1 POST /api/facilities/facility-3/check-covenants (other GP)", covCheckRes2.status, 403);
+
+    // GP1 views covenant summary for own facility - should succeed
+    const covSummaryRes1 = await request(app)
+      .get("/api/facilities/facility-1/covenant-summary")
+      .set("X-Test-User-ID", "Av82cL")
+      .set("X-Test-User-Role", "gp");
+    
+    logTest("GP1 GET /api/facilities/facility-1/covenant-summary (own)", covSummaryRes1.status, 200);
+
+    // GP1 tries to view covenant summary for GP2's facility - should fail
+    const covSummaryRes2 = await request(app)
+      .get("/api/facilities/facility-3/covenant-summary")
+      .set("X-Test-User-ID", "Av82cL")
+      .set("X-Test-User-Role", "gp");
+    
+    logTest("GP1 GET /api/facilities/facility-3/covenant-summary (other GP)", covSummaryRes2.status, 403);
+
+    console.log("\nTEST GROUP 8: Portfolio Analytics Endpoints\n");
+
+    // Operations accesses portfolio summary - should succeed
+    const portfolioRes1 = await request(app)
+      .get("/api/analytics/portfolio-summary")
+      .set("X-Test-User-ID", "ops-user-1")
+      .set("X-Test-User-Role", "operations");
+    
+    logTest("OPS GET /api/analytics/portfolio-summary", portfolioRes1.status, 200);
+
+    // GP user tries to access portfolio summary - should fail (operations only)
+    const portfolioRes2 = await request(app)
+      .get("/api/analytics/portfolio-summary")
+      .set("X-Test-User-ID", "Av82cL")
+      .set("X-Test-User-Role", "gp");
+    
+    logTest("GP1 GET /api/analytics/portfolio-summary (unauthorized role)", portfolioRes2.status, 403);
+
+    console.log("\nTEST GROUP 9: Edge Cases\n");
 
     // Non-existent facility - should return 404
     const notFoundRes = await request(app)
@@ -195,9 +288,13 @@ async function runTests() {
       console.log("  ✓ Operations users can access all facilities (200)");
       console.log("  ✓ Draw request authorization enforced");
       console.log("  ✓ Cash flow access authorization enforced");
+      console.log("  ✓ Document generation authorization enforced");
+      console.log("  ✓ Covenant checking authorization enforced");
+      console.log("  ✓ Portfolio analytics (operations-only) enforced");
       console.log("  ✓ Non-existent facilities return 404");
       console.log("  ✓ Unauthenticated requests return 401\n");
-      console.log("🔒 Multi-tenant data isolation VERIFIED at HTTP layer\n");
+      console.log("🔒 Multi-tenant data isolation VERIFIED at HTTP layer");
+      console.log(`📊 Test Coverage: 9 test groups, ${total} comprehensive tests\n`);
       process.exit(0);
     }
 

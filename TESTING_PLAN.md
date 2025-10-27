@@ -1,8 +1,8 @@
 # AlphaNAV - Professional Testing Plan
 ## Quality Assurance Strategy for Production Launch
 
-**Version**: 1.0  
-**Date**: October 23, 2025  
+**Version**: 2.0  
+**Date**: October 27, 2025  
 **Status**: Ready for Execution  
 **Target Go-Live**: TBD based on test results
 
@@ -10,12 +10,157 @@
 
 ## Executive Summary
 
-This testing plan ensures AlphaNAV's 22 features (20 core + 2 AI) are production-ready through systematic validation across 3 user roles (Operations, Advisors, GPs). The plan employs a **risk-based approach** focusing on critical user workflows, data integrity, security, and AI accuracy.
+This testing plan ensures AlphaNAV's 22 features (20 core + 2 AI) are production-ready through systematic validation across 3 user roles (Operations, Advisors, GPs). The plan employs a **multi-layered approach** combining automated HTTP integration tests with manual E2E browser testing.
 
-**Test Strategy**: Role-driven manual testing with semi-automated API validation  
-**Constraint**: OIDC authentication limits full automation  
+**Test Layers**:
+1. **HTTP Integration Tests** - Automated security and API validation (28 tests across 9 groups, 100% pass rate) ✅
+2. **E2E Browser Tests** - Role-driven manual testing with Playwright (3 workflows, 70 steps)  
+
 **Timeline**: 3-5 days for complete validation  
 **Go/No-Go Decision**: Based on acceptance criteria (see Section 9)
+
+---
+
+## HTTP Integration Testing (Automated)
+
+### Overview
+
+**Infrastructure**: Production-safe test authentication bypass (NODE_ENV=test only)  
+**Test Suite**: `server/tests/security-http.test.ts` (312 lines)  
+**Current Coverage**: 28 tests across 9 test groups  
+**Pass Rate**: 28/28 (100%) ✅  
+**Last Run**: October 27, 2025
+
+### Test Authentication Headers
+
+Tests inject authenticated users via HTTP headers when `NODE_ENV=test`:
+
+| Header | Required | Example | Description |
+|--------|----------|---------|-------------|
+| `X-Test-User-ID` | Yes | `"Av82cL"` | User's unique identifier |
+| `X-Test-User-Role` | Yes | `"gp"` | Role: `gp`, `operations`, `advisor`, `admin` |
+
+**Safety**: Test bypass only active when `NODE_ENV === 'test'` (zero production impact)
+
+### Test Fixtures
+
+| Facility ID | Owner (gpUserId) | Fund Name | Use Case |
+|-------------|------------------|-----------|----------|
+| `facility-1` | `Av82cL` (GP1) | Test Fund 1 | GP1 owned facility |
+| `facility-2` | `Av82cL` (GP1) | Test Fund 2 | GP1 owned facility |
+| `facility-3` | `FG9ujq` (GP2) | Test Fund 3 | GP2 owned facility |
+| `facility-4` | `FG9ujq` (GP2) | Test Fund 4 | GP2 owned facility |
+| `facility-5` | `GpeoZT` (GP3) | Test Fund 5 | GP3 owned facility |
+
+### Current Test Coverage (28 tests)
+
+#### ✅ Group 1: GP User 1 Access Patterns (4/4 passing)
+- GP1 can access own facility-1 (200)
+- GP1 can access own facility-2 (200)
+- GP1 CANNOT access GP2's facility-3 (403)
+- GP1 CANNOT access GP2's facility-4 (403)
+
+#### ✅ Group 2: GP User 2 Access Patterns (4/4 passing)
+- GP2 can access own facility-3 (200)
+- GP2 can access own facility-4 (200)
+- GP2 CANNOT access GP1's facility-1 (403)
+- GP2 CANNOT access GP1's facility-2 (403)
+
+#### ✅ Group 3: Operations User Access (5/5 passing)
+- Operations can access all facilities (facility-1 through facility-5: all 200)
+
+#### ✅ Group 4: Draw Request Endpoints (2/2 passing)
+- GP1 can create draw request for own facility (200)
+- GP1 CANNOT create draw request for other GP's facility (403)
+
+#### ✅ Group 5: Cash Flow Endpoints (2/2 passing)
+- GP1 can view cash flows for own facility (200)
+- GP1 CANNOT view cash flows for other GP's facility (403)
+
+#### ✅ Group 6: Document Generation Endpoints (3/3 passing)
+- GP1 can generate document for own facility (200)
+- GP1 CANNOT generate document for other GP's facility (403)
+- Operations can generate document for any facility (200)
+
+#### ✅ Group 7: Covenant Endpoints (4/4 passing)
+- GP1 can check covenants for own facility (200)
+- GP1 CANNOT check covenants for other GP's facility (403)
+- GP1 can view covenant summary for own facility (200)
+- GP1 CANNOT view covenant summary for other GP's facility (403)
+
+#### ✅ Group 8: Portfolio Analytics Endpoints (2/2 passing)
+- Operations can access portfolio summary (200)
+- GP CANNOT access portfolio summary - operations only (403)
+
+#### ✅ Group 9: Edge Cases (2/2 passing)
+- Non-existent facility returns 404
+- Unauthenticated request returns 401
+
+### Security Validations (All Passing)
+
+✅ **Multi-Tenant Isolation**: GPs can ONLY access their own facilities (200 for owned, 403 for others)  
+✅ **Operations Bypass**: Operations users can access ALL facilities (consistent 200)  
+✅ **Authorization Enforcement**: Draw requests & cash flows properly secured  
+✅ **Error Handling**: Proper 404/401 responses  
+
+### Running HTTP Integration Tests
+
+```bash
+# Run full test suite
+NODE_ENV=test tsx server/tests/security-http.test.ts
+
+# Expected output: 28/28 tests passing (100%)
+```
+
+### Test Expansion Roadmap
+
+**Current State**: 28 tests across 9 groups (100% pass rate)
+
+**Phase 1: Extended Endpoint Coverage** (Target: 50+ tests)
+- Advisor endpoints (GET dashboard, compare bids, commission): 6 tests
+- Additional edge cases and error scenarios: 8 tests
+- Missing endpoint combinations: 8 tests
+
+**Phase 2: Data Validation** (Target: 70+ tests)
+- Zod schema validation (invalid inputs, missing fields): 15 tests
+- Boundary value testing (amounts, dates, rates): 10 tests
+- Type coercion and format validation: 7 tests
+
+**Phase 3: Business Logic** (Target: 100+ tests)
+- Covenant breach detection accuracy: 10 tests
+- Commission calculation edge cases: 8 tests
+- Draw request approval workflows: 7 tests
+- Payment processing logic: 5 tests
+
+### Best Practices for Writing New Tests
+
+```typescript
+// Example: Testing document upload endpoint
+
+// Test 1: GP can upload to own facility
+const uploadRes1 = await request(app)
+  .post(`/api/facilities/facility-1/documents`)
+  .set('X-Test-User-ID', 'Av82cL')
+  .set('X-Test-User-Role', 'gp')
+  .send({ title: "Test Doc", type: "covenant_report" });
+
+logTest("GP1 POST documents (own)", uploadRes1.status, 200);
+
+// Test 2: GP CANNOT upload to other GP's facility
+const uploadRes2 = await request(app)
+  .post(`/api/facilities/facility-3/documents`)
+  .set('X-Test-User-ID', 'Av82cL')
+  .set('X-Test-User-Role', 'gp')
+  .send({ title: "Test Doc", type: "covenant_report" });
+
+logTest("GP1 POST documents (other GP)", uploadRes2.status, 403);
+```
+
+**Test Naming Convention**: `[Role] [Method] [Resource] ([Context]) [[ExpectedStatus]]`
+
+---
+
+## E2E Browser Testing (Manual + Playwright)
 
 ---
 

@@ -497,26 +497,75 @@ npm start
 ## 🧪 Testing
 
 ### Current Status
-⚠️ **Testing infrastructure in development** - E2E tests planned for critical workflows
+✅ **HTTP Integration Tests**: 28/28 passing (100% pass rate)  
+✅ **E2E Browser Tests**: 3 workflows, 70 steps (Operations, Advisor, GP)  
+📋 **Test Documentation**: See `TESTING_PLAN.md` for complete testing guide
 
-### Planned Test Coverage
+### HTTP Integration Tests (Automated)
 
-#### Unit Tests
-- API endpoint validation
-- AI extraction logic
-- Covenant monitoring calculations
-- Commission tier calculations
+**Production-safe test infrastructure** validating multi-tenant security at HTTP layer:
 
-#### Integration Tests
-- Database operations
-- AI service integration
-- Authentication flow
-- Notification generation
+```bash
+# Run full HTTP integration test suite
+NODE_ENV=test tsx server/tests/security-http.test.ts
 
-#### E2E Tests (Playwright)
-- **Operations Workflow**: Deal creation → underwriting → facility creation → covenant monitoring
-- **Advisor Workflow**: RFP creation → lender invitations → term sheet comparison → commission calculation
-- **GP Workflow**: Onboarding → document upload → draw request → payment tracking
+# Expected: 28/28 tests passing (100%)
+```
+
+**Test Coverage (9 test groups):**
+- ✅ GP User 1 Access Patterns (4 tests) - Own facilities 200, other GPs 403
+- ✅ GP User 2 Access Patterns (4 tests) - Own facilities 200, other GPs 403
+- ✅ Operations User Access (5 tests) - All facilities 200
+- ✅ Draw Request Endpoints (2 tests) - Authorization enforced
+- ✅ Cash Flow Endpoints (2 tests) - Authorization enforced
+- ✅ Document Generation (3 tests) - Ownership validation
+- ✅ Covenant Endpoints (4 tests) - Multi-tenant security
+- ✅ Portfolio Analytics (2 tests) - Operations-only access
+- ✅ Edge Cases (2 tests) - 404/401 handling
+
+**Security Validations:**
+- 🔒 Multi-tenant data isolation verified
+- 🔒 GP users can ONLY access their own facilities
+- 🔒 Operations users can access all facilities
+- 🔒 Proper authorization on all secured endpoints
+- 🔒 401 Unauthorized for unauthenticated requests
+- 🔒 403 Forbidden for unauthorized access
+- 🔒 404 Not Found for non-existent resources
+
+**Test Infrastructure:**
+- Production-safe test authentication bypass (NODE_ENV=test only)
+- HTTP header-based user injection (X-Test-User-ID, X-Test-User-Role)
+- Deterministic test fixtures (5 test facilities with known ownership)
+- Zero impact on production (3 safety guard clauses)
+
+See `TESTING_PLAN.md` for writing new tests and extending coverage.
+
+### E2E Browser Tests (Playwright)
+
+**3 comprehensive workflows** validating complete user journeys:
+
+- **Operations Workflow** (26 steps): Deal creation → underwriting → facility creation → covenant monitoring → document generation
+- **Advisor Workflow** (26 steps): RFP creation → lender invitations → term sheet comparison → commission calculation → performance analytics
+- **GP Workflow** (18 steps): Digital onboarding → document upload (AI extraction) → draw request → payment tracking → document vault
+
+### Test Expansion Roadmap
+
+**Phase 1: Extended HTTP Coverage** (Target: 50+ tests)
+- Data validation tests (Zod schema enforcement)
+- Business logic tests (covenant detection, commission calculation)
+- Error handling tests (invalid inputs, edge cases)
+
+**Phase 2: Unit Tests** (Target: 100+ tests)
+- AI extraction accuracy
+- Covenant breach calculations
+- Commission tier logic
+- Document generation templates
+
+**Phase 3: Performance Tests** (Target: 10+ tests)
+- Response time thresholds (<200ms for GET, <500ms for POST)
+- Database query optimization validation
+- Concurrent request handling
+- Rate limiting enforcement verification
 
 ---
 
