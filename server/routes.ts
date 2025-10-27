@@ -2441,14 +2441,340 @@ router.get("/analytics/portfolio-summary", async (req: Request, res: Response) =
   }
 });
 
-// Export router as registerRoutes function for compatibility
+// ============================================================================
+// BILLING & SUBSCRIPTIONS - Stripe Integration
+// ============================================================================
+
+import * as billing from "./billing";
+
+// Get all subscription plans
+router.get("/api/subscription-plans", async (req: Request, res: Response) => {
+  try {
+    const plans = await billing.getSubscriptionPlans();
+    res.json(plans);
+  } catch (error) {
+    console.error("Get subscription plans error:", error);
+    res.status(500).json({ error: "Failed to fetch subscription plans" });
+  }
+});
+
+// Get current user's subscription
+router.get("/api/subscription", async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !('id' in req.user)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const subscription = await billing.getUserSubscription(String(req.user.id));
+    
+    if (!subscription) {
+      return res.json({ subscription: null });
+    }
+
+    res.json({ subscription });
+  } catch (error) {
+    console.error("Get subscription error:", error);
+    res.status(500).json({ error: "Failed to fetch subscription" });
+  }
+});
+
+// Get usage summary for current billing period
+router.get("/api/subscription/usage", async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !('id' in req.user)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const usage = await billing.getUsageSummary(String(req.user.id));
+    
+    if (!usage) {
+      return res.json({ usage: null, message: "No active subscription" });
+    }
+
+    res.json(usage);
+  } catch (error) {
+    console.error("Get usage summary error:", error);
+    res.status(500).json({ error: "Failed to fetch usage summary" });
+  }
+});
+
+// Create Stripe checkout session for new subscription
+router.post("/api/subscription/checkout", async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !('id' in req.user)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { tier } = req.body;
+    
+    if (!tier || !['starter', 'professional', 'enterprise'].includes(tier)) {
+      return res.status(400).json({ error: "Invalid subscription tier" });
+    }
+
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? `https://${req.get('host')}` 
+      : `http://${req.get('host')}`;
+    
+    const session = await billing.createCheckoutSession(
+      String(req.user.id),
+      tier,
+      `${baseUrl}/settings?subscription=success`,
+      `${baseUrl}/settings?subscription=canceled`
+    );
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error("Create checkout session error:", error);
+    res.status(500).json({ error: "Failed to create checkout session" });
+  }
+});
+
+// Create subscription directly (alternative to checkout)
+router.post("/api/subscription", async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !('id' in req.user)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { tier } = req.body;
+    
+    if (!tier || !['starter', 'professional', 'enterprise'].includes(tier)) {
+      return res.status(400).json({ error: "Invalid subscription tier" });
+    }
+
+    const result = await billing.createSubscription(String(req.user.id), tier);
+    
+    res.json(result);
+  } catch (error) {
+    console.error("Create subscription error:", error);
+    res.status(500).json({ 
+      error: "Failed to create subscription",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// Update subscription (upgrade/downgrade)
+router.put("/api/subscription", async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !('id' in req.user)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { tier } = req.body;
+    
+    if (!tier || !['starter', 'professional', 'enterprise'].includes(tier)) {
+      return res.status(400).json({ error: "Invalid subscription tier" });
+    }
+
+    const subscription = await billing.updateSubscription(String(req.user.id), tier);
+    
+    res.json({ subscription });
+  } catch (error) {
+    console.error("Update subscription error:", error);
+    res.status(500).json({ 
+      error: "Failed to update subscription",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// Cancel subscription
+router.delete("/api/subscription", async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !('id' in req.user)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { cancelAtPeriodEnd = true } = req.body;
+    
+    const subscription = await billing.cancelSubscription(
+      String(req.user.id),
+      cancelAtPeriodEnd
+    );
+    
+    res.json({ subscription });
+  } catch (error) {
+    console.error("Cancel subscription error:", error);
+    res.status(500).json({ 
+      error: "Failed to cancel subscription",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// Create billing portal session (for customers to manage subscriptions)
+router.post("/api/subscription/portal", async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !('id' in req.user)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? `https://${req.get('host')}` 
+      : `http://${req.get('host')}`;
+
+    const session = await billing.createBillingPortalSession(
+      String(req.user.id),
+      `${baseUrl}/settings`
+    );
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error("Create billing portal session error:", error);
+    res.status(500).json({ 
+      error: "Failed to create billing portal session",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// Get invoices for user
+router.get("/api/invoices", async (req: Request, res: Response) => {
+  try {
+    if (!req.user || !('id' in req.user)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const invoices = await billing.getUserInvoices(String(req.user.id));
+    
+    res.json({ invoices });
+  } catch (error) {
+    console.error("Get invoices error:", error);
+    res.status(500).json({ error: "Failed to fetch invoices" });
+  }
+});
+
+// Stripe webhook handler (no authentication required)
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 
+// Helper function to handle Stripe webhook events
+async function handleStripeWebhook(req: Request, res: Response) {
+  const sig = req.headers['stripe-signature'];
+  
+  if (!sig) {
+    return res.status(400).send('Missing stripe-signature header');
+  }
+
+  let event;
+
+  try {
+    event = billing.stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET || ''
+    );
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err);
+    return res.status(400).send(`Webhook Error: ${err instanceof Error ? err.message : 'Unknown'}`);
+  }
+
+  // Handle different event types
+  try {
+    switch (event.type) {
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated':
+        // Update subscription status in database
+        const subscription = event.data.object as any;
+        await db
+          .update(subscriptions)
+          .set({
+            status: subscription.status,
+            currentPeriodStart: new Date(subscription.current_period_start * 1000),
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
+            updatedAt: new Date(),
+          })
+          .where(eq(subscriptions.stripeSubscriptionId, subscription.id));
+        break;
+
+      case 'customer.subscription.deleted':
+        // Mark subscription as canceled
+        const deletedSub = event.data.object as any;
+        await db
+          .update(subscriptions)
+          .set({
+            status: 'canceled',
+            updatedAt: new Date(),
+          })
+          .where(eq(subscriptions.stripeSubscriptionId, deletedSub.id));
+
+        // Remove subscription ID from user
+        const [existingSub] = await db
+          .select()
+          .from(subscriptions)
+          .where(eq(subscriptions.stripeSubscriptionId, deletedSub.id));
+        
+        if (existingSub) {
+          await db
+            .update(users)
+            .set({ stripeSubscriptionId: null })
+            .where(eq(users.id, existingSub.userId));
+        }
+        break;
+
+      case 'invoice.paid':
+        // Record invoice in database
+        const invoice = event.data.object as any;
+        const [subForInvoice] = await db
+          .select()
+          .from(subscriptions)
+          .where(eq(subscriptions.stripeSubscriptionId, invoice.subscription));
+
+        if (subForInvoice) {
+          await db.insert(invoices).values({
+            userId: subForInvoice.userId,
+            subscriptionId: subForInvoice.id,
+            stripeInvoiceId: invoice.id,
+            stripePaymentIntentId: invoice.payment_intent || null,
+            amount: invoice.amount_paid,
+            currency: invoice.currency,
+            status: 'paid',
+            invoiceNumber: invoice.number,
+            invoicePdf: invoice.invoice_pdf,
+            hostedInvoiceUrl: invoice.hosted_invoice_url,
+            periodStart: new Date(invoice.period_start * 1000),
+            periodEnd: new Date(invoice.period_end * 1000),
+            paidAt: new Date(invoice.status_transitions.paid_at * 1000),
+            dueDate: invoice.due_date ? new Date(invoice.due_date * 1000) : null,
+          }).onConflictDoNothing();
+        }
+        break;
+
+      case 'invoice.payment_failed':
+        // Handle failed payment - could send notification
+        const failedInvoice = event.data.object as any;
+        console.error('Payment failed for invoice:', failedInvoice.id);
+        // TODO: Send email notification to user
+        break;
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error('Error processing webhook:', error);
+    res.status(500).json({ 
+      error: 'Webhook processing failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+// Export router as registerRoutes function for compatibility
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication first
   await setupAuth(app);
+  
+  // Stripe webhook endpoint (MUST be BEFORE authentication middleware)
+  // Stripe needs raw body for signature verification
+  app.post("/api/webhooks/stripe", async (req, res) => {
+    await handleStripeWebhook(req, res);
+  });
   
   // Apply authentication middleware to ALL routes under /api
   // This ensures no route can be accessed without authentication
