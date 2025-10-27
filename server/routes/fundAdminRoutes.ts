@@ -24,12 +24,11 @@ const router = Router();
 // List all fund admin connections (operations/admin only)
 router.get("/fund-admin-connections", async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const userRole = (req.user as any).role;
-    if (userRole !== "operations" && userRole !== "admin") {
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
       return res.status(403).json({ 
         error: "Forbidden: Only operations and admin users can view fund admin connections" 
       });
@@ -54,12 +53,11 @@ router.get("/fund-admin-connections", async (req: Request, res: Response) => {
 // Get a specific fund admin connection
 router.get("/fund-admin-connections/:id", async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const userRole = (req.user as any).role;
-    if (userRole !== "operations" && userRole !== "admin") {
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
       return res.status(403).json({ 
         error: "Forbidden: Only operations and admin users can view fund admin connections" 
       });
@@ -91,12 +89,11 @@ router.get("/fund-admin-connections/:id", async (req: Request, res: Response) =>
 // Create a new fund admin connection
 router.post("/fund-admin-connections", async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const userRole = (req.user as any).role;
-    if (userRole !== "operations" && userRole !== "admin") {
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
       return res.status(403).json({ 
         error: "Forbidden: Only operations and admin users can create fund admin connections" 
       });
@@ -130,12 +127,11 @@ router.post("/fund-admin-connections", async (req: Request, res: Response) => {
 // Update a fund admin connection
 router.patch("/fund-admin-connections/:id", async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const userRole = (req.user as any).role;
-    if (userRole !== "operations" && userRole !== "admin") {
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
       return res.status(403).json({ 
         error: "Forbidden: Only operations and admin users can update fund admin connections" 
       });
@@ -170,12 +166,11 @@ router.patch("/fund-admin-connections/:id", async (req: Request, res: Response) 
 // Delete a fund admin connection
 router.delete("/fund-admin-connections/:id", async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const userRole = (req.user as any).role;
-    if (userRole !== "operations" && userRole !== "admin") {
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
       return res.status(403).json({ 
         error: "Forbidden: Only operations and admin users can delete fund admin connections" 
       });
@@ -201,12 +196,11 @@ router.delete("/fund-admin-connections/:id", async (req: Request, res: Response)
 // Manually trigger a sync for a specific connection
 router.post("/fund-admin-connections/:id/sync", async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const userRole = (req.user as any).role;
-    if (userRole !== "operations" && userRole !== "admin") {
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
       return res.status(403).json({ 
         error: "Forbidden: Only operations and admin users can trigger syncs" 
       });
@@ -230,12 +224,11 @@ router.post("/fund-admin-connections/:id/sync", async (req: Request, res: Respon
 // Test a fund admin connection
 router.post("/fund-admin-connections/:id/test", async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const userRole = (req.user as any).role;
-    if (userRole !== "operations" && userRole !== "admin") {
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
       return res.status(403).json({ 
         error: "Forbidden: Only operations and admin users can test connections" 
       });
@@ -259,12 +252,11 @@ router.post("/fund-admin-connections/:id/test", async (req: Request, res: Respon
 // Trigger sync for all active connections
 router.post("/fund-admin-connections/sync-all", async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const userRole = (req.user as any).role;
-    if (userRole !== "operations" && userRole !== "admin") {
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
       return res.status(403).json({ 
         error: "Forbidden: Only operations and admin users can trigger bulk syncs" 
       });
@@ -292,12 +284,11 @@ router.post("/fund-admin-connections/sync-all", async (req: Request, res: Respon
 // Get sync logs for a connection
 router.get("/fund-admin-connections/:id/sync-logs", async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    if (!req.isAuthenticated() || !req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const userRole = (req.user as any).role;
-    if (userRole !== "operations" && userRole !== "admin") {
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
       return res.status(403).json({ 
         error: "Forbidden: Only operations and admin users can view sync logs" 
       });
