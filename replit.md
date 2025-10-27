@@ -5,6 +5,47 @@ AlphaNAV is a comprehensive NAV (Net Asset Value) lending operations platform de
 
 ## Recent Updates (October 27, 2025)
 
+### Latest: Gap Remediation - Feature Gates, Upgrade Prompts, & Critical Routing Fixes ✅
+**Production-Ready Subscription System**: Complete implementation of subscription tier enforcement, automated upgrade prompts, and critical security/UX fixes.
+
+**Feature Gate Enforcement** (`server/services/subscriptionService.ts`, `server/routes.ts`):
+- Subscription service enforces tier limits at facility creation
+- GET /api/facilities implements role-based access control:
+  - GP users: Only see own facilities (filtered by `gp_user_id`)
+  - Operations/admin: See all facilities
+  - Advisors: Return 403 Forbidden
+- POST /api/facilities blocks GP users at tier limits (403 with detailed error)
+- Correct tier limits enforced: Starter (5), Professional (20), Enterprise (unlimited/-1)
+
+**Automated Tier Upgrade Prompts** (`client/src/components/upgrade-prompt.tsx`):
+- UpgradePrompt component shows usage warnings at 80%+ with upgrade CTA
+- FacilityLimitBadge displays "X of Y facilities" or "Unlimited" for Enterprise
+- GET /api/subscription/check endpoint returns real-time tier status
+- shouldShowUpgradePrompt short-circuits for unlimited tiers (no prompts)
+- Integrated into GP facility page at `/gp-facility`
+
+**Subscription Plans Database** (`server/seedSubscriptionPlans.ts`):
+- Database seeded with correct business plan values:
+  - Starter: $2,500/month, 5 facilities
+  - Professional: $7,500/month, 20 facilities  
+  - Enterprise: Custom pricing, unlimited (-1) facilities
+- Unlimited tier uses -1 sentinel value for proper handling
+
+**Critical Routing Fixes** (`client/src/components/app-sidebar.tsx`):
+- Added GP navigation sidebar with role-specific items
+- Fixed sidebar routing to check `/gp`, `/advisor`, and `/operations` paths
+- GP users now see GP Portal sidebar instead of operations sidebar
+- GP navigation includes: Fund Dashboard, Facilities, Draw Requests, Documents
+
+**Security Improvements**:
+- Cross-tenant data isolation: GP users cannot access other GP facilities
+- Role-based endpoint protection on all facility routes
+- Feature gates prevent tier violations at API level
+
+**Integration Ready**: Complete subscription management system with tiered pricing, feature gates, automated upgrade prompts, and role-based navigation. All security vulnerabilities resolved and architect-approved for production deployment.
+
+---
+
 ### Latest: Fund Administrator Integrations ✅
 **Complete Fund Admin Integration System**: Production-ready backend and frontend for syncing NAV data from SS&C Intralinks, Alter Domus, and Apex Fund Services.
 

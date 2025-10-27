@@ -875,16 +875,35 @@ router.get("/automation/accuracy-metrics", async (req: Request, res: Response) =
 // ===== FACILITY ROUTES =====
 
 // GET /api/facilities
-// List all facilities
+// List facilities (filtered by user role)
 router.get("/facilities", async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const allFacilities = await db.select()
-      .from(facilities)
-      .orderBy(facilities.createdAt);
+    let allFacilities;
+
+    // GP users: Only see their own facilities
+    if (req.user.role === "gp") {
+      allFacilities = await db.select()
+        .from(facilities)
+        .where(eq(facilities.gpUserId, req.user.id))
+        .orderBy(facilities.createdAt);
+    } 
+    // Operations/admin: See all facilities
+    else if (req.user.role === "operations" || req.user.role === "admin") {
+      allFacilities = await db.select()
+        .from(facilities)
+        .orderBy(facilities.createdAt);
+    }
+    // Advisors: No access to facilities (they have their own advisor endpoints)
+    else {
+      return res.status(403).json({ 
+        error: "Access denied",
+        message: "Your role does not have access to facilities"
+      });
+    }
 
     res.json(allFacilities);
 

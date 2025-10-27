@@ -108,6 +108,29 @@ const advisorNavItems = [
   },
 ];
 
+const gpNavItems = [
+  {
+    title: "Fund Dashboard",
+    url: "/gp",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Facilities",
+    url: "/gp-facility",
+    icon: DollarSign,
+  },
+  {
+    title: "Draw Requests",
+    url: "/gp/draws",
+    icon: FileText,
+  },
+  {
+    title: "Documents",
+    url: "/gp/documents",
+    icon: FileText,
+  },
+];
+
 const externalNavItems = [
   {
     title: "LP Enablement",
@@ -119,8 +142,13 @@ const externalNavItems = [
 export function AppSidebar() {
   const [location] = useLocation();
   const isAdvisorFlow = location.startsWith("/advisor");
+  const isGPFlow = location.startsWith("/gp");
   
-  const navItems = isAdvisorFlow ? advisorNavItems : operationsNavItems;
+  const navItems = isAdvisorFlow 
+    ? advisorNavItems 
+    : isGPFlow 
+    ? gpNavItems 
+    : operationsNavItems;
 
   return (
     <Sidebar>
@@ -132,7 +160,7 @@ export function AppSidebar() {
           <div>
             <h2 className="text-sm font-semibold">AlphaNAV</h2>
             <p className="text-xs text-muted-foreground">
-              {isAdvisorFlow ? "Advisor Portal" : "NAV Lending"}
+              {isAdvisorFlow ? "Advisor Portal" : isGPFlow ? "GP Portal" : "NAV Lending"}
             </p>
           </div>
         </div>
@@ -140,7 +168,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
-            {isAdvisorFlow ? "Advisor" : "Operations"}
+            {isAdvisorFlow ? "Advisor" : isGPFlow ? "GP Management" : "Operations"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
