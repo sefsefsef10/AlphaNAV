@@ -1,4 +1,4 @@
-import { LayoutDashboard, GitBranch, FileText, Scale, TrendingUp, Activity, DollarSign, GraduationCap, Settings, Users, Target, Building2, BarChart3, Upload, Building, Database } from "lucide-react";
+import { LayoutDashboard, GitBranch, FileText, Scale, TrendingUp, Activity, DollarSign, GraduationCap, Settings, Users, Target, Building2, BarChart3, Upload, Building, Database, Key } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -67,6 +67,11 @@ const operationsNavItems = [
     title: "Market Intelligence",
     url: "/operations/market-intelligence",
     icon: Database,
+  },
+  {
+    title: "API Clients",
+    url: "/operations/api-clients",
+    icon: Key,
   },
   {
     title: "Legal Templates",

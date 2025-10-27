@@ -45,11 +45,19 @@ import fs from "fs/promises";
 import path from "path";
 import { z } from "zod";
 import batchDocumentsRouter from "./routes/batchDocuments";
+import oauthRouter from "./routes/oauthRoutes";
+import publicApiRouter from "./routes/publicApiRoutes";
+import apiClientRouter from "./routes/apiClientRoutes";
 
 const router = Router();
 
 // Mount batch documents routes
 router.use("/documents", batchDocumentsRouter);
+
+// Mount OAuth routes
+router.use("/oauth", oauthRouter); // Public OAuth endpoints (token, introspect, revoke)
+router.use("/oauth", apiClientRouter); // Protected API client management endpoints
+router.use("/v1/public", publicApiRouter); // Versioned public API with OAuth protection
 
 // ========================================
 // NEW FEATURE ENDPOINTS (10-Feature Expansion)
