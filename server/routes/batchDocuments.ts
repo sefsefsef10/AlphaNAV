@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import multer from "multer";
+import fs from "fs/promises";
 import { createDocumentBatch, getBatchStatus } from "../services/batchDocumentProcessor";
 
 const router = Router();
@@ -42,12 +43,23 @@ router.post("/batch", upload.array("files", 50), async (req: Request, res: Respo
 
     const { sessionId, facilityId, prospectId } = req.body;
 
-    // Upload files to object storage (using PUBLIC_OBJECT_SEARCH_PATHS for now)
-    // In production, files would be uploaded to proper storage bucket
+    // Create uploads directory if it doesn't exist
+    const uploadsDir = "./uploads";
+    try {
+      await fs.mkdir(uploadsDir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist
+    }
+
+    // Save files to disk and prepare for processing
     const processedFiles = await Promise.all(
       files.map(async (file) => {
-        // For now, simulate storage URL (in production, upload to object storage)
-        const storageUrl = `/uploads/${Date.now()}_${file.originalname}`;
+        const timestamp = Date.now();
+        const safeFileName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const storageUrl = `${uploadsDir}/${timestamp}_${safeFileName}`;
+        
+        // Write file to disk
+        await fs.writeFile(storageUrl, file.buffer);
         
         return {
           fileName: file.originalname,

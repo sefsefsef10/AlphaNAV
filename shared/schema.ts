@@ -549,6 +549,89 @@ export const insertCovenantSchema = createInsertSchema(covenants).omit({
 export type InsertCovenant = z.infer<typeof insertCovenantSchema>;
 export type Covenant = typeof covenants.$inferSelect;
 
+// ML Breach Predictions - predictive model for covenant breaches
+export const breachPredictions = pgTable("breach_predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  facilityId: varchar("facility_id").notNull(),
+  covenantId: varchar("covenant_id"),
+  predictionDate: timestamp("prediction_date").notNull().defaultNow(),
+  timeHorizon: text("time_horizon").notNull(), // 30_days, 90_days, 180_days, 1_year
+  breachProbability: numeric("breach_probability", { precision: 5, scale: 2 }).notNull(), // 0.00 to 100.00
+  riskScore: integer("risk_score").notNull(), // 0-100
+  contributingFactors: jsonb("contributing_factors"), // Factors driving the prediction
+  modelVersion: text("model_version").notNull(),
+  modelConfidence: numeric("model_confidence", { precision: 5, scale: 2 }), // Model's self-assessed confidence
+  actualBreachOccurred: boolean("actual_breach_occurred"), // True outcome for model training
+  actualBreachDate: timestamp("actual_breach_date"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_breach_predictions_facility_id").on(table.facilityId),
+  index("idx_breach_predictions_covenant_id").on(table.covenantId),
+  index("idx_breach_predictions_prediction_date").on(table.predictionDate),
+]);
+
+export const insertBreachPredictionSchema = createInsertSchema(breachPredictions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBreachPrediction = z.infer<typeof insertBreachPredictionSchema>;
+export type BreachPrediction = typeof breachPredictions.$inferSelect;
+
+// ML Model versions and metadata
+export const mlModels = pgTable("ml_models", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelName: text("model_name").notNull(),
+  modelVersion: text("model_version").notNull(),
+  modelType: text("model_type").notNull(), // breach_predictor, ltv_optimizer, risk_scorer
+  status: text("status").notNull().default("active"), // active, deprecated, testing
+  accuracy: numeric("accuracy", { precision: 5, scale: 2 }), // Overall accuracy percentage
+  precision: numeric("precision", { precision: 5, scale: 2 }),
+  recall: numeric("recall", { precision: 5, scale: 2 }),
+  f1Score: numeric("f1_score", { precision: 5, scale: 2 }),
+  trainingDataCount: integer("training_data_count"),
+  lastTrainedAt: timestamp("last_trained_at"),
+  hyperparameters: jsonb("hyperparameters"),
+  featureImportance: jsonb("feature_importance"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_ml_models_model_type_status").on(table.modelType, table.status),
+]);
+
+export const insertMLModelSchema = createInsertSchema(mlModels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMLModel = z.infer<typeof insertMLModelSchema>;
+export type MLModel = typeof mlModels.$inferSelect;
+
+// Training data for ML models
+export const mlTrainingData = pgTable("ml_training_data", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelType: text("model_type").notNull(),
+  facilityId: varchar("facility_id"),
+  features: jsonb("features").notNull(), // Input features
+  label: jsonb("label").notNull(), // True outcome (breach/no breach, etc)
+  weight: numeric("weight", { precision: 5, scale: 2 }).default("1.0"), // Sample weight
+  dataSource: text("data_source"), // historical, simulation, external
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_ml_training_data_model_type").on(table.modelType),
+  index("idx_ml_training_data_facility_id").on(table.facilityId),
+]);
+
+export const insertMLTrainingDataSchema = createInsertSchema(mlTrainingData).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMLTrainingData = z.infer<typeof insertMLTrainingDataSchema>;
+export type MLTrainingData = typeof mlTrainingData.$inferSelect;
+
 // Cash flows (payment schedules and actual payments)
 export const cashFlows = pgTable("cash_flows", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -658,32 +741,62 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
-// Notification Preferences (user notification settings)
-export const notificationPreferences = pgTable("notification_preferences", {
+// Notification delivery tracking for Slack/SMS/Email
+export const notificationDeliveries = pgTable("notification_deliveries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().unique(),
-  emailNotifications: boolean("email_notifications").notNull().default(true),
-  pushNotifications: boolean("push_notifications").notNull().default(true),
-  dealUpdates: boolean("deal_updates").notNull().default(true),
-  underwritingAlerts: boolean("underwriting_alerts").notNull().default(true),
-  portfolioAlerts: boolean("portfolio_alerts").notNull().default(true),
-  systemAnnouncements: boolean("system_announcements").notNull().default(true),
-  weeklyDigest: boolean("weekly_digest").notNull().default(false),
-  instantAlerts: boolean("instant_alerts").notNull().default(true),
+  notificationId: varchar("notification_id"),
+  channel: text("channel").notNull(), // slack, sms, email, in_app
+  recipient: text("recipient").notNull(), // Slack channel, phone number, email
+  messageTemplate: text("message_template"),
+  messageContent: text("message_content").notNull(),
+  status: text("status").notNull().default("pending"), // pending, sent, failed, delivered, read
+  provider: text("provider"), // twilio, slack, resend
+  providerMessageId: text("provider_message_id"),
+  deliveredAt: timestamp("delivered_at"),
+  readAt: timestamp("read_at"),
+  error: text("error"),
+  retryCount: integer("retry_count").default(0),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_notification_deliveries_notification_id").on(table.notificationId),
+  index("idx_notification_deliveries_status").on(table.status),
+  index("idx_notification_deliveries_channel").on(table.channel),
+]);
+
+export const insertNotificationDeliverySchema = createInsertSchema(notificationDeliveries).omit({
+  id: true,
+  createdAt: true,
 });
 
-export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({
+export type InsertNotificationDelivery = z.infer<typeof insertNotificationDeliverySchema>;
+export type NotificationDelivery = typeof notificationDeliveries.$inferSelect;
+
+// Notification preferences for users
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  channel: text("channel").notNull(), // slack, sms, email, in_app
+  enabled: boolean("enabled").notNull().default(true),
+  contactInfo: text("contact_info"), // Phone, email, Slack user ID
+  notificationTypes: jsonb("notification_types"), // Which types to receive on this channel
+  quietHoursStart: text("quiet_hours_start"), // HH:MM format
+  quietHoursEnd: text("quiet_hours_end"), // HH:MM format
+  timezone: text("timezone").default("America/New_York"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_notification_preferences_user_id").on(table.userId),
+]);
+
+export const insertNotificationPreferenceSchema = createInsertSchema(notificationPreferences).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const updateNotificationPreferencesSchema = insertNotificationPreferencesSchema.partial();
-
-export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
-export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreference = z.infer<typeof insertNotificationPreferenceSchema>;
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
 
 // Audit logs (track all important actions)
 export const auditLogs = pgTable("audit_logs", {
@@ -709,6 +822,275 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
 
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+// Market Intelligence - Track market data and trends
+export const marketIntelligence = pgTable("market_intelligence", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  dataType: text("data_type").notNull(), // interest_rates, fund_valuations, deal_volume, sector_performance
+  asOfDate: timestamp("as_of_date").notNull(),
+  geography: text("geography"), // US, Europe, Asia, Global
+  sector: text("sector"), // Tech, Healthcare, etc
+  metric: text("metric").notNull(), // avg_interest_rate, median_ltv, deal_count
+  value: numeric("value", { precision: 15, scale: 2 }).notNull(),
+  percentageChange: numeric("percentage_change", { precision: 5, scale: 2 }), // vs previous period
+  source: text("source"), // internal, pitchbook, preqin, spglobal
+  confidence: integer("confidence"), // 0-100 data quality score
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_market_intelligence_data_type_date").on(table.dataType, table.asOfDate),
+  index("idx_market_intelligence_geography_sector").on(table.geography, table.sector),
+]);
+
+export const insertMarketIntelligenceSchema = createInsertSchema(marketIntelligence).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMarketIntelligence = z.infer<typeof insertMarketIntelligenceSchema>;
+export type MarketIntelligence = typeof marketIntelligence.$inferSelect;
+
+// Competitive intelligence - Track competitor deals and positioning
+export const competitorIntelligence = pgTable("competitor_intelligence", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  competitorName: text("competitor_name").notNull(),
+  competitorType: text("competitor_type").notNull(), // bank, credit_fund, bdc, direct_lender
+  dealType: text("deal_type"), // nav_loan, subscription_line, hybrid
+  fundSize: integer("fund_size"), // Target fund AUM
+  loanAmount: integer("loan_amount"),
+  interestRate: numeric("interest_rate", { precision: 5, scale: 2 }),
+  ltv: numeric("ltv", { precision: 5, scale: 2 }),
+  sector: text("sector"),
+  geography: text("geography"),
+  source: text("source"), // press_release, pitch, market_rumors
+  sourceUrl: text("source_url"),
+  reportedDate: timestamp("reported_date"),
+  reliability: text("reliability").default("unverified"), // verified, likely, unverified
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_competitor_intelligence_competitor_name").on(table.competitorName),
+  index("idx_competitor_intelligence_reported_date").on(table.reportedDate),
+]);
+
+export const insertCompetitorIntelligenceSchema = createInsertSchema(competitorIntelligence).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCompetitorIntelligence = z.infer<typeof insertCompetitorIntelligenceSchema>;
+export type CompetitorIntelligence = typeof competitorIntelligence.$inferSelect;
+
+// Lender Directory - Track potential lending partners and investors
+export const lenderDirectory = pgTable("lender_directory", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lenderName: text("lender_name").notNull(),
+  lenderType: text("lender_type").notNull(), // bank, credit_fund, insurance_company, bdc, family_office
+  tier: text("tier"), // tier_1, tier_2, tier_3 (based on size/reputation)
+  aum: integer("aum"), // Assets under management
+  geography: text("geography"),
+  sectors: jsonb("sectors"), // Preferred sectors
+  minDealSize: integer("min_deal_size"),
+  maxDealSize: integer("max_deal_size"),
+  typicalLtv: numeric("typical_ltv", { precision: 5, scale: 2 }),
+  typicalRate: numeric("typical_rate", { precision: 5, scale: 2 }),
+  productTypes: jsonb("product_types"), // nav_loans, subscription_lines, etc
+  contactName: text("contact_name"),
+  contactTitle: text("contact_title"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  website: text("website"),
+  linkedinUrl: text("linkedin_url"),
+  relationship: text("relationship").default("cold"), // cold, warm, active, preferred
+  lastContact: timestamp("last_contact"),
+  notes: text("notes"),
+  status: text("status").default("active"), // active, inactive, do_not_contact
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_lender_directory_lender_type").on(table.lenderType),
+  index("idx_lender_directory_relationship").on(table.relationship),
+  index("idx_lender_directory_status").on(table.status),
+]);
+
+export const insertLenderDirectorySchema = createInsertSchema(lenderDirectory).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertLenderDirectory = z.infer<typeof insertLenderDirectorySchema>;
+export type LenderDirectory = typeof lenderDirectory.$inferSelect;
+
+// Lender interactions - Track all interactions with lenders
+export const lenderInteractions = pgTable("lender_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  lenderId: varchar("lender_id").notNull(),
+  interactionType: text("interaction_type").notNull(), // email, call, meeting, pitch, proposal
+  interactionDate: timestamp("interaction_date").notNull(),
+  participants: jsonb("participants"), // Who attended/participated
+  summary: text("summary"),
+  outcome: text("outcome"), // positive, neutral, negative, no_response
+  nextSteps: text("next_steps"),
+  followUpDate: timestamp("follow_up_date"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_lender_interactions_lender_id").on(table.lenderId),
+  index("idx_lender_interactions_interaction_date").on(table.interactionDate),
+]);
+
+export const insertLenderInteractionSchema = createInsertSchema(lenderInteractions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertLenderInteraction = z.infer<typeof insertLenderInteractionSchema>;
+export type LenderInteraction = typeof lenderInteractions.$inferSelect;
+
+// OAuth2 API - Public API access for external systems
+export const apiClients = pgTable("api_clients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull().unique(),
+  clientSecret: varchar("client_secret").notNull(), // Hashed
+  clientName: text("client_name").notNull(),
+  organizationId: varchar("organization_id"), // Which GP/organization owns this client
+  redirectUris: jsonb("redirect_uris"), // OAuth redirect URIs
+  allowedScopes: jsonb("allowed_scopes"), // Permissions: read:facilities, write:draws, etc
+  grantTypes: jsonb("grant_types").default('["client_credentials","authorization_code"]'), // OAuth grant types
+  status: text("status").notNull().default("active"), // active, suspended, revoked
+  rateLimit: integer("rate_limit").default(1000), // Requests per hour
+  environment: text("environment").default("production"), // production, sandbox
+  webhookUrl: text("webhook_url"),
+  contactEmail: text("contact_email"),
+  createdBy: varchar("created_by").notNull(),
+  lastUsed: timestamp("last_used"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_api_clients_client_id").on(table.clientId),
+  index("idx_api_clients_organization_id").on(table.organizationId),
+  index("idx_api_clients_status").on(table.status),
+]);
+
+export const insertApiClientSchema = createInsertSchema(apiClients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertApiClient = z.infer<typeof insertApiClientSchema>;
+export type ApiClient = typeof apiClients.$inferSelect;
+
+// OAuth2 access tokens
+export const accessTokens = pgTable("access_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: varchar("token").notNull().unique(),
+  clientId: varchar("client_id").notNull(),
+  userId: varchar("user_id"), // For user-authenticated tokens
+  scopes: jsonb("scopes").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revoked: boolean("revoked").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_access_tokens_token").on(table.token),
+  index("idx_access_tokens_client_id").on(table.clientId),
+  index("idx_access_tokens_expires_at").on(table.expiresAt),
+]);
+
+export const insertAccessTokenSchema = createInsertSchema(accessTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAccessToken = z.infer<typeof insertAccessTokenSchema>;
+export type AccessToken = typeof accessTokens.$inferSelect;
+
+// API usage tracking
+export const apiUsageLogs = pgTable("api_usage_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  endpoint: text("endpoint").notNull(),
+  method: text("method").notNull(), // GET, POST, PUT, DELETE
+  statusCode: integer("status_code").notNull(),
+  responseTime: integer("response_time"), // milliseconds
+  requestSize: integer("request_size"), // bytes
+  responseSize: integer("response_size"), // bytes
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  error: text("error"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_api_usage_logs_client_id_created_at").on(table.clientId, table.createdAt),
+  index("idx_api_usage_logs_endpoint").on(table.endpoint),
+]);
+
+export const insertApiUsageLogSchema = createInsertSchema(apiUsageLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertApiUsageLog = z.infer<typeof insertApiUsageLogSchema>;
+export type ApiUsageLog = typeof apiUsageLogs.$inferSelect;
+
+// Fund Admin Integrations - Connect to SS&C, Alter Domus, Apex, etc
+export const fundAdminConnections = pgTable("fund_admin_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  facilityId: varchar("facility_id").notNull(),
+  providerId: varchar("provider_id").notNull(),
+  providerName: text("provider_name").notNull(), // SSC_Intralinks, Alter_Domus, Apex, etc
+  providerType: text("provider_type").notNull(), // fund_admin, custodian, transfer_agent
+  connectionType: text("connection_type").notNull(), // api, sftp, email, manual
+  credentials: jsonb("credentials"), // Encrypted API keys, SFTP creds
+  syncFrequency: text("sync_frequency").default("daily"), // realtime, hourly, daily, weekly
+  lastSync: timestamp("last_sync"),
+  lastSyncStatus: text("last_sync_status"), // success, partial, failed
+  syncErrors: jsonb("sync_errors"),
+  dataTypes: jsonb("data_types"), // nav, holdings, commitments, distributions
+  status: text("status").notNull().default("active"), // active, paused, error
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_fund_admin_connections_facility_id").on(table.facilityId),
+  index("idx_fund_admin_connections_provider_id").on(table.providerId),
+  index("idx_fund_admin_connections_status").on(table.status),
+]);
+
+export const insertFundAdminConnectionSchema = createInsertSchema(fundAdminConnections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFundAdminConnection = z.infer<typeof insertFundAdminConnectionSchema>;
+export type FundAdminConnection = typeof fundAdminConnections.$inferSelect;
+
+// Fund Admin sync logs
+export const fundAdminSyncLogs = pgTable("fund_admin_sync_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  connectionId: varchar("connection_id").notNull(),
+  syncType: text("sync_type").notNull(), // full, incremental
+  status: text("status").notNull(), // running, completed, failed
+  recordsProcessed: integer("records_processed").default(0),
+  recordsCreated: integer("records_created").default(0),
+  recordsUpdated: integer("records_updated").default(0),
+  recordsFailed: integer("records_failed").default(0),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+  error: text("error"),
+  metadata: jsonb("metadata"),
+}, (table) => [
+  index("idx_fund_admin_sync_logs_connection_id").on(table.connectionId),
+  index("idx_fund_admin_sync_logs_started_at").on(table.startedAt),
+]);
+
+export const insertFundAdminSyncLogSchema = createInsertSchema(fundAdminSyncLogs).omit({
+  id: true,
+  startedAt: true,
+});
+
+export type InsertFundAdminSyncLog = z.infer<typeof insertFundAdminSyncLogSchema>;
+export type FundAdminSyncLog = typeof fundAdminSyncLogs.$inferSelect;
 
 // Generated Documents (legal documents generated from templates)
 export const generatedDocuments = pgTable("generated_documents", {

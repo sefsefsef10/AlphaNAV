@@ -1,7 +1,7 @@
 # AlphaNAV - NAV Lending Operations Platform
 
 ## Overview
-AlphaNAV is a comprehensive NAV (Net Asset Value) lending operations platform designed for private equity fund lenders. Its core purpose is to automate critical operational workflows such as underwriting, monitoring, reporting, and legal document generation. The platform aims to achieve significant operational efficiency gains and 100 basis points in operational alpha, primarily serving internal operations teams with future expansion to external users. Key capabilities include AI-powered data extraction, automated eligibility scoring, risk assessment, LTV calculation with stress testing, and legal document generation, targeting a 90% automation rate for core processes.
+AlphaNAV is a comprehensive NAV (Net Asset Value) lending operations platform designed for private equity fund lenders. Its primary purpose is to automate critical operational workflows such as underwriting, monitoring, reporting, and legal document generation, aiming for a 90% automation rate. The platform targets significant operational efficiency gains and 100 basis points in operational alpha, initially for internal operations teams with future expansion to external users. Key capabilities include AI-powered data extraction, automated eligibility scoring, risk assessment, LTV calculation with stress testing, and legal document generation.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -41,25 +41,14 @@ Preferred communication style: Simple, everyday language.
 - Job scheduler using `node-cron` for automated tasks.
 
 ### Feature Specifications
-- **Marketing Website**: B2B SaaS marketing site with five pages, lead capture.
-- **Notification System**: Real-time alerts.
-- **GP Facility Management**: Draw requests, repayment tracking, document vault, messaging.
-- **Global Search**: Cmd+K / Ctrl+K for entity search.
-- **Data Export**: CSV export utility.
-- **Help System & Onboarding**: Dialog-based, role-specific guides.
-- **AI Integration**: Gemini AI for document data extraction (e.g., fundName, AUM), eligibility assessment, covenant breach risk analysis.
-- **Automated Legal Document Generation**: Templates for Loan Agreements, Term Sheets, Compliance Reports.
-- **Covenant Monitoring and Compliance Tracking**: Automated checks with notifications.
+- **Core Platform Features**: Marketing Website, Notification System, GP Facility Management, Global Search, Data Export, Help System & Onboarding.
+- **AI Integration**: Gemini AI for document data extraction, eligibility assessment, covenant breach risk analysis.
+- **Automation**: Automated Legal Document Generation, Covenant Monitoring and Compliance Tracking.
 - **Workflow APIs**: Endpoints for draw requests, cash flow, portfolio analytics, and advisor functions.
-- **Billing System**: Production-ready Stripe integration for subscriptions, usage tracking, and invoice management.
-- **Analytics Dashboard**: Comprehensive portfolio analytics with ROI, stress testing (baseline, moderate, severe NAV decline), concentration analysis (sector, vintage, GP), and performance metrics (ROI, default rate, recovery rate).
-
-### Automation Features (70% → 90% Target)
-- **AI Accuracy Validation Framework**: Ground truth validation, accuracy scoring (Levenshtein distance, 95% threshold), confidence threshold enforcement, and a metrics dashboard.
-- **10-Point Eligibility Scoring System**: Automated prospect scoring based on fund size, vintage, track record, diversification, and LTV potential, providing 'Strong', 'Review', or 'Decline' recommendations.
-- **LTV Calculator with Stress Testing**: Calculates LTV under baseline, moderate (-20% NAV), and severe (-40% NAV) stress scenarios with automated recommendations and covenant monitoring.
-- **Automated Risk Flags Detection**: Identifies risks across concentration, vintage, portfolio distress, covenant, and market, with a scoring system for overall risk assessment (High, Medium, Low).
-- **Automation Impact**: Achieves significant time savings (3-5 hours per prospect intake, 30-60 min per underwriting, 1-2 hours per monitoring review) and the target 100 basis points operational alpha.
+- **Billing System**: Production-ready Stripe integration.
+- **Analytics Dashboard**: Comprehensive portfolio analytics with ROI, stress testing, concentration analysis, and performance metrics.
+- **Automation Features**: AI Accuracy Validation Framework, 10-Point Eligibility Scoring System, LTV Calculator with Stress Testing, Automated Risk Flags Detection.
+- **Advanced Features**: Batch Document Processing, Portfolio Company Extraction, Credit Agreement Parsing, Predictive Breach ML Model (heuristic-based), Slack/SMS Integration, Market Intelligence Dashboard, Lender Directory, Public API with OAuth, Fund Admin Integrations, SOC 2 Prep.
 
 ## External Dependencies
 
@@ -75,69 +64,4 @@ Preferred communication style: Simple, everyday language.
 - **Scheduling**: `node-cron`.
 - **Payment Processing**: Stripe.
 - **Email Service**: Resend (pending setup).
-
-## Recent Bug Fixes & Technical Debt Resolution
-
-### Critical Bug Fixes (October 2025)
-1. **User Authentication Email Conflict (FIXED)**
-   - **Issue**: When a user logged in with the same email but different OIDC ID, the system attempted to update the user's primary key, breaking referential integrity.
-   - **Fix**: Modified `upsertUser` in `server/dbStorage.ts` to preserve the existing user ID when matching by email, updating only profile fields (firstName, lastName, profileImageUrl, role, advisorId).
-   - **Impact**: Maintains referential integrity with related records (facilities, draws, documents) and prevents authentication failures.
-
-2. **Analytics Page Runtime Errors (FIXED)**
-   - **Issue**: Analytics page crashed with "Cannot read properties of undefined (reading 'toFixed')" when `paymentPerformance` or `riskMetrics` were undefined.
-   - **Fix**: Added `safePortfolioData` wrapper in `client/src/pages/analytics.tsx` that provides default values for missing properties.
-   - **Impact**: Analytics page loads gracefully even when portfolio data is incomplete or empty.
-
-3. **API Response Structure Mismatch (FIXED)**
-   - **Issue**: `/api/analytics/portfolio-summary` returned a different structure than the frontend `PortfolioSummary` interface expected, causing undefined errors.
-   - **Fix**: Updated `server/routes.ts` to return correct field names (`totalCashFlows`, `paidCount`, `overdueCount`, `scheduledCount`) and added missing percentage fields (`overduePercentage`, `scheduledPercentage`).
-   - **Impact**: Frontend and backend now fully aligned, eliminating runtime errors in analytics views.
-
-### Recommended Future Improvements
-- Add regression tests for email collision scenarios in user authentication
-- Extend analytics integration tests to validate API response shapes
-- Monitor production logs for auth edge cases (e.g., missing email from OIDC providers)
-
-## Mock Data Replacement Progress (October 2025)
-
-### Priority 0 Fix: Replace Mock Data with Real API Calls ✅ COMPLETED
-
-**Status: All 5 pages now use real API data exclusively (October 27, 2025)**
-
-1. ✅ **monitoring.tsx** - Fully connected to real APIs
-   - Added 3 new monitoring API endpoints: GET /api/monitoring/covenants, GET /api/monitoring/health-scores, GET /api/monitoring/stats
-   - Replaced all mock covenants, health scores, and alerts with real data from backend
-   - Implemented mutations for acknowledging alerts and running manual covenant checks
-   - All stats (compliant/warning/breach counts and percentages) now use real data
-   - **Architect verified:** All metrics sourced from live query results
-
-2. ✅ **dashboard.tsx** - Fully connected to real APIs
-   - KPI cards (Total Portfolio, Active Deals, Avg Deal Size, Risk Alerts) now use real data from /api/analytics/portfolio-summary
-   - Pipeline health (Lead Identification, Underwriting, Approved, Monitoring) now shows real counts from prospects and facilities
-   - Recent deals table now uses real facility data
-   - **Architect verified:** KPIs and pipeline confirmed to use real data correctly
-   - **Note:** Portfolio chart still uses mock time-series data (requires backend endpoint for historical data)
-
-3. ✅ **deals.tsx** - Fully connected to real APIs
-   - Added useQuery to fetch from /api/facilities
-   - Converted facility data to Deal format with proper status and stage mapping
-   - Calculated lastUpdate based on createdAt timestamp
-   - **Architect verified:** Maps facility fields directly with no synthetic data
-
-4. ✅ **deal-pipeline.tsx** - Fully connected to real APIs
-   - Uses useQuery for /api/prospects and /api/deals
-   - All KPI counts computed from fetched arrays (Total Prospects, High Priority, Medium Priority, Total Deals)
-   - Removed all hard-coded metrics
-   - **Architect verified:** Computes KPI counts from real API data with no hard-coded values
-
-5. ✅ **origination.tsx** - Fully connected to real APIs
-   - Added useQuery to fetch from /api/prospects
-   - Converted Prospect data to FundScore format
-   - All stats calculated from real data (fund count, priority counts)
-   - **Architect verified:** Derives all priority counts from real prospect data
-
-**Backend API Enhancements Still Needed (Lower Priority):**
-- Add time-series portfolio data endpoint for historical portfolio chart on dashboard
-- Implement predictive breach model endpoint for monitoring predictions panel
-- Add riskScore calculation to facilities API (currently undefined in UI)
+- **Messaging/Notifications**: Twilio (connector available), Slack webhooks.
