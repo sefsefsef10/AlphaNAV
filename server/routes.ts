@@ -49,6 +49,7 @@ import oauthRouter from "./routes/oauthRoutes";
 import publicApiRouter from "./routes/publicApiRoutes";
 import apiClientRouter from "./routes/apiClientRoutes";
 import fundAdminRouter from "./routes/fundAdminRoutes";
+import { mfaRouter } from "./routes/mfaRoutes";
 
 const router = Router();
 
@@ -62,6 +63,9 @@ router.use("/v1/public", publicApiRouter); // Versioned public API with OAuth pr
 
 // Mount fund admin integration routes
 router.use("/", fundAdminRouter);
+
+// Mount MFA routes
+router.use("/mfa", mfaRouter);
 
 // ========================================
 // NEW FEATURE ENDPOINTS (10-Feature Expansion)
