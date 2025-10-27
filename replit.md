@@ -194,14 +194,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Known Limitations and Technical Debt
 
-### Security Enhancement Required (Pre-Production)
-- **Facility Ownership Validation (CRITICAL)**: The `facilities` table currently lacks a `gpUserId` field
-  - **Risk**: Any authenticated GP can theoretically submit draw requests for any facility (cross-tenant bypass)
-  - **Current Mitigation**: Active facility status check + UI-level access controls + facility ID obscurity
-  - **Required Fix**: Add `gpUserId` varchar field to facilities table
-  - **Implementation**: Update schema, run migration, add ownership validation in POST /api/facilities/:id/draw-requests
-  - **Priority**: HIGH - Must be completed before multi-tenant production deployment
-  - **Location**: server/routes.ts line 1067-1073 (documented with TODO comment)
+### Recently Resolved (October 27, 2025)
+- **✅ Facility Ownership Validation**: RESOLVED - Added `gpUserId` field to facilities table
+  - **Implementation**: Added `gpUserId` varchar field with index for query performance
+  - **Security**: Ownership validation implemented in draw request endpoints (POST and GET)
+  - **Validation Logic**: 
+    - GPs can only submit/view draw requests for facilities where `facility.gpUserId === req.user.id`
+    - Facilities without gpUserId assigned are blocked from all GP actions (403 error)
+    - Operations/admin roles can access all facilities regardless of ownership
+  - **Database**: Schema updated and indexes optimized (facilities.gpUserId indexed for performance)
+  - **Pre-Production Requirement**: All existing facilities MUST have gpUserId populated before multi-tenant deployment
+  - **Migration**: Operations team should run: `UPDATE facilities SET gp_user_id = '[user-id]' WHERE gp_user_id IS NULL`
 
 ### Production Deployment Remaining Tasks
 1. Configure Sentry DSN in production environment

@@ -15,6 +15,7 @@ import {
   type InsertProspect,
   type InsertUploadedDocument,
   type InsertFacility,
+  type Facility,
   type InsertCovenant,
   type InsertAdvisorDeal,
   type InsertLenderInvitation,
@@ -111,6 +112,57 @@ function validateBody<T>(schema: z.ZodSchema<T>, body: any): { success: true; da
     return { success: true, data: result.data };
   }
   return { success: false, error: result.error };
+}
+
+// Facility ownership validation helper
+// Validates that a GP user owns the facility they're trying to access
+// Operations and admin roles bypass this check
+async function validateFacilityOwnership(
+  facilityId: string,
+  user: Express.User,
+  action: string = "access"
+): Promise<{ success: true; facility: Facility } | { success: false; status: number; error: string; message?: string }> {
+  // Fetch facility
+  const [facility] = await db.select()
+    .from(facilities)
+    .where(eq(facilities.id, facilityId))
+    .limit(1);
+
+  if (!facility) {
+    return {
+      success: false,
+      status: 404,
+      error: "Facility not found"
+    };
+  }
+
+  // Operations and admin can access all facilities
+  if (user.role === "operations" || user.role === "admin") {
+    return { success: true, facility };
+  }
+
+  // For GP users, validate ownership
+  if (user.role === "gp") {
+    if (!facility.gpUserId) {
+      return {
+        success: false,
+        status: 403,
+        error: "Forbidden: Facility ownership not assigned",
+        message: `This facility must be assigned to a GP user before you can ${action}. Please contact operations.`
+      };
+    }
+
+    if (facility.gpUserId !== user.id) {
+      return {
+        success: false,
+        status: 403,
+        error: "Forbidden: You do not have access to this facility",
+        message: `You can only ${action} your own facilities`
+      };
+    }
+  }
+
+  return { success: true, facility };
 }
 
 // Update schemas for PATCH endpoints (omit foreign keys and one-time-set fields)
@@ -1518,15 +1570,21 @@ router.post("/facilities/:facilityId/draw-requests", async (req: Request, res: R
 
     const { facilityId } = req.params;
 
-    // Validate facility exists and is active
-    const [facility] = await db.select()
-      .from(facilities)
-      .where(eq(facilities.id, facilityId))
-      .limit(1);
+    // SECURITY: Validate facility ownership for GP users
+    const ownershipCheck = await validateFacilityOwnership(
+      facilityId,
+      req.user,
+      "submit draw requests"
+    );
 
-    if (!facility) {
-      return res.status(404).json({ error: "Facility not found" });
+    if (!ownershipCheck.success) {
+      return res.status(ownershipCheck.status).json({ 
+        error: ownershipCheck.error,
+        message: ownershipCheck.message 
+      });
     }
+
+    const facility = ownershipCheck.facility;
 
     // Verify facility is active (cannot request draws on closed facilities)
     if (facility.status !== "active") {
@@ -1535,14 +1593,6 @@ router.post("/facilities/:facilityId/draw-requests", async (req: Request, res: R
         facilityStatus: facility.status
       });
     }
-
-    // TODO: SECURITY ENHANCEMENT NEEDED
-    // The facilities table currently lacks a gpUserId field to track ownership.
-    // This means any GP can theoretically submit draw requests for any facility.
-    // Production deployment requires adding a gpUserId field to facilities table
-    // and validating: facility.gpUserId === req.user.id
-    // For MVP: Rely on UI-level access controls and facility ID obscurity
-    // JIRA ticket: https://jira.example.com/browse/SEC-XXX
 
     // Validate request body
     const validation = validateBody(insertDrawRequestSchema, {
@@ -1580,7 +1630,7 @@ router.post("/facilities/:facilityId/draw-requests", async (req: Request, res: R
           userId: user.id,
           type: "draw_request_submitted",
           title: "New Draw Request",
-          message: `Draw request for $${(validation.data.requestedAmount / 100).toLocaleString()} submitted for ${facility.fundName} by ${req.user.email}`,
+          message: `Draw request for $${(validation.data.requestedAmount / 100).toLocaleString()} submitted for ${facility.fundName} by ${req.user!.email}`,
           relatedEntityType: "draw_request",
           relatedEntityId: drawRequest.id,
           actionUrl: `/facilities/${facilityId}`,
@@ -1609,14 +1659,18 @@ router.get("/facilities/:facilityId/draw-requests", async (req: Request, res: Re
 
     const { facilityId } = req.params;
 
-    // Validate facility exists
-    const [facility] = await db.select()
-      .from(facilities)
-      .where(eq(facilities.id, facilityId))
-      .limit(1);
+    // SECURITY: Validate facility ownership for GP users
+    const ownershipCheck = await validateFacilityOwnership(
+      facilityId,
+      req.user,
+      "view draw requests"
+    );
 
-    if (!facility) {
-      return res.status(404).json({ error: "Facility not found" });
+    if (!ownershipCheck.success) {
+      return res.status(ownershipCheck.status).json({ 
+        error: ownershipCheck.error,
+        message: ownershipCheck.message 
+      });
     }
 
     const facilityDrawRequests = await db.select()
@@ -1651,6 +1705,20 @@ router.get("/draw-requests/:id", async (req: Request, res: Response) => {
 
     if (!drawRequest) {
       return res.status(404).json({ error: "Draw request not found" });
+    }
+
+    // SECURITY: Validate facility ownership for GP users
+    const ownershipCheck = await validateFacilityOwnership(
+      drawRequest.facilityId,
+      req.user,
+      "view this draw request"
+    );
+
+    if (!ownershipCheck.success) {
+      return res.status(ownershipCheck.status).json({ 
+        error: ownershipCheck.error,
+        message: ownershipCheck.message 
+      });
     }
 
     res.json(drawRequest);

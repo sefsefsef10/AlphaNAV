@@ -267,6 +267,7 @@ export const facilities = pgTable("facilities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   prospectId: varchar("prospect_id"),
   advisorDealId: varchar("advisor_deal_id"),
+  gpUserId: varchar("gp_user_id"), // Links facility to the GP user who owns it
   fundName: text("fund_name").notNull(),
   lenderName: text("lender_name").notNull().default("NAV IQ Capital"),
   principalAmount: integer("principal_amount").notNull(),
@@ -282,6 +283,7 @@ export const facilities = pgTable("facilities", {
 }, (table) => [
   index("idx_facilities_prospect_id").on(table.prospectId),
   index("idx_facilities_advisor_deal_id").on(table.advisorDealId),
+  index("idx_facilities_gp_user_id").on(table.gpUserId),
   index("idx_facilities_status_maturity").on(table.status, table.maturityDate),
 ]);
 
