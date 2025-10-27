@@ -212,10 +212,10 @@ export default function DealPipelinePage() {
               <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                    <p className="text-sm font-medium text-muted-foreground">Total Universe</p>
+                    <p className="text-sm font-medium text-muted-foreground">Total Prospects</p>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold font-mono tabular-nums">487</p>
+                    <p className="text-2xl font-bold font-mono tabular-nums">{prospects.length}</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -246,10 +246,10 @@ export default function DealPipelinePage() {
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                    <p className="text-sm font-medium text-muted-foreground">Engagement Rate</p>
+                    <p className="text-sm font-medium text-muted-foreground">Total Deals</p>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold font-mono tabular-nums">42%</p>
+                    <p className="text-2xl font-bold font-mono tabular-nums">{deals.length}</p>
                   </CardContent>
                 </Card>
               </div>

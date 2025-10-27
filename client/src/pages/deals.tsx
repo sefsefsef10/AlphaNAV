@@ -62,7 +62,7 @@ export default function DealsPage() {
       amount: facility.principalAmount || 0,
       stage: stageMap[facility.status] || "Initial Contact",
       lastUpdate,
-      riskScore: Math.floor(Math.random() * 5) + 1,
+      riskScore: undefined,
     };
   });
 

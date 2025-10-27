@@ -114,11 +114,13 @@ export default function OriginationPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <p className="text-sm font-medium text-muted-foreground">Est. Conversion</p>
+            <p className="text-sm font-medium text-muted-foreground">Low Priority</p>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold font-mono tabular-nums">22%</p>
-            <p className="text-xs text-muted-foreground mt-1">Based on model</p>
+            <div className="flex items-baseline justify-between">
+              <p className="text-2xl font-bold font-mono tabular-nums">{funds.filter(f => f.recommendation === "low-priority").length}</p>
+              <Badge variant="outline">Review</Badge>
+            </div>
           </CardContent>
         </Card>
       </div>
