@@ -624,3 +624,36 @@ export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans
 
 export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+
+// Marketing Leads table
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: varchar("email").notNull(),
+  company: text("company").notNull(),
+  phone: varchar("phone"),
+  interest: varchar("interest").notNull(), // demo, pricing, enterprise, security, other
+  message: text("message"),
+  status: varchar("status").notNull().default("new"), // new, contacted, qualified, converted, closed
+  source: varchar("source").default("website"), // website, referral, campaign
+  assignedTo: varchar("assigned_to"), // User ID of sales rep
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_leads_email").on(table.email),
+  index("idx_leads_status").on(table.status),
+  index("idx_leads_created_at").on(table.createdAt),
+]);
+
+export const insertLeadSchema = createInsertSchema(leads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  source: true,
+  assignedTo: true,
+});
+
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type Lead = typeof leads.$inferSelect;

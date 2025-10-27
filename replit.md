@@ -58,6 +58,7 @@ Preferred communication style: Simple, everyday language.
 - **Test Expansion Roadmap**: Phase 1 (50+ tests), Phase 2 (70+ tests), Phase 3 (100+ tests)
 
 ### Feature Specifications
+- **Marketing Website**: Professional B2B SaaS marketing site with five pages (Home, Solutions, Pricing, Security, Contact) under `/marketing/*` namespace, accessible without authentication. Contact form with lead capture (POST /api/leads public endpoint with Zod validation, global rate limiting). Leads stored in PostgreSQL with comprehensive schema (email/status/created_at indexes). Operations/Admin can view all leads via authenticated GET endpoint.
 - **Marketing Landing Page**: Professional site at root URL.
 - **Notification System**: Real-time notification center with CRUD operations for alerts.
 - **GP Facility Management**: Draw requests, repayment tracking, document vault, messaging.

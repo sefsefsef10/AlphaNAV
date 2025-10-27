@@ -12,6 +12,9 @@ import {
   cashFlows,
   users,
   notifications,
+  leads,
+  subscriptions,
+  invoices,
   type InsertProspect,
   type InsertUploadedDocument,
   type InsertFacility,
@@ -28,6 +31,7 @@ import {
   insertLenderInvitationSchema,
   insertDrawRequestSchema,
   insertCashFlowSchema,
+  insertLeadSchema,
 } from "@shared/schema";
 import { extractFromFile, type ExtractionResult } from "./services/aiExtraction";
 import multer from "multer";
@@ -2776,6 +2780,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await handleStripeWebhook(req, res);
   });
   
+  // Public marketing leads endpoint (NO auth required for contact form)
+  // Note: Global rate limiting already applied in server/index.ts
+  app.post("/api/leads", async (req: Request, res: Response) => {
+    try {
+      // Validate request body with Zod schema
+      const validatedData = insertLeadSchema.parse(req.body);
+
+      // Create lead with validated data
+      const [lead] = await db.insert(leads).values({
+        ...validatedData,
+        status: "new",
+        source: "website",
+      }).returning();
+
+      res.json({ success: true, leadId: lead.id });
+    } catch (error) {
+      // Handle Zod validation errors
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: "Invalid input", 
+          details: error.errors 
+        });
+      }
+      console.error("Create lead error:", error);
+      res.status(500).json({ error: "Failed to submit lead" });
+    }
+  });
+  
   // Apply authentication middleware to ALL routes under /api
   // This ensures no route can be accessed without authentication
   app.use("/api", isAuthenticated, router);
@@ -2784,3 +2816,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const server = createServer(app);
   return server;
 }
+
+// Marketing Leads Routes (authenticated)
+// GET /api/leads
+// List all leads (Operations/Admin only)
+router.get("/leads", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Only operations and admin can view leads
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Operations or admin role required" });
+    }
+
+    const allLeads = await db.select().from(leads).orderBy(sql`${leads.createdAt} DESC`);
+    res.json(allLeads);
+  } catch (error) {
+    console.error("List leads error:", error);
+    res.status(500).json({ error: "Failed to fetch leads" });
+  }
+});
+
+// PATCH /api/leads/:id
+// Update lead status (Operations/Admin only)
+router.patch("/leads/:id", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Only operations and admin can update leads
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Operations or admin role required" });
+    }
+
+    const { id } = req.params;
+    const { status, assignedTo } = req.body;
+
+    const [updated] = await db
+      .update(leads)
+      .set({ 
+        status, 
+        assignedTo: assignedTo || null,
+        updatedAt: new Date() 
+      })
+      .where(eq(leads.id, id))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Lead not found" });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Update lead error:", error);
+    res.status(500).json({ error: "Failed to update lead" });
+  }
+});
+

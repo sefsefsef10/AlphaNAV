@@ -49,11 +49,17 @@ import UnderwritingDashboardPage from "@/pages/operations/underwriting";
 import FacilitiesPage from "@/pages/operations/facilities";
 import CovenantMonitoringPage from "@/pages/operations/covenant-monitoring";
 import NotFound from "@/pages/not-found";
+import MarketingHome from "@/pages/marketing/home";
+import SolutionsPage from "@/pages/marketing/solutions";
+import PricingPage from "@/pages/marketing/pricing";
+import SecurityPage from "@/pages/marketing/security";
+import ContactPage from "@/pages/marketing/contact";
 
 function AppContent() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [location, setLocation] = useLocation();
   const isLandingPage = location === "/";
+  const isMarketingPage = location.startsWith("/marketing/");
   const isOnboardingPage = location.startsWith("/onboarding");
   const isAdvisorPage = location.startsWith("/advisor");
   const isGPPage = location.startsWith("/gp");
@@ -70,11 +76,11 @@ function AppContent() {
     if (!isLoading && isAuthenticated && user) {
       // If user doesn't have a role set, send to role selection
       if (!user.role) {
-        if (location !== "/select-role" && !isOnboardingPage) {
+        if (location !== "/select-role" && !isOnboardingPage && !isMarketingPage) {
           setLocation("/select-role");
         }
       } else if (location === "/" || location === "/select-role") {
-        // User has a role, redirect to appropriate dashboard
+        // User has a role, redirect to appropriate dashboard (but allow marketing pages)
         const roleRoutes: Record<string, string> = {
           advisor: "/advisor",
           operations: "/dashboard",
@@ -85,7 +91,7 @@ function AppContent() {
         setLocation(targetRoute);
       }
     }
-  }, [isLoading, isAuthenticated, user, location, setLocation, isOnboardingPage]);
+  }, [isLoading, isAuthenticated, user, location, setLocation, isOnboardingPage, isMarketingPage]);
 
   // Show loading or landing page states
   if (isLoading) {
@@ -102,11 +108,16 @@ function AppContent() {
     );
   }
 
-  // Landing page and legal pages (marketing site, no sidebar, no header)
-  if (!isAuthenticated || isLandingPage || location === "/privacy" || location === "/terms") {
+  // Landing page, marketing pages, and legal pages (no sidebar, no header)
+  if (!isAuthenticated || isLandingPage || isMarketingPage || location === "/privacy" || location === "/terms") {
     return (
       <>
         <Route path="/" component={LandingPage} />
+        <Route path="/marketing/home" component={MarketingHome} />
+        <Route path="/marketing/solutions" component={SolutionsPage} />
+        <Route path="/marketing/pricing" component={PricingPage} />
+        <Route path="/marketing/security" component={SecurityPage} />
+        <Route path="/marketing/contact" component={ContactPage} />
         <Route path="/privacy" component={PrivacyPolicy} />
         <Route path="/terms" component={TermsOfService} />
         <Toaster />
