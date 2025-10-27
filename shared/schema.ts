@@ -68,7 +68,11 @@ export const uploadedDocuments = pgTable("uploaded_documents", {
   processingStatus: text("processing_status").notNull().default("pending"), // pending, processing, completed, failed
   processingError: text("processing_error"), // Error message if failed
   uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_uploaded_documents_session_id").on(table.sessionId),
+  index("idx_uploaded_documents_facility_id").on(table.facilityId),
+  index("idx_uploaded_documents_prospect_id").on(table.prospectId),
+]);
 
 export const insertUploadedDocumentSchema = createInsertSchema(uploadedDocuments).omit({
   id: true,
@@ -133,7 +137,9 @@ export const deals = pgTable("deals", {
   lastUpdate: timestamp("last_update").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_deals_prospect_id").on(table.prospectId),
+]);
 
 export const insertDealSchema = createInsertSchema(deals).omit({
   id: true,
@@ -197,7 +203,9 @@ export const advisorDeals = pgTable("advisor_deals", {
   advisorNotes: text("advisor_notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_advisor_deals_advisor_id").on(table.advisorId),
+]);
 
 export const insertAdvisorDealSchema = createInsertSchema(advisorDeals).omit({
   id: true,
@@ -217,7 +225,9 @@ export const lenderInvitations = pgTable("lender_invitations", {
   response: text("response"),
   termSheetSubmitted: boolean("term_sheet_submitted").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_lender_invitations_advisor_deal_id").on(table.advisorDealId),
+]);
 
 export const insertLenderInvitationSchema = createInsertSchema(lenderInvitations).omit({
   id: true,
@@ -240,7 +250,9 @@ export const termSheets = pgTable("term_sheets", {
   otherTerms: text("other_terms"),
   submittedAt: timestamp("submitted_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_term_sheets_advisor_deal_id").on(table.advisorDealId),
+]);
 
 export const insertTermSheetSchema = createInsertSchema(termSheets).omit({
   id: true,
@@ -267,7 +279,11 @@ export const facilities = pgTable("facilities", {
   originationDate: timestamp("origination_date").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_facilities_prospect_id").on(table.prospectId),
+  index("idx_facilities_advisor_deal_id").on(table.advisorDealId),
+  index("idx_facilities_status_maturity").on(table.status, table.maturityDate),
+]);
 
 export const insertFacilitySchema = createInsertSchema(facilities).omit({
   id: true,
@@ -293,7 +309,10 @@ export const covenants = pgTable("covenants", {
   breachNotified: boolean("breach_notified").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_covenants_facility_id_status").on(table.facilityId, table.status),
+  index("idx_covenants_next_check").on(table.nextCheckDate),
+]);
 
 export const insertCovenantSchema = createInsertSchema(covenants).omit({
   id: true,
@@ -317,7 +336,10 @@ export const cashFlows = pgTable("cash_flows", {
   status: text("status").notNull().default("scheduled"), // 'scheduled', 'paid', 'overdue', 'waived'
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_cash_flows_facility_id_status").on(table.facilityId, table.status),
+  index("idx_cash_flows_due_date").on(table.dueDate),
+]);
 
 export const insertCashFlowSchema = createInsertSchema(cashFlows).omit({
   id: true,
@@ -343,7 +365,9 @@ export const drawRequests = pgTable("draw_requests", {
   rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_draw_requests_facility_id_status").on(table.facilityId, table.status),
+]);
 
 export const insertDrawRequestSchema = createInsertSchema(drawRequests).omit({
   id: true,
@@ -368,7 +392,11 @@ export const messages = pgTable("messages", {
   relatedEntityId: varchar("related_entity_id"),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_messages_thread_id").on(table.threadId),
+  index("idx_messages_sender_id").on(table.senderId),
+  index("idx_messages_recipient_id").on(table.recipientId),
+]);
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
@@ -391,7 +419,10 @@ export const notifications = pgTable("notifications", {
   isRead: boolean("is_read").notNull().default(false),
   priority: text("priority").notNull().default("normal"), // 'low', 'normal', 'high', 'urgent'
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_notifications_user_id_is_read").on(table.userId, table.isRead),
+  index("idx_notifications_created_at").on(table.createdAt),
+]);
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
@@ -440,7 +471,10 @@ export const auditLogs = pgTable("audit_logs", {
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+  index("idx_audit_logs_user_id_created_at").on(table.userId, table.createdAt),
+  index("idx_audit_logs_entity_type_id").on(table.entityType, table.entityId),
+]);
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   id: true,
