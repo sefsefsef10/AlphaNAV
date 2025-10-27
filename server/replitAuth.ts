@@ -59,12 +59,16 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
+  console.log("[Auth] Claims object:", JSON.stringify(claims, null, 2));
+  const role = claims["role"] || "gp";
+  console.log(`[Auth] Upserting user ${claims["sub"]} with role: ${role}`);
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    role,
   });
 }
 
@@ -255,23 +259,49 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  if (now <= user.expires_at) {
-    return next();
+  const needsRefresh = now > user.expires_at;
+  
+  if (needsRefresh) {
+    const refreshToken = user.refresh_token;
+    if (!refreshToken) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    try {
+      const config = await getOidcConfig();
+      const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
+      updateUserSession(user, tokenResponse);
+    } catch (error) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
   }
 
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
+  // Fetch database user to get the current role
+  const userId = user.claims?.sub;
+  if (userId) {
+    try {
+      const dbUser = await storage.getUser(userId);
+      if (dbUser) {
+        // Attach database user properties to req.user for route access
+        req.user = {
+          ...user,
+          id: dbUser.id,
+          email: dbUser.email,
+          firstName: dbUser.firstName,
+          lastName: dbUser.lastName,
+          role: dbUser.role,
+        };
+        console.log(`[Auth] User ${userId} authenticated with role: ${dbUser.role}`);
+      } else {
+        console.log(`[Auth] User ${userId} not found in database`);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user from database:", error);
+      // Continue with session user if database fetch fails
+    }
   }
 
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+  return next();
 };

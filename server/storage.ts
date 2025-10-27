@@ -164,9 +164,12 @@ export class MemStorage implements IStorage {
   async upsertUser(userData: UpsertUser): Promise<User> {
     const existing = Array.from(this.users.values()).find(u => u.id === userData.id);
     if (existing) {
+      // Preserve existing role if new role is default "gp" or undefined
+      const roleToUse = (userData.role === "gp" || !userData.role) ? existing.role : userData.role;
       const updated: User = {
         ...existing,
         ...userData,
+        role: roleToUse,
         updatedAt: new Date(),
       };
       this.users.set(updated.id, updated);
