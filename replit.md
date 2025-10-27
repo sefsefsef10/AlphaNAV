@@ -195,16 +195,26 @@ Preferred communication style: Simple, everyday language.
 ## Known Limitations and Technical Debt
 
 ### Recently Resolved (October 27, 2025)
-- **✅ Facility Ownership Validation**: RESOLVED - Added `gpUserId` field to facilities table
-  - **Implementation**: Added `gpUserId` varchar field with index for query performance
-  - **Security**: Ownership validation implemented in draw request endpoints (POST and GET)
+- **✅ Complete Multi-Tenant Security Implementation**: RESOLVED - Comprehensive facility ownership validation
+  - **Database Schema**: Added `gpUserId` varchar field to facilities table with index for query performance
+  - **Security Architecture**: Centralized `validateFacilityOwnership()` helper function (lines 119-168 in routes.ts)
+  - **Complete GP Endpoint Coverage** (9 endpoints secured):
+    1. POST /api/facilities/:facilityId/draw-requests - Submit draw requests
+    2. GET /api/facilities/:facilityId/draw-requests - List facility draw requests
+    3. GET /api/draw-requests/:id - Get single draw request details
+    4. GET /api/facilities/:facilityId/cash-flows - View payment schedules
+    5. GET /api/cash-flows/:id - View single payment details
+    6. GET /api/facilities/:id - View facility details + covenants
+    7. POST /api/facilities/:id/generate-document - Generate legal documents
+    8. POST /api/facilities/:facilityId/check-covenants - Check covenant compliance
+    9. GET /api/facilities/:facilityId/covenant-summary - View covenant summary
   - **Validation Logic**: 
-    - GPs can only submit/view draw requests for facilities where `facility.gpUserId === req.user.id`
-    - Facilities without gpUserId assigned are blocked from all GP actions (403 error)
-    - Operations/admin roles can access all facilities regardless of ownership
-  - **Database**: Schema updated and indexes optimized (facilities.gpUserId indexed for performance)
+    - Two-step validation: Rejects if gpUserId is null OR if gpUserId doesn't match req.user.id
+    - Operations/admin roles bypass ownership checks for internal operations
+    - Consistent 403/404 error responses with descriptive messages
+  - **Production Readiness**: Architect-approved with PASS rating for multi-tenant deployment
   - **Pre-Production Requirement**: All existing facilities MUST have gpUserId populated before multi-tenant deployment
-  - **Migration**: Operations team should run: `UPDATE facilities SET gp_user_id = '[user-id]' WHERE gp_user_id IS NULL`
+  - **Data Migration**: Operations team should run: `UPDATE facilities SET gp_user_id = '[user-id]' WHERE gp_user_id IS NULL`
 
 ### Production Deployment Remaining Tasks
 1. Configure Sentry DSN in production environment
