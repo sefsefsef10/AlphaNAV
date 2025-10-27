@@ -40,6 +40,7 @@ export async function syncFundAdminData(
   connectionId: string
 ): Promise<SyncResult> {
   const startTime = new Date();
+  let syncLogId: string | null = null;
   
   try {
     // Get connection details
@@ -71,6 +72,8 @@ export async function syncFundAdminData(
       })
       .returning();
 
+    syncLogId = syncLog.id;
+
     let result: SyncResult;
 
     // Route to provider-specific sync logic
@@ -91,7 +94,7 @@ export async function syncFundAdminData(
         throw new Error(`Unsupported provider: ${connection.providerName}`);
     }
 
-    // Update sync log
+    // Update sync log with result
     await db
       .update(fundAdminSyncLogs)
       .set({
@@ -118,13 +121,45 @@ export async function syncFundAdminData(
     return result;
   } catch (error) {
     console.error("Fund admin sync error:", error);
+    
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    // Update sync log to failed state if it was created
+    if (syncLogId) {
+      try {
+        await db
+          .update(fundAdminSyncLogs)
+          .set({
+            status: "failed",
+            completedAt: new Date(),
+            error: errorMessage,
+          })
+          .where(eq(fundAdminSyncLogs.id, syncLogId));
+      } catch (updateError) {
+        console.error("Failed to update sync log on error:", updateError);
+      }
+    }
+    
+    // Update connection to reflect failure
+    try {
+      await db
+        .update(fundAdminConnections)
+        .set({
+          lastSync: new Date(),
+          lastSyncStatus: "failed",
+        })
+        .where(eq(fundAdminConnections.id, connectionId));
+    } catch (updateError) {
+      console.error("Failed to update connection status on error:", updateError);
+    }
+    
     return {
       success: false,
       recordsProcessed: 0,
       recordsCreated: 0,
       recordsUpdated: 0,
       recordsFailed: 0,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: errorMessage,
     };
   }
 }
@@ -312,18 +347,51 @@ export async function getActiveFundAdminConnections(): Promise<FundAdminConnecti
  * Schedule automated sync for all active connections
  * Called by the job scheduler
  */
-export async function syncAllActiveFundAdmins(): Promise<void> {
+export async function syncAllActiveFundAdmins(): Promise<{
+  total: number;
+  successful: number;
+  failed: number;
+  results: SyncResult[];
+}> {
   const connections = await getActiveFundAdminConnections();
   
   console.log(`Starting automated sync for ${connections.length} fund admin connections`);
   
+  const results: SyncResult[] = [];
+  let successful = 0;
+  let failed = 0;
+  
   for (const connection of connections) {
     try {
-      await syncFundAdminData(connection.id);
+      const result = await syncFundAdminData(connection.id);
+      results.push(result);
+      
+      if (result.success) {
+        successful++;
+      } else {
+        failed++;
+        console.warn(`Sync failed for connection ${connection.id} (${connection.providerName}): ${result.error}`);
+      }
     } catch (error) {
-      console.error(`Failed to sync connection ${connection.id}:`, error);
+      console.error(`Critical error syncing connection ${connection.id}:`, error);
+      failed++;
+      results.push({
+        success: false,
+        recordsProcessed: 0,
+        recordsCreated: 0,
+        recordsUpdated: 0,
+        recordsFailed: 0,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   }
   
-  console.log("Automated fund admin sync completed");
+  console.log(`Automated fund admin sync completed: ${successful} successful, ${failed} failed out of ${connections.length} total`);
+  
+  return {
+    total: connections.length,
+    successful,
+    failed,
+    results,
+  };
 }

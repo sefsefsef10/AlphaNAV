@@ -58,10 +58,18 @@ export function initializeScheduler() {
     console.log("Running automated fund admin NAV sync...");
     
     try {
-      await syncAllActiveFundAdmins();
-      console.log("✓ Fund admin sync completed successfully");
+      const summary = await syncAllActiveFundAdmins();
+      
+      console.log("Fund admin sync completed:");
+      console.log(`  - Total connections: ${summary.total}`);
+      console.log(`  - Successful syncs: ${summary.successful}`);
+      console.log(`  - Failed syncs: ${summary.failed}`);
+      
+      if (summary.failed > 0) {
+        console.warn(`WARNING: ${summary.failed} fund admin syncs failed - check sync logs for details`);
+      }
     } catch (error) {
-      console.error("Fund admin sync job failed:", error);
+      console.error("Fund admin sync job failed critically:", error);
     }
   });
 
