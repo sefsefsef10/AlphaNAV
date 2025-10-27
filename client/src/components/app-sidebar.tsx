@@ -69,6 +69,11 @@ const operationsNavItems = [
     icon: Database,
   },
   {
+    title: "NAV Valuation",
+    url: "/operations/nav-valuation",
+    icon: TrendingUp,
+  },
+  {
     title: "API Clients",
     url: "/operations/api-clients",
     icon: Key,

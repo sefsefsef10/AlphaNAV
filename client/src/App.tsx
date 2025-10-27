@@ -52,6 +52,7 @@ import MarketIntelligencePage from "@/pages/operations/market-intelligence";
 import ApiClientsPage from "@/pages/operations/api-clients";
 import FundAdminPage from "@/pages/operations/fund-admin";
 import SecuritySettingsPage from "@/pages/operations/security-settings";
+import NAVValuationPage from "@/pages/operations/nav-valuation";
 import NotFound from "@/pages/not-found";
 import MarketingHome from "@/pages/marketing/home";
 import SolutionsPage from "@/pages/marketing/solutions";
@@ -229,6 +230,7 @@ function AppContent() {
               <Route path="/operations/portfolio-companies" component={PortfolioCompaniesPage} />
               <Route path="/operations/lender-directory" component={LenderDirectoryPage} />
               <Route path="/operations/market-intelligence" component={MarketIntelligencePage} />
+              <Route path="/operations/nav-valuation" component={NAVValuationPage} />
               <Route path="/operations/api-clients" component={ApiClientsPage} />
               <Route path="/operations/fund-admin" component={FundAdminPage} />
               <Route path="/operations/security" component={SecuritySettingsPage} />
