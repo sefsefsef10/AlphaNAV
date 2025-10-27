@@ -72,6 +72,7 @@ Preferred communication style: Simple, everyday language.
 - **Portfolio Analytics API**: Comprehensive portfolio risk metrics, status distribution, covenant health dashboard, payment performance, and risk scoring.
 - **Advisor Workflow APIs**: RFP bid comparison with intelligent scoring, advisor commission calculation, and advisor performance analytics dashboard.
 - **Billing System**: Production-ready Stripe integration with subscription management (Starter/Professional/Enterprise tiers), usage tracking, invoice management, webhook handling, and transaction rollback logic for data consistency.
+- **Analytics Dashboard**: Comprehensive portfolio analytics page with operational alpha and ROI calculations (90% automation assumption, basis points formula), visual charts for covenant health and payment performance, zero-AUM guards, transparent assumption disclosure, and complete CSV export including status distribution and all payment states for compliance reporting.
 - **Email Notifications**: Resend selected for transactional emails (setup deferred for later implementation).
 
 ## External Dependencies
