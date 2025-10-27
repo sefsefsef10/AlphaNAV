@@ -40,6 +40,7 @@ import AdvisorMyClients from "@/pages/advisor-my-clients";
 import GPDashboard from "@/pages/gp-dashboard";
 import GPFacility from "@/pages/gp-facility";
 import OperationsDashboard from "@/pages/operations-dashboard";
+import AnalyticsPage from "@/pages/analytics";
 import NotificationPreferences from "@/pages/notification-preferences";
 import ProspectsPage from "@/pages/operations/prospects";
 import ProspectsUploadPage from "@/pages/operations/prospects-upload";
@@ -197,6 +198,7 @@ function AppContent() {
             <Switch>
               <Route path="/dashboard" component={DashboardPage} />
               <Route path="/operations" component={OperationsDashboard} />
+              <Route path="/analytics" component={AnalyticsPage} />
               <Route path="/deal-pipeline" component={DealPipelinePage} />
               <Route path="/underwriting" component={UnderwritingPage} />
               <Route path="/monitoring" component={MonitoringPage} />

@@ -1,4 +1,4 @@
-import { LayoutDashboard, GitBranch, FileText, Scale, TrendingUp, Activity, DollarSign, GraduationCap, Settings, Users, Target, Building2 } from "lucide-react";
+import { LayoutDashboard, GitBranch, FileText, Scale, TrendingUp, Activity, DollarSign, GraduationCap, Settings, Users, Target, Building2, BarChart3 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -42,6 +42,11 @@ const operationsNavItems = [
     title: "Covenant Monitoring",
     url: "/operations/covenant-monitoring",
     icon: Activity,
+  },
+  {
+    title: "Analytics",
+    url: "/analytics",
+    icon: BarChart3,
   },
   {
     title: "Portfolio",
