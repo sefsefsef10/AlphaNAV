@@ -207,9 +207,33 @@ export default function AnalyticsPage() {
     enabled: activeTab === 'performance',
   });
 
+  // Provide safe defaults for portfolioData to avoid undefined errors
+  const safePortfolioData = portfolioData ? {
+    ...portfolioData,
+    paymentPerformance: portfolioData.paymentPerformance || {
+      totalCashFlows: 0,
+      paidCount: 0,
+      overdueCount: 0,
+      scheduledCount: 0,
+      paidPercentage: 0,
+      overduePercentage: 0,
+      scheduledPercentage: 0,
+      totalPaid: 0,
+      totalOverdue: 0,
+      totalScheduled: 0,
+    },
+    riskMetrics: portfolioData.riskMetrics || {
+      riskScore: 0,
+      riskLevel: 'low' as const,
+      upcomingMaturities90Days: 0,
+      concentrationRatio: 0,
+      topFiveExposure: 0,
+    },
+  } : null;
+
   // Calculate Operational Alpha ROI
   const calculateOperationalAlpha = () => {
-    if (!portfolioData) return null;
+    if (!safePortfolioData) return null;
 
     const totalAUM = portfolioData.overview.totalPrincipalAmount;
     if (totalAUM === 0) return null;
@@ -284,20 +308,20 @@ export default function AnalyticsPage() {
       ['Breach', `${portfolioData.covenantHealth.breach} (${portfolioData.covenantHealth.breachPercentage.toFixed(1)}%)`],
       ['', ''],
       ['PAYMENT PERFORMANCE', ''],
-      ['Total Cash Flows', portfolioData.paymentPerformance.totalCashFlows],
-      ['Paid Count', `${portfolioData.paymentPerformance.paidCount} (${portfolioData.paymentPerformance.paidPercentage.toFixed(1)}%)`],
-      ['Paid Amount', formatCurrency(portfolioData.paymentPerformance.totalPaid)],
-      ['Overdue Count', `${portfolioData.paymentPerformance.overdueCount} (${portfolioData.paymentPerformance.overduePercentage.toFixed(1)}%)`],
-      ['Overdue Amount', formatCurrency(portfolioData.paymentPerformance.totalOverdue)],
-      ['Scheduled Count', `${portfolioData.paymentPerformance.scheduledCount} (${portfolioData.paymentPerformance.scheduledPercentage.toFixed(1)}%)`],
-      ['Scheduled Amount', formatCurrency(portfolioData.paymentPerformance.totalScheduled)],
+      ['Total Cash Flows', safePortfolioData.paymentPerformance.totalCashFlows],
+      ['Paid Count', `${safePortfolioData.paymentPerformance.paidCount} (${safePortfolioData.paymentPerformance.paidPercentage.toFixed(1)}%)`],
+      ['Paid Amount', formatCurrency(safePortfolioData.paymentPerformance.totalPaid)],
+      ['Overdue Count', `${safePortfolioData.paymentPerformance.overdueCount} (${safePortfolioData.paymentPerformance.overduePercentage.toFixed(1)}%)`],
+      ['Overdue Amount', formatCurrency(safePortfolioData.paymentPerformance.totalOverdue)],
+      ['Scheduled Count', `${safePortfolioData.paymentPerformance.scheduledCount} (${safePortfolioData.paymentPerformance.scheduledPercentage.toFixed(1)}%)`],
+      ['Scheduled Amount', formatCurrency(safePortfolioData.paymentPerformance.totalScheduled)],
       ['', ''],
       ['RISK METRICS', ''],
-      ['Risk Score', `${portfolioData.riskMetrics.riskScore}/100`],
-      ['Risk Level', portfolioData.riskMetrics.riskLevel.toUpperCase()],
-      ['Upcoming Maturities (90 days)', portfolioData.riskMetrics.upcomingMaturities90Days],
-      ['Concentration Ratio (Top 5)', `${portfolioData.riskMetrics.concentrationRatio.toFixed(2)}%`],
-      ['Top 5 Exposure', formatCurrency(portfolioData.riskMetrics.topFiveExposure)],
+      ['Risk Score', `${safePortfolioData.riskMetrics.riskScore}/100`],
+      ['Risk Level', safePortfolioData.riskMetrics.riskLevel.toUpperCase()],
+      ['Upcoming Maturities (90 days)', safePortfolioData.riskMetrics.upcomingMaturities90Days],
+      ['Concentration Ratio (Top 5)', `${safePortfolioData.riskMetrics.concentrationRatio.toFixed(2)}%`],
+      ['Top 5 Exposure', formatCurrency(safePortfolioData.riskMetrics.topFiveExposure)],
     ];
 
     if (roiMetrics) {
@@ -432,9 +456,9 @@ export default function AnalyticsPage() {
   ];
 
   const paymentChartData = [
-    { name: 'Paid', value: portfolioData.paymentPerformance.paidCount, amount: portfolioData.paymentPerformance.totalPaid },
-    { name: 'Overdue', value: portfolioData.paymentPerformance.overdueCount, amount: portfolioData.paymentPerformance.totalOverdue },
-    { name: 'Scheduled', value: portfolioData.paymentPerformance.scheduledCount, amount: portfolioData.paymentPerformance.totalScheduled },
+    { name: 'Paid', value: safePortfolioData.paymentPerformance.paidCount, amount: safePortfolioData.paymentPerformance.totalPaid },
+    { name: 'Overdue', value: safePortfolioData.paymentPerformance.overdueCount, amount: safePortfolioData.paymentPerformance.totalOverdue },
+    { name: 'Scheduled', value: safePortfolioData.paymentPerformance.scheduledCount, amount: safePortfolioData.paymentPerformance.totalScheduled },
   ];
 
   const getRiskColor = (level: string) => {
@@ -551,11 +575,11 @@ export default function AnalyticsPage() {
                 <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold tabular-nums ${getRiskColor(portfolioData.riskMetrics.riskLevel)}`} data-testid="metric-risk-score">
-                  {portfolioData.riskMetrics.riskScore}/100
+                <div className={`text-2xl font-bold tabular-nums ${getRiskColor(safePortfolioData.riskMetrics.riskLevel)}`} data-testid="metric-risk-score">
+                  {safePortfolioData.riskMetrics.riskScore}/100
                 </div>
-                <Badge variant={getRiskBadgeVariant(portfolioData.riskMetrics.riskLevel)} className="mt-1" data-testid="badge-risk-level">
-                  {portfolioData.riskMetrics.riskLevel.toUpperCase()}
+                <Badge variant={getRiskBadgeVariant(safePortfolioData.riskMetrics.riskLevel)} className="mt-1" data-testid="badge-risk-level">
+                  {safePortfolioData.riskMetrics.riskLevel.toUpperCase()}
                 </Badge>
               </CardContent>
             </Card>
@@ -678,7 +702,7 @@ export default function AnalyticsPage() {
               <CardHeader>
                 <CardTitle>Payment Performance</CardTitle>
                 <CardDescription>
-                  {portfolioData.paymentPerformance.totalCashFlows} total cash flows
+                  {safePortfolioData.paymentPerformance.totalCashFlows} total cash flows
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -702,16 +726,16 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="grid grid-cols-3 gap-4 mt-4">
                   <div>
-                    <div className="text-sm font-medium">{formatCurrency(portfolioData.paymentPerformance.totalPaid)}</div>
-                    <div className="text-xs text-muted-foreground">Paid ({portfolioData.paymentPerformance.paidPercentage.toFixed(1)}%)</div>
+                    <div className="text-sm font-medium">{formatCurrency(safePortfolioData.paymentPerformance.totalPaid)}</div>
+                    <div className="text-xs text-muted-foreground">Paid ({safePortfolioData.paymentPerformance.paidPercentage.toFixed(1)}%)</div>
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-destructive">{formatCurrency(portfolioData.paymentPerformance.totalOverdue)}</div>
-                    <div className="text-xs text-muted-foreground">Overdue ({portfolioData.paymentPerformance.overduePercentage.toFixed(1)}%)</div>
+                    <div className="text-sm font-medium text-destructive">{formatCurrency(safePortfolioData.paymentPerformance.totalOverdue)}</div>
+                    <div className="text-xs text-muted-foreground">Overdue ({safePortfolioData.paymentPerformance.overduePercentage.toFixed(1)}%)</div>
                   </div>
                   <div>
-                    <div className="text-sm font-medium">{formatCurrency(portfolioData.paymentPerformance.totalScheduled)}</div>
-                    <div className="text-xs text-muted-foreground">Scheduled ({portfolioData.paymentPerformance.scheduledPercentage.toFixed(1)}%)</div>
+                    <div className="text-sm font-medium">{formatCurrency(safePortfolioData.paymentPerformance.totalScheduled)}</div>
+                    <div className="text-xs text-muted-foreground">Scheduled ({safePortfolioData.paymentPerformance.scheduledPercentage.toFixed(1)}%)</div>
                   </div>
                 </div>
               </CardContent>
@@ -734,7 +758,7 @@ export default function AnalyticsPage() {
                     <span className="text-sm text-muted-foreground">Upcoming Maturities</span>
                   </div>
                   <div className="text-2xl font-bold tabular-nums" data-testid="metric-upcoming-maturities">
-                    {portfolioData.riskMetrics.upcomingMaturities90Days}
+                    {safePortfolioData.riskMetrics.upcomingMaturities90Days}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Within next 90 days
@@ -747,7 +771,7 @@ export default function AnalyticsPage() {
                     <span className="text-sm text-muted-foreground">Concentration Ratio</span>
                   </div>
                   <div className="text-2xl font-bold tabular-nums" data-testid="metric-concentration-ratio">
-                    {portfolioData.riskMetrics.concentrationRatio.toFixed(1)}%
+                    {safePortfolioData.riskMetrics.concentrationRatio.toFixed(1)}%
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Top 5 facilities
@@ -760,7 +784,7 @@ export default function AnalyticsPage() {
                     <span className="text-sm text-muted-foreground">Top 5 Exposure</span>
                   </div>
                   <div className="text-2xl font-bold tabular-nums" data-testid="metric-top-five-exposure">
-                    {formatCurrency(portfolioData.riskMetrics.topFiveExposure)}
+                    {formatCurrency(safePortfolioData.riskMetrics.topFiveExposure)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Combined outstanding balance

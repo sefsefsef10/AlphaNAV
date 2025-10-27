@@ -54,6 +54,33 @@ import type { IStorage } from "./storage";
 export class DatabaseStorage implements IStorage {
   // User methods
   async upsertUser(userData: UpsertUser): Promise<User> {
+    // First, check if a user with this email already exists
+    if (userData.email) {
+      const existingByEmail = await db.query.users.findFirst({
+        where: eq(users.email, userData.email),
+      });
+      
+      // If a user exists with this email but different ID, update profile fields but keep existing ID
+      // This maintains referential integrity with related records
+      if (existingByEmail && existingByEmail.id !== userData.id) {
+        const [updatedUser] = await db
+          .update(users)
+          .set({
+            // Keep existing ID - DO NOT update primary key
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            profileImageUrl: userData.profileImageUrl,
+            role: userData.role || existingByEmail.role,
+            advisorId: userData.advisorId,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, existingByEmail.id))
+          .returning();
+        return updatedUser;
+      }
+    }
+    
+    // Standard upsert by ID
     const [user] = await db
       .insert(users)
       .values(userData)
