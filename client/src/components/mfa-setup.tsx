@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Copy, CheckCircle2, AlertCircle, Download } from "lucide-react";
+import { Shield, Copy, CheckCircle2, AlertCircle, Download, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface MFAStatus {
@@ -28,10 +28,17 @@ export function MFASetup() {
   const [verificationCode, setVerificationCode] = useState("");
   const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [copiedCodes, setCopiedCodes] = useState(false);
+  const [showSMSDialog, setShowSMSDialog] = useState(false);
+  const [smsPhoneNumber, setSMSPhoneNumber] = useState("");
 
   // Get current MFA status
   const { data: mfaStatus, isLoading: statusLoading } = useQuery<MFAStatus>({
     queryKey: ["/api/mfa/status"],
+  });
+
+  // Check if SMS is available
+  const { data: smsStatus } = useQuery<{ smsEnabled: boolean }>({
+    queryKey: ["/api/mfa/sms-status"],
   });
 
   // Generate MFA secret
@@ -176,6 +183,36 @@ export function MFASetup() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // Send backup codes via SMS
+  const sendSMSMutation = useMutation({
+    mutationFn: async () => {
+      if (!enrollmentData) throw new Error("No enrollment data");
+      
+      return apiRequest("/api/mfa/send-backup-codes-sms", {
+        method: "POST",
+        body: JSON.stringify({
+          phoneNumber: smsPhoneNumber,
+          backupCodes: enrollmentData.backupCodes,
+        }),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "SMS Sent!",
+        description: "Backup codes have been sent to your phone.",
+      });
+      setShowSMSDialog(false);
+      setSMSPhoneNumber("");
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "SMS Failed",
+        description: error.message || "Failed to send SMS. Please try again.",
+      });
+    },
+  });
 
   if (statusLoading) {
     return <div className="text-muted-foreground">Loading MFA status...</div>;
@@ -362,25 +399,38 @@ export function MFASetup() {
             ))}
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={copyBackupCodes}
-              className="flex-1"
-              data-testid="button-copy-codes"
-            >
-              <Copy className="h-4 w-4 mr-2" />
-              {copiedCodes ? "Copied!" : "Copy Codes"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={downloadBackupCodes}
-              className="flex-1"
-              data-testid="button-download-codes"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </Button>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={copyBackupCodes}
+                className="flex-1"
+                data-testid="button-copy-codes"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                {copiedCodes ? "Copied!" : "Copy Codes"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={downloadBackupCodes}
+                className="flex-1"
+                data-testid="button-download-codes"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </Button>
+            </div>
+            {smsStatus?.smsEnabled && (
+              <Button
+                variant="outline"
+                onClick={() => setShowSMSDialog(true)}
+                className="w-full"
+                data-testid="button-send-sms"
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Send via SMS
+              </Button>
+            )}
           </div>
 
           <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
@@ -401,6 +451,55 @@ export function MFASetup() {
             Done
           </Button>
         </CardFooter>
+        
+        {/* SMS Dialog */}
+        {showSMSDialog && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Send Backup Codes via SMS</CardTitle>
+                <CardDescription>
+                  Enter your phone number to receive backup codes via text message
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="sms-phone">Phone Number</Label>
+                  <Input
+                    id="sms-phone"
+                    type="tel"
+                    placeholder="+14155552671"
+                    value={smsPhoneNumber}
+                    onChange={(e) => setSMSPhoneNumber(e.target.value)}
+                    data-testid="input-sms-phone"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Use E.164 format (e.g., +1 for US, +44 for UK)
+                  </p>
+                </div>
+              </CardContent>
+              <CardFooter className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowSMSDialog(false);
+                    setSMSPhoneNumber("");
+                  }}
+                  data-testid="button-cancel-sms"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => sendSMSMutation.mutate()}
+                  disabled={!smsPhoneNumber || sendSMSMutation.isPending}
+                  data-testid="button-confirm-sms"
+                >
+                  {sendSMSMutation.isPending ? "Sending..." : "Send SMS"}
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        )}
       </Card>
     );
   }

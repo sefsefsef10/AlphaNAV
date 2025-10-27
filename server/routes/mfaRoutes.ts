@@ -12,6 +12,11 @@ import {
   getRemainingBackupCodeCount,
 } from "../services/mfaService";
 import {
+  sendBackupCodesSMS,
+  isTwilioConfigured,
+  isValidPhoneNumber,
+} from "../services/smsService";
+import {
   mfaVerifyLimiter,
   mfaEnrollLimiter,
   mfaRegenerateLimiter,
@@ -300,5 +305,90 @@ mfaRouter.get("/backup-codes/count", async (req, res) => {
   } catch (error) {
     console.error("Error getting backup code count:", error);
     res.status(500).json({ error: "Failed to get backup code count" });
+  }
+});
+
+/**
+ * POST /api/mfa/send-backup-codes-sms
+ * Send backup codes via SMS to user's phone
+ */
+const sendBackupCodesSMSSchema = z.object({
+  phoneNumber: z.string(),
+  backupCodes: z.array(z.string()),
+});
+
+mfaRouter.post("/send-backup-codes-sms", mfaRegenerateLimiter, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Check if Twilio is configured
+    if (!isTwilioConfigured()) {
+      return res.status(503).json({
+        error: "SMS service not configured",
+        message: "SMS backup codes are not available. Please use the displayed backup codes or contact your administrator.",
+      });
+    }
+
+    const validation = sendBackupCodesSMSSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: "Invalid request",
+        details: validation.error.issues,
+      });
+    }
+
+    const { phoneNumber, backupCodes } = validation.data;
+
+    // Validate phone number format
+    if (!isValidPhoneNumber(phoneNumber)) {
+      return res.status(400).json({
+        error: "Invalid phone number format",
+        message: "Phone number must be in E.164 format (e.g., +14155552671)",
+      });
+    }
+
+    // Send SMS
+    const result = await sendBackupCodesSMS(phoneNumber, backupCodes);
+
+    if (!result.success) {
+      return res.status(500).json({
+        error: "Failed to send SMS",
+        message: result.error || "Unable to send backup codes via SMS",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Backup codes sent successfully via SMS",
+    });
+  } catch (error) {
+    console.error("Error sending backup codes via SMS:", error);
+    res.status(500).json({ error: "Failed to send backup codes via SMS" });
+  }
+});
+
+/**
+ * GET /api/mfa/sms-status
+ * Check if SMS service is configured
+ */
+mfaRouter.get("/sms-status", async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const configured = isTwilioConfigured();
+
+    res.json({
+      smsEnabled: configured,
+      message: configured
+        ? "SMS backup delivery is available"
+        : "SMS service not configured",
+    });
+  } catch (error) {
+    console.error("Error checking SMS status:", error);
+    res.status(500).json({ error: "Failed to check SMS status" });
   }
 });

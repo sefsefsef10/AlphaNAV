@@ -122,14 +122,16 @@ export default function NAVValuationPage() {
   // Calculate company valuation mutation
   const calculateValuationMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/nav-valuation/company", {
-        companyId: selectedCompanyId,
-        currentRevenue: currentRevenue ? parseFloat(currentRevenue) : undefined,
-        currentEBITDA: currentEBITDA ? parseFloat(currentEBITDA) : undefined,
-        revenueGrowthRate: revenueGrowthRate ? parseFloat(revenueGrowthRate) : undefined,
-        industryMultiple: industryMultiple ? parseFloat(industryMultiple) : undefined,
+      return await apiRequest("/api/nav-valuation/company", {
+        method: "POST",
+        body: JSON.stringify({
+          companyId: selectedCompanyId,
+          currentRevenue: currentRevenue ? parseFloat(currentRevenue) : undefined,
+          currentEBITDA: currentEBITDA ? parseFloat(currentEBITDA) : undefined,
+          revenueGrowthRate: revenueGrowthRate ? parseFloat(revenueGrowthRate) : undefined,
+          industryMultiple: industryMultiple ? parseFloat(industryMultiple) : undefined,
+        }),
       });
-      return await response.json();
     },
     onSuccess: (data: ValuationResult) => {
       setValuationResult(data);
@@ -150,11 +152,13 @@ export default function NAVValuationPage() {
   // Perform stress test mutation
   const performStressTestMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/nav-valuation/stress-test", {
-        companyId: stressTestCompanyId,
-        baselineValuation: parseFloat(baselineValuation),
+      return await apiRequest("/api/nav-valuation/stress-test", {
+        method: "POST",
+        body: JSON.stringify({
+          companyId: stressTestCompanyId,
+          baselineValuation: parseFloat(baselineValuation),
+        }),
       });
-      return await response.json();
     },
     onSuccess: (data: StressTestResult[]) => {
       setStressTestResults(data);
@@ -175,10 +179,12 @@ export default function NAVValuationPage() {
   // Calculate portfolio NAV mutation
   const calculatePortfolioNAVMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/nav-valuation/portfolio", {
-        facilityId: selectedFacilityId || undefined,
+      return await apiRequest("/api/nav-valuation/portfolio", {
+        method: "POST",
+        body: JSON.stringify({
+          facilityId: selectedFacilityId || undefined,
+        }),
       });
-      return await response.json();
     },
     onSuccess: (data: PortfolioNAVAnalysis) => {
       setPortfolioNAV(data);
@@ -199,10 +205,12 @@ export default function NAVValuationPage() {
   // Perform portfolio stress test mutation
   const performPortfolioStressTestMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/nav-valuation/portfolio/stress-test", {
-        facilityId: selectedFacilityId,
+      return await apiRequest("/api/nav-valuation/portfolio/stress-test", {
+        method: "POST",
+        body: JSON.stringify({
+          facilityId: selectedFacilityId,
+        }),
       });
-      return await response.json();
     },
     onSuccess: (data: PortfolioNAVAnalysis) => {
       setPortfolioNAV(data);
