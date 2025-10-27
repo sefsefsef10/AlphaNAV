@@ -8,7 +8,9 @@ import {
   hashSecret,
   verifySecret,
   generateAccessToken,
+  generateRefreshToken,
   verifyAccessToken,
+  verifyRefreshToken,
 } from "../oauth/oauthServer";
 
 const router = Router();
@@ -46,8 +48,8 @@ router.post("/token", async (req: Request, res: Response) => {
       });
     }
 
-    // Verify client secret
-    if (!verifySecret(client_secret, client.clientSecret)) {
+    // Verify client secret (async bcrypt comparison)
+    if (!(await verifySecret(client_secret, client.clientSecret))) {
       return res.status(401).json({
         error: "invalid_client",
         error_description: "Invalid client credentials",
@@ -78,18 +80,83 @@ router.post("/token", async (req: Request, res: Response) => {
       });
     }
 
-    // Generate access token
+    // Generate access token (1 hour) and refresh token (30 days)
     const grantedScopes = requestedScopes.length > 0 ? requestedScopes : allowedScopes;
     const accessToken = await generateAccessToken(client_id, grantedScopes);
+    const refreshToken = await generateRefreshToken(client_id, grantedScopes);
 
     return res.json({
       access_token: accessToken,
       token_type: "Bearer",
-      expires_in: 86400, // 24 hours
+      expires_in: 3600, // 1 hour in seconds
+      refresh_token: refreshToken,
       scope: grantedScopes.join(" "),
     });
   } catch (error: any) {
     console.error("Token generation error:", error);
+    return res.status(500).json({
+      error: "server_error",
+      error_description: "Internal server error",
+    });
+  }
+});
+
+// Refresh token endpoint (token rotation)
+router.post("/token/refresh", async (req: Request, res: Response) => {
+  try {
+    const { refresh_token, client_id, client_secret } = req.body;
+
+    if (!refresh_token || !client_id || !client_secret) {
+      return res.status(400).json({
+        error: "invalid_request",
+        error_description: "refresh_token, client_id, and client_secret are required",
+      });
+    }
+
+    // Verify calling client
+    const [client] = await db
+      .select()
+      .from(apiClients)
+      .where(eq(apiClients.clientId, client_id))
+      .limit(1);
+
+    if (!client || !(await verifySecret(client_secret, client.clientSecret))) {
+      return res.status(401).json({
+        error: "invalid_client",
+        error_description: "Invalid client credentials",
+      });
+    }
+
+    // Verify refresh token (using dedicated verifyRefreshToken)
+    const verification = await verifyRefreshToken(refresh_token);
+
+    if (!verification.valid || verification.clientId !== client_id) {
+      return res.status(401).json({
+        error: "invalid_grant",
+        error_description: verification.error || "Invalid or expired refresh token",
+      });
+    }
+
+    // Revoke old refresh token (rotation)
+    await db
+      .update(accessTokens)
+      .set({ revoked: true })
+      .where(eq(accessTokens.token, refresh_token));
+
+    // Issue new tokens
+    const scopes = verification.scopes || [];
+    const newAccessToken = await generateAccessToken(client_id, scopes);
+    const newRefreshToken = await generateRefreshToken(client_id, scopes);
+
+    return res.json({
+      access_token: newAccessToken,
+      token_type: "Bearer",
+      expires_in: 3600, // 1 hour
+      refresh_token: newRefreshToken,
+      scope: scopes.join(" "),
+    });
+  } catch (error: any) {
+    console.error("Refresh token error:", error);
     return res.status(500).json({
       error: "server_error",
       error_description: "Internal server error",
@@ -116,25 +183,38 @@ router.post("/introspect", async (req: Request, res: Response) => {
       .where(eq(apiClients.clientId, client_id))
       .limit(1);
 
-    if (!client || !verifySecret(client_secret, client.clientSecret)) {
+    if (!client || !(await verifySecret(client_secret, client.clientSecret))) {
       return res.status(401).json({
         error: "invalid_client",
         error_description: "Invalid client credentials",
       });
     }
 
-    // Verify token
-    const verification = await verifyAccessToken(token);
+    // Verify token (try both access and refresh)
+    let verification = await verifyAccessToken(token);
+    
+    // If access token validation fails, try refresh token
+    if (!verification.valid) {
+      verification = await verifyRefreshToken(token);
+    }
 
     if (!verification.valid) {
       return res.json({ active: false });
     }
 
+    // Get actual token record for accurate expiry
+    const [tokenRecord] = await db
+      .select()
+      .from(accessTokens)
+      .where(eq(accessTokens.token, token))
+      .limit(1);
+
     return res.json({
       active: true,
       client_id: verification.clientId,
       scope: verification.scopes?.join(" "),
-      exp: Math.floor(Date.now() / 1000) + 86400, // Token expiry
+      token_type: tokenRecord?.tokenType || "access",
+      exp: tokenRecord ? Math.floor(tokenRecord.expiresAt.getTime() / 1000) : undefined,
     });
   } catch (error: any) {
     console.error("Token introspection error:", error);
@@ -164,7 +244,7 @@ router.post("/revoke", async (req: Request, res: Response) => {
       .where(eq(apiClients.clientId, client_id))
       .limit(1);
 
-    if (!client || !verifySecret(client_secret, client.clientSecret)) {
+    if (!client || !(await verifySecret(client_secret, client.clientSecret))) {
       return res.status(401).json({
         error: "invalid_client",
         error_description: "Invalid client credentials",

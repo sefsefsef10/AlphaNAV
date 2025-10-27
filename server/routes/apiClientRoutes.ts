@@ -68,8 +68,8 @@ router.post("/clients", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "clientName and allowedScopes are required" });
     }
 
-    // Generate credentials
-    const { clientId, clientSecret, hashedSecret } = generateClientCredentials();
+    // Generate credentials (async bcrypt hashing)
+    const { clientId, clientSecret, hashedSecret} = await generateClientCredentials();
 
     // Create client
     const [newClient] = await db

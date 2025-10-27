@@ -4,6 +4,64 @@
 AlphaNAV is a comprehensive NAV (Net Asset Value) lending operations platform designed for private equity fund lenders. Its primary purpose is to automate critical operational workflows such as underwriting, monitoring, reporting, and legal document generation, aiming for a 90% automation rate. The platform targets significant operational efficiency gains and 100 basis points in operational alpha, initially for internal operations teams with future expansion to external users. Key capabilities include AI-powered data extraction, automated eligibility scoring, risk assessment, LTV calculation with stress testing, and legal document generation.
 
 ## Recent Updates (October 27, 2025)
+
+### Latest: OAuth2 Public API Implementation ✅
+**Enterprise-Grade Public API**: Complete OAuth2 server implementation enabling external systems to programmatically access NAV lending data.
+
+**Backend Infrastructure**:
+- **OAuth2 Authorization Server** (`server/oauth/oauthServer.ts`):
+  - Client credentials grant flow
+  - Access token generation with 1-hour expiration
+  - Refresh token support with 30-day expiration
+  - Token introspection and revocation endpoints
+  - Scope-based access control middleware
+  - API usage logging for analytics
+  
+- **API Client Management** (`server/routes/apiClientRoutes.ts`):
+  - CRUD operations for OAuth clients
+  - Client credential generation (client_id/client_secret with bcrypt hashing)
+  - Status management (active/suspended/revoked)
+  - Rate limiting configuration per client
+  - Organization-level scoping for multi-tenant security
+  
+- **Versioned Public API** (`server/routes/publicApiRoutes.ts` - `/api/v1/public/*`):
+  - GET `/facilities` - List all facilities (with org filtering)
+  - GET `/facilities/:id` - Get specific facility details
+  - POST `/facilities/:id/draws` - Create draw request programmatically
+  - GET `/facilities/:id/summary` - Get analytics summary with metrics
+  - GET `/covenants/:facilityId` - List covenant compliance data
+  - All endpoints protected by OAuth middleware requiring bearer tokens
+  - Standard OAuth error responses (401/403 with error codes)
+
+**Frontend UI** (`client/src/pages/operations/api-clients.tsx`):
+- Create new API clients with custom scopes
+- One-time secret display with copy-to-clipboard
+- Client status management (activate/suspend/delete)
+- Rate limit and environment configuration
+- Visual scope selection with checkboxes
+- Real-time status badges (active/suspended/revoked)
+
+**Available Scopes**:
+- `read:facilities` - Access facility data
+- `read:draws` - View draw requests
+- `write:draws` - Create new draw requests
+- `read:analytics` - Access portfolio analytics
+- `read:covenants` - View covenant compliance
+
+**Security Features**:
+- Client secrets hashed with bcrypt (10 rounds)
+- Bearer token authentication
+- Scope-based authorization
+- Organization-level data isolation
+- Rate limiting per client
+- Comprehensive audit logging
+
+**Integration Ready**: External fund administrators, portfolio management systems, and analytics platforms can now programmatically integrate with AlphaNAV using industry-standard OAuth2.
+
+---
+
+### Earlier Updates
+
 **CRITICAL ROUTING FIX**: Fixed routing bug where operations/admin users were incorrectly redirected to mock dashboard (/dashboard) instead of real operations dashboard (/operations).
 
 **NEW FEATURES ADDED**:
@@ -53,6 +111,8 @@ Preferred communication style: Simple, everyday language.
 ### Technical Implementations
 - Monorepo structure, serverless-first database, component library approach with shadcn/ui.
 - Job scheduler using `node-cron` for automated tasks.
+- OAuth2 server infrastructure for public API access with client credentials flow.
+- Versioned REST API (`/api/v1/public/*`) with scope-based authorization.
 
 ### Feature Specifications
 - **Core Platform Features**: Marketing Website, Notification System, GP Facility Management, Global Search, Data Export, Help System & Onboarding.
