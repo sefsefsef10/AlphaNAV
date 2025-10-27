@@ -52,8 +52,12 @@ import fundAdminRouter from "./routes/fundAdminRoutes";
 import { mfaRouter } from "./routes/mfaRoutes";
 import { marketIntelligenceRouter } from "./routes/marketIntelligenceRoutes";
 import { navValuationRouter } from "./routes/navValuationRoutes";
+import { healthRouter } from "./routes/healthRoutes";
 
 const router = Router();
+
+// Mount health check routes under /api for proper API routing
+router.use("/api/health", healthRouter);
 
 // Mount batch documents routes
 router.use("/documents", batchDocumentsRouter);
