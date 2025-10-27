@@ -19,11 +19,6 @@ import PrivacyPolicy from "@/pages/privacy";
 import TermsOfService from "@/pages/terms";
 import RoleSelection from "@/pages/role-selection";
 import ProfileSelection from "@/pages/profile-selection";
-import DashboardPage from "@/pages/dashboard";
-import DealPipelinePage from "@/pages/deal-pipeline";
-import UnderwritingPage from "@/pages/underwriting";
-import MonitoringPage from "@/pages/monitoring";
-import PortfolioPage from "@/pages/portfolio";
 import ReportsPage from "@/pages/reports";
 import LegalPage from "@/pages/legal";
 import LPEnablementPage from "@/pages/lp-enablement";
@@ -88,11 +83,11 @@ function AppContent() {
         // User has a role, redirect to appropriate dashboard (but allow marketing pages)
         const roleRoutes: Record<string, string> = {
           advisor: "/advisor",
-          operations: "/dashboard",
-          admin: "/dashboard",
+          operations: "/operations",
+          admin: "/operations",
           gp: "/gp",
         };
-        const targetRoute = roleRoutes[user.role] || "/dashboard";
+        const targetRoute = roleRoutes[user.role] || "/operations";
         setLocation(targetRoute);
       }
     }
@@ -212,13 +207,8 @@ function AppContent() {
           <main className="flex-1 overflow-auto p-4 sm:p-6">
             <GlobalSearch />
             <Switch>
-              <Route path="/dashboard" component={DashboardPage} />
               <Route path="/operations" component={OperationsDashboard} />
               <Route path="/analytics" component={AnalyticsPage} />
-              <Route path="/deal-pipeline" component={DealPipelinePage} />
-              <Route path="/underwriting" component={UnderwritingPage} />
-              <Route path="/monitoring" component={MonitoringPage} />
-              <Route path="/portfolio" component={PortfolioPage} />
               <Route path="/reports" component={ReportsPage} />
               <Route path="/legal" component={LegalPage} />
               <Route path="/lp-enablement" component={LPEnablementPage} />

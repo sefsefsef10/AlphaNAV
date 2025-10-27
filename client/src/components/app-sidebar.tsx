@@ -15,18 +15,13 @@ import {
 const operationsNavItems = [
   {
     title: "Dashboard",
-    url: "/dashboard",
+    url: "/operations",
     icon: LayoutDashboard,
   },
   {
     title: "Prospects",
     url: "/operations/prospects",
     icon: Building2,
-  },
-  {
-    title: "Deal Pipeline",
-    url: "/deal-pipeline",
-    icon: GitBranch,
   },
   {
     title: "Underwriting",
@@ -54,21 +49,6 @@ const operationsNavItems = [
     icon: BarChart3,
   },
   {
-    title: "Portfolio",
-    url: "/portfolio",
-    icon: DollarSign,
-  },
-  {
-    title: "Reports",
-    url: "/reports",
-    icon: TrendingUp,
-  },
-  {
-    title: "Legal Templates",
-    url: "/legal",
-    icon: Scale,
-  },
-  {
     title: "Batch Upload",
     url: "/operations/batch-upload",
     icon: Upload,
@@ -87,6 +67,11 @@ const operationsNavItems = [
     title: "Market Intelligence",
     url: "/operations/market-intelligence",
     icon: Database,
+  },
+  {
+    title: "Legal Templates",
+    url: "/legal",
+    icon: Scale,
   },
 ];
 

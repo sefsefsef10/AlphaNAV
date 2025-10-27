@@ -3,6 +3,20 @@
 ## Overview
 AlphaNAV is a comprehensive NAV (Net Asset Value) lending operations platform designed for private equity fund lenders. Its primary purpose is to automate critical operational workflows such as underwriting, monitoring, reporting, and legal document generation, aiming for a 90% automation rate. The platform targets significant operational efficiency gains and 100 basis points in operational alpha, initially for internal operations teams with future expansion to external users. Key capabilities include AI-powered data extraction, automated eligibility scoring, risk assessment, LTV calculation with stress testing, and legal document generation.
 
+## Recent Updates (October 27, 2025)
+**CRITICAL ROUTING FIX**: Fixed routing bug where operations/admin users were incorrectly redirected to mock dashboard (/dashboard) instead of real operations dashboard (/operations).
+
+**NEW FEATURES ADDED**:
+1. **Batch Document Processing** - Upload up to 50 documents (PDF/Word/Excel) with AI extraction
+2. **Portfolio Company Extraction** - AI-extracted company data from fund documents
+3. **Lender Directory** - Manage lending partner relationships and pricing
+4. **Market Intelligence Dashboard** - Track market trends and competitive data
+
+**CLEANUP COMPLETED**:
+- Removed 5 mock pages from production routing (dashboard, monitoring, deal-pipeline, underwriting, portfolio at root level)
+- Updated sidebar navigation to show only real, functional features
+- All operations users now see real data and functional features by default
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
