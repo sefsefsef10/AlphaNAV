@@ -44,6 +44,19 @@ Preferred communication style: Simple, everyday language.
 - Component library approach with shadcn/ui.
 - Job scheduler infrastructure using `node-cron` for automated tasks like covenant checks.
 
+### Testing Infrastructure
+- **HTTP Integration Tests**: 28 automated tests across 9 test groups (100% pass rate)
+  - Multi-tenant isolation (GPs access only own facilities)
+  - Authorization enforcement (draw requests, cash flows, documents, covenants)
+  - Operations/Admin bypass validation
+  - Portfolio analytics access control
+  - Edge case handling (404, 401 responses)
+- **Test Authentication**: Production-safe bypass (NODE_ENV=test only) with header injection
+- **Test Fixtures**: 5 deterministic test facilities (facility-1 through facility-5) with GP ownership
+- **CI/CD Automation**: GitHub Actions workflow for automated test execution on push/PR
+- **Documentation**: Comprehensive TESTING_PLAN.md with extension guide and roadmap
+- **Test Expansion Roadmap**: Phase 1 (50+ tests), Phase 2 (70+ tests), Phase 3 (100+ tests)
+
 ### Feature Specifications
 - **Marketing Landing Page**: Professional site at root URL.
 - **Notification System**: Real-time notification center with CRUD operations for alerts.
