@@ -189,6 +189,167 @@ export const insertProspectSchema = createInsertSchema(prospects).omit({
 export type InsertProspect = z.infer<typeof insertProspectSchema>;
 export type Prospect = typeof prospects.$inferSelect;
 
+// Portfolio companies extracted from fund documents
+export const portfolioCompanies = pgTable("portfolio_companies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  prospectId: varchar("prospect_id"),
+  facilityId: varchar("facility_id"),
+  companyName: text("company_name").notNull(),
+  industry: text("industry"),
+  sector: text("sector"),
+  geography: text("geography"),
+  investmentDate: timestamp("investment_date"),
+  investmentAmount: integer("investment_amount"),
+  ownershipPercentage: numeric("ownership_percentage", { precision: 5, scale: 2 }),
+  currentValue: integer("current_value"),
+  valuationDate: timestamp("valuation_date"),
+  status: text("status").notNull().default("active"), // active, exited, written-off
+  exitDate: timestamp("exit_date"),
+  exitValue: integer("exit_value"),
+  extractedFrom: varchar("extracted_from"), // Document ID
+  extractionConfidence: integer("extraction_confidence"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_portfolio_companies_prospect_id").on(table.prospectId),
+  index("idx_portfolio_companies_facility_id").on(table.facilityId),
+]);
+
+export const insertPortfolioCompanySchema = createInsertSchema(portfolioCompanies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPortfolioCompany = z.infer<typeof insertPortfolioCompanySchema>;
+export type PortfolioCompany = typeof portfolioCompanies.$inferSelect;
+
+// Portfolio holdings (track changes over time)
+export const portfolioHoldings = pgTable("portfolio_holdings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull(),
+  asOfDate: timestamp("as_of_date").notNull(),
+  fairValue: integer("fair_value").notNull(),
+  costBasis: integer("cost_basis"),
+  unrealizedGain: integer("unrealized_gain"),
+  percentageOfNAV: numeric("percentage_of_nav", { precision: 5, scale: 2 }),
+  source: text("source"), // quarterly-report, valuation-update, etc
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_portfolio_holdings_company_id").on(table.companyId),
+  index("idx_portfolio_holdings_as_of_date").on(table.asOfDate),
+]);
+
+export const insertPortfolioHoldingSchema = createInsertSchema(portfolioHoldings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPortfolioHolding = z.infer<typeof insertPortfolioHoldingSchema>;
+export type PortfolioHolding = typeof portfolioHoldings.$inferSelect;
+
+// Extraction runs to track batch extraction jobs
+export const extractionRuns = pgTable("extraction_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  documentId: varchar("document_id"),
+  batchId: varchar("batch_id"),
+  extractionType: text("extraction_type").notNull(), // portfolio_companies, credit_clauses, fund_data
+  status: text("status").notNull().default("running"), // running, completed, failed
+  companiesExtracted: integer("companies_extracted").default(0),
+  averageConfidence: numeric("average_confidence", { precision: 5, scale: 2 }),
+  model: text("model").notNull(), // e.g., gemini-2.0-flash
+  error: text("error"),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("idx_extraction_runs_document_id").on(table.documentId),
+  index("idx_extraction_runs_batch_id").on(table.batchId),
+]);
+
+export const insertExtractionRunSchema = createInsertSchema(extractionRuns).omit({
+  id: true,
+  startedAt: true,
+});
+
+export type InsertExtractionRun = z.infer<typeof insertExtractionRunSchema>;
+export type ExtractionRun = typeof extractionRuns.$inferSelect;
+
+// Credit/Legal documents (loan agreements, term sheets, etc)
+export const creditDocuments = pgTable("credit_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  facilityId: varchar("facility_id"),
+  documentId: varchar("document_id"), // Link to uploaded_documents
+  documentType: text("document_type").notNull(), // loan_agreement, term_sheet, credit_agreement, etc
+  parties: jsonb("parties"), // Lender, borrower, guarantors
+  effectiveDate: timestamp("effective_date"),
+  maturityDate: timestamp("maturity_date"),
+  principalAmount: integer("principal_amount"),
+  interestRate: numeric("interest_rate", { precision: 5, scale: 2 }),
+  covenantCount: integer("covenant_count").default(0),
+  parsedData: jsonb("parsed_data"),
+  parsingConfidence: integer("parsing_confidence"),
+  parsedAt: timestamp("parsed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_credit_documents_facility_id").on(table.facilityId),
+  index("idx_credit_documents_document_id").on(table.documentId),
+]);
+
+export const insertCreditDocumentSchema = createInsertSchema(creditDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCreditDocument = z.infer<typeof insertCreditDocumentSchema>;
+export type CreditDocument = typeof creditDocuments.$inferSelect;
+
+// Legal clause templates for pattern matching
+export const legalClauseTemplates = pgTable("legal_clause_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clauseType: text("clause_type").notNull(), // covenant, representation, event_of_default, etc
+  clauseName: text("clause_name").notNull(),
+  category: text("category"), // financial, operational, reporting, etc
+  keyTerms: jsonb("key_terms"), // Terms to extract (ratios, dates, amounts)
+  patternRegex: text("pattern_regex"),
+  description: text("description"),
+  severity: text("severity"), // critical, high, medium, low
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertLegalClauseTemplateSchema = createInsertSchema(legalClauseTemplates).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertLegalClauseTemplate = z.infer<typeof insertLegalClauseTemplateSchema>;
+export type LegalClauseTemplate = typeof legalClauseTemplates.$inferSelect;
+
+// Clause occurrences found in documents
+export const clauseOccurrences = pgTable("clause_occurrences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  creditDocumentId: varchar("credit_document_id").notNull(),
+  templateId: varchar("template_id"),
+  clauseText: text("clause_text").notNull(),
+  clauseType: text("clause_type").notNull(),
+  extractedTerms: jsonb("extracted_terms"),
+  pageNumber: integer("page_number"),
+  sectionNumber: text("section_number"),
+  confidence: integer("confidence"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_clause_occurrences_credit_document_id").on(table.creditDocumentId),
+  index("idx_clause_occurrences_template_id").on(table.templateId),
+]);
+
+export const insertClauseOccurrenceSchema = createInsertSchema(clauseOccurrences).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertClauseOccurrence = z.infer<typeof insertClauseOccurrenceSchema>;
+export type ClauseOccurrence = typeof clauseOccurrences.$inferSelect;
+
 export const deals = pgTable("deals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   prospectId: varchar("prospect_id"),

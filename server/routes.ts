@@ -40,8 +40,12 @@ import { eq, or, and, sql } from "drizzle-orm";
 import fs from "fs/promises";
 import path from "path";
 import { z } from "zod";
+import batchDocumentsRouter from "./routes/batchDocuments";
 
 const router = Router();
+
+// Mount batch documents routes
+router.use("/documents", batchDocumentsRouter);
 
 // Allowed file types for document uploads
 const ALLOWED_MIME_TYPES = [
