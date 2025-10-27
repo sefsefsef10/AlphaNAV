@@ -2697,6 +2697,454 @@ router.get("/analytics/portfolio-summary", async (req: Request, res: Response) =
   }
 });
 
+// POST /api/analytics/stress-test
+// Perform portfolio stress testing with NAV decline scenarios (Operations/Admin only)
+router.post("/analytics/stress-test", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Operations or admin role required" });
+    }
+
+    // Get all facilities with their prospect data for NAV information
+    const facilitiesWithProspects = await db
+      .select({
+        facility: facilities,
+        prospect: prospects,
+      })
+      .from(facilities)
+      .leftJoin(prospects, eq(facilities.prospectId, prospects.id))
+      .where(eq(facilities.status, "active"));
+
+    if (facilitiesWithProspects.length === 0) {
+      return res.json({
+        baseline: { totalExposure: 0, avgLtv: 0, facilitiesAtRisk: 0, breachCount: 0 },
+        moderate: { totalExposure: 0, avgLtv: 0, facilitiesAtRisk: 0, breachCount: 0, navDecline: 20 },
+        severe: { totalExposure: 0, avgLtv: 0, facilitiesAtRisk: 0, breachCount: 0, navDecline: 40 },
+        recommendations: [],
+      });
+    }
+
+    // Calculate stress test scenarios
+    const baselineMetrics = {
+      totalExposure: 0,
+      avgLtv: 0,
+      facilitiesAtRisk: 0,
+      breachCount: 0,
+    };
+
+    const moderateStressMetrics = {
+      totalExposure: 0,
+      avgLtv: 0,
+      facilitiesAtRisk: 0,
+      breachCount: 0,
+      navDecline: 20,
+    };
+
+    const severeStressMetrics = {
+      totalExposure: 0,
+      avgLtv: 0,
+      facilitiesAtRisk: 0,
+      breachCount: 0,
+      navDecline: 40,
+    };
+
+    const recommendations: Array<{
+      facilityId: string;
+      fundName: string;
+      currentLtv: number;
+      moderateStressLtv: number;
+      severeStressLtv: number;
+      riskLevel: 'low' | 'medium' | 'high' | 'critical';
+      recommendation: string;
+    }> = [];
+
+    let totalLtv = 0;
+    let totalModerateLtv = 0;
+    let totalSevereLtv = 0;
+
+    for (const { facility, prospect } of facilitiesWithProspects) {
+      const currentOutstanding = facility.outstandingBalance;
+      const currentNav = prospect?.fundSize || (currentOutstanding * 100) / facility.ltvRatio; // Estimate NAV if not available
+
+      baselineMetrics.totalExposure += currentOutstanding;
+
+      // Baseline LTV
+      const baselineLtv = (currentOutstanding / currentNav) * 100;
+      totalLtv += baselineLtv;
+
+      // Moderate stress: -20% NAV decline
+      const moderateNav = currentNav * 0.80;
+      const moderateLtv = (currentOutstanding / moderateNav) * 100;
+      totalModerateLtv += moderateLtv;
+      moderateStressMetrics.totalExposure += currentOutstanding;
+
+      // Severe stress: -40% NAV decline
+      const severeNav = currentNav * 0.60;
+      const severeLtv = (currentOutstanding / severeNav) * 100;
+      totalSevereLtv += severeLtv;
+      severeStressMetrics.totalExposure += currentOutstanding;
+
+      // Check for covenant breaches (assuming 70% LTV covenant)
+      const ltvCovenantThreshold = 70;
+      
+      if (baselineLtv > ltvCovenantThreshold) {
+        baselineMetrics.breachCount++;
+        baselineMetrics.facilitiesAtRisk++;
+      }
+
+      if (moderateLtv > ltvCovenantThreshold) {
+        moderateStressMetrics.breachCount++;
+        moderateStressMetrics.facilitiesAtRisk++;
+      }
+
+      if (severeLtv > ltvCovenantThreshold) {
+        severeStressMetrics.breachCount++;
+        severeStressMetrics.facilitiesAtRisk++;
+      }
+
+      // Generate recommendations
+      let riskLevel: 'low' | 'medium' | 'high' | 'critical';
+      let recommendation: string;
+
+      if (severeLtv > 80) {
+        riskLevel = 'critical';
+        recommendation = `Immediate action required: LTV reaches ${severeLtv.toFixed(1)}% under severe stress. Consider reducing exposure or requiring additional collateral.`;
+      } else if (moderateLtv > 75) {
+        riskLevel = 'high';
+        recommendation = `High risk: LTV reaches ${moderateLtv.toFixed(1)}% under moderate stress. Monitor closely and prepare contingency plans.`;
+      } else if (moderateLtv > 70) {
+        riskLevel = 'medium';
+        recommendation = `Medium risk: LTV approaches covenant threshold under moderate stress. Increase monitoring frequency.`;
+      } else {
+        riskLevel = 'low';
+        recommendation = `Low risk: Facility maintains healthy LTV (${moderateLtv.toFixed(1)}%) even under moderate stress.`;
+      }
+
+      recommendations.push({
+        facilityId: facility.id,
+        fundName: facility.fundName,
+        currentLtv: Math.round(baselineLtv * 10) / 10,
+        moderateStressLtv: Math.round(moderateLtv * 10) / 10,
+        severeStressLtv: Math.round(severeLtv * 10) / 10,
+        riskLevel,
+        recommendation,
+      });
+    }
+
+    const facilityCount = facilitiesWithProspects.length;
+    baselineMetrics.avgLtv = Math.round((totalLtv / facilityCount) * 10) / 10;
+    moderateStressMetrics.avgLtv = Math.round((totalModerateLtv / facilityCount) * 10) / 10;
+    severeStressMetrics.avgLtv = Math.round((totalSevereLtv / facilityCount) * 10) / 10;
+
+    res.json({
+      baseline: baselineMetrics,
+      moderate: moderateStressMetrics,
+      severe: severeStressMetrics,
+      recommendations: recommendations.sort((a, b) => {
+        const riskOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+        return riskOrder[a.riskLevel] - riskOrder[b.riskLevel];
+      }),
+    });
+  } catch (error) {
+    console.error("Stress test error:", error);
+    res.status(500).json({ 
+      error: "Failed to perform stress test",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/analytics/concentration
+// Get portfolio concentration analysis by sector, vintage, and GP (Operations/Admin only)
+router.get("/analytics/concentration", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Operations or admin role required" });
+    }
+
+    // Get all facilities with their prospect data
+    const facilitiesWithProspects = await db
+      .select({
+        facility: facilities,
+        prospect: prospects,
+      })
+      .from(facilities)
+      .leftJoin(prospects, eq(facilities.prospectId, prospects.id))
+      .where(eq(facilities.status, "active"));
+
+    if (facilitiesWithProspects.length === 0) {
+      return res.json({
+        bySector: [],
+        byVintage: [],
+        byGP: [],
+        summary: {
+          totalExposure: 0,
+          mostConcentratedSector: null,
+          mostConcentratedVintage: null,
+          mostConcentratedGP: null,
+          herfindahlIndex: 0,
+        },
+      });
+    }
+
+    const totalOutstanding = facilitiesWithProspects.reduce(
+      (sum, { facility }) => sum + facility.outstandingBalance,
+      0
+    );
+
+    // Sector concentration
+    const sectorMap = new Map<string, { exposure: number; facilityCount: number }>();
+    
+    for (const { facility, prospect } of facilitiesWithProspects) {
+      const sectors = (prospect?.sectors as string[]) || ['Unknown'];
+      
+      for (const sector of sectors) {
+        const existing = sectorMap.get(sector) || { exposure: 0, facilityCount: 0 };
+        sectorMap.set(sector, {
+          exposure: existing.exposure + facility.outstandingBalance,
+          facilityCount: existing.facilityCount + 1,
+        });
+      }
+    }
+
+    const bySector = Array.from(sectorMap.entries())
+      .map(([sector, data]) => ({
+        sector,
+        exposure: data.exposure,
+        facilityCount: data.facilityCount,
+        percentage: (data.exposure / totalOutstanding) * 100,
+      }))
+      .sort((a, b) => b.exposure - a.exposure);
+
+    // Vintage concentration
+    const vintageMap = new Map<string, { exposure: number; facilityCount: number }>();
+    
+    for (const { facility, prospect } of facilitiesWithProspects) {
+      const vintage = prospect?.vintage ? String(prospect.vintage) : 'Unknown';
+      const existing = vintageMap.get(vintage) || { exposure: 0, facilityCount: 0 };
+      vintageMap.set(vintage, {
+        exposure: existing.exposure + facility.outstandingBalance,
+        facilityCount: existing.facilityCount + 1,
+      });
+    }
+
+    const byVintage = Array.from(vintageMap.entries())
+      .map(([vintage, data]) => ({
+        vintage,
+        exposure: data.exposure,
+        facilityCount: data.facilityCount,
+        percentage: (data.exposure / totalOutstanding) * 100,
+      }))
+      .sort((a, b) => {
+        if (a.vintage === 'Unknown') return 1;
+        if (b.vintage === 'Unknown') return -1;
+        return parseInt(b.vintage) - parseInt(a.vintage);
+      });
+
+    // GP concentration
+    const gpMap = new Map<string, { exposure: number; facilityCount: number }>();
+    
+    for (const { facility, prospect } of facilitiesWithProspects) {
+      const gp = prospect?.gpFirmName || 'Unknown';
+      const existing = gpMap.get(gp) || { exposure: 0, facilityCount: 0 };
+      gpMap.set(gp, {
+        exposure: existing.exposure + facility.outstandingBalance,
+        facilityCount: existing.facilityCount + 1,
+      });
+    }
+
+    const byGP = Array.from(gpMap.entries())
+      .map(([gp, data]) => ({
+        gp,
+        exposure: data.exposure,
+        facilityCount: data.facilityCount,
+        percentage: (data.exposure / totalOutstanding) * 100,
+      }))
+      .sort((a, b) => b.exposure - a.exposure);
+
+    // Calculate Herfindahl-Hirschman Index (HHI) for sector concentration
+    // HHI ranges from 0 to 10,000. Higher values indicate more concentration
+    // HHI < 1,500: Unconcentrated, 1,500-2,500: Moderate, >2,500: High concentration
+    const herfindahlIndex = bySector.reduce((sum, { percentage }) => {
+      return sum + Math.pow(percentage, 2);
+    }, 0);
+
+    res.json({
+      bySector,
+      byVintage,
+      byGP,
+      summary: {
+        totalExposure: totalOutstanding,
+        mostConcentratedSector: bySector[0] || null,
+        mostConcentratedVintage: byVintage[0] || null,
+        mostConcentratedGP: byGP[0] || null,
+        herfindahlIndex: Math.round(herfindahlIndex),
+      },
+    });
+  } catch (error) {
+    console.error("Concentration analysis error:", error);
+    res.status(500).json({ 
+      error: "Failed to analyze concentration",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
+// GET /api/analytics/performance-metrics
+// Get portfolio performance metrics: ROI, default rate, recovery rate (Operations/Admin only)
+router.get("/analytics/performance-metrics", async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (req.user.role !== "operations" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden: Operations or admin role required" });
+    }
+
+    // Get all facilities (including historical ones)
+    const allFacilities = await db.select().from(facilities);
+    const allCashFlows = await db.select().from(cashFlows);
+
+    if (allFacilities.length === 0) {
+      return res.json({
+        portfolioROI: {
+          totalInvested: 0,
+          totalInterestEarned: 0,
+          totalPrincipalRepaid: 0,
+          roi: 0,
+          annualizedROI: 0,
+        },
+        defaultMetrics: {
+          totalFacilities: 0,
+          defaultedFacilities: 0,
+          defaultRate: 0,
+          totalDefaultedAmount: 0,
+          recoveryRate: 0,
+          totalRecoveredAmount: 0,
+          netLoss: 0,
+        },
+        performanceByStatus: {},
+      });
+    }
+
+    // Calculate total invested capital (all facilities ever originated)
+    const totalInvested = allFacilities.reduce(
+      (sum, f) => sum + f.principalAmount,
+      0
+    );
+
+    // Calculate interest earned and principal repaid (from paid cash flows)
+    // Cash flows contain both principal and interest in each payment
+    const paidCashFlows = allCashFlows.filter(cf => cf.status === 'paid');
+    
+    const totalInterestEarned = paidCashFlows.reduce(
+      (sum, cf) => sum + cf.interest,
+      0
+    );
+
+    const totalPrincipalRepaid = paidCashFlows.reduce(
+      (sum, cf) => sum + cf.principal,
+      0
+    );
+
+    // Calculate ROI
+    const totalReturns = totalInterestEarned + totalPrincipalRepaid;
+    const roi = totalInvested > 0 ? ((totalReturns - totalInvested) / totalInvested) * 100 : 0;
+
+    // Calculate annualized ROI (assuming average 3-year facility term)
+    const avgTermYears = 3;
+    const annualizedROI = roi / avgTermYears;
+
+    // Default metrics
+    const defaultedFacilities = allFacilities.filter(f => f.status === 'defaulted');
+    const totalDefaultedAmount = defaultedFacilities.reduce(
+      (sum, f) => sum + f.outstandingBalance,
+      0
+    );
+    const defaultRate = allFacilities.length > 0 
+      ? (defaultedFacilities.length / allFacilities.length) * 100 
+      : 0;
+
+    // Recovery rate calculation (recovered amount from defaulted facilities)
+    // For defaulted facilities, check how much was recovered via payments
+    let totalRecoveredAmount = 0;
+    for (const defaultedFacility of defaultedFacilities) {
+      const facilityCashFlows = allCashFlows.filter(cf => cf.facilityId === defaultedFacility.id);
+      const recovered = facilityCashFlows.reduce((sum, cf) => sum + cf.paidAmount, 0);
+      totalRecoveredAmount += recovered;
+    }
+
+    const recoveryRate = totalDefaultedAmount > 0 
+      ? (totalRecoveredAmount / totalDefaultedAmount) * 100 
+      : 0;
+
+    const netLoss = totalDefaultedAmount - totalRecoveredAmount;
+
+    // Performance by status
+    const performanceByStatus: Record<string, {
+      count: number;
+      totalPrincipal: number;
+      totalOutstanding: number;
+      percentage: number;
+    }> = {};
+
+    for (const facility of allFacilities) {
+      if (!performanceByStatus[facility.status]) {
+        performanceByStatus[facility.status] = {
+          count: 0,
+          totalPrincipal: 0,
+          totalOutstanding: 0,
+          percentage: 0,
+        };
+      }
+      performanceByStatus[facility.status].count++;
+      performanceByStatus[facility.status].totalPrincipal += facility.principalAmount;
+      performanceByStatus[facility.status].totalOutstanding += facility.outstandingBalance;
+    }
+
+    // Calculate percentages
+    for (const status in performanceByStatus) {
+      performanceByStatus[status].percentage = 
+        (performanceByStatus[status].count / allFacilities.length) * 100;
+    }
+
+    res.json({
+      portfolioROI: {
+        totalInvested,
+        totalInterestEarned,
+        totalPrincipalRepaid,
+        roi: Math.round(roi * 100) / 100,
+        annualizedROI: Math.round(annualizedROI * 100) / 100,
+      },
+      defaultMetrics: {
+        totalFacilities: allFacilities.length,
+        defaultedFacilities: defaultedFacilities.length,
+        defaultRate: Math.round(defaultRate * 100) / 100,
+        totalDefaultedAmount,
+        recoveryRate: Math.round(recoveryRate * 100) / 100,
+        totalRecoveredAmount,
+        netLoss,
+      },
+      performanceByStatus,
+    });
+  } catch (error) {
+    console.error("Performance metrics error:", error);
+    res.status(500).json({ 
+      error: "Failed to calculate performance metrics",
+      details: error instanceof Error ? error.message : "Unknown error"
+    });
+  }
+});
+
 // ============================================================================
 // BILLING & SUBSCRIPTIONS - Stripe Integration
 // ============================================================================
