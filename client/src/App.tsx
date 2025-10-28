@@ -39,7 +39,7 @@ import OperationsDashboard from "@/pages/operations-dashboard";
 import AnalyticsPage from "@/pages/analytics";
 import AdvancedAnalyticsPage from "@/pages/operations/advanced-analytics";
 import PipelineBoardPage from "@/pages/operations/pipeline-board";
-import NotificationPreferences from "@/pages/notification-preferences";
+import NotificationPreferences from "@/pages/settings/notification-preferences";
 import ProspectsPage from "@/pages/operations/prospects";
 import ProspectsUploadPage from "@/pages/operations/prospects-upload";
 import ProspectDetailPage from "@/pages/operations/prospect-detail";

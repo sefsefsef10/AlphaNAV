@@ -86,7 +86,7 @@ async function createCovenantNotification(
     ? `URGENT: ${covenantType} covenant has been breached for facility ${facility.fundName}. Current value: ${currentValue}, Threshold: ${thresholdValue}. Immediate action required.`
     : `Warning: ${covenantType} covenant is approaching breach threshold for facility ${facility.fundName}. Current value: ${currentValue}, Threshold: ${thresholdValue}.`;
 
-  await db.insert(notifications).values({
+  const [notification] = await db.insert(notifications).values({
     userId,
     type: isBreach ? "covenant_breach" : "covenant_warning",
     title,
@@ -96,9 +96,24 @@ async function createCovenantNotification(
     actionUrl: `/operations/covenant-monitoring?facilityId=${facilityId}`,
     isRead: false,
     priority: isBreach ? "urgent" : "high",
-  });
+  }).returning();
 
   console.log(`Created ${status} notification for covenant ${covenantId}`);
+
+  // Send multi-channel notifications (SMS, Slack) if configured
+  try {
+    const { sendNotification } = await import('./notificationDelivery');
+    await sendNotification({
+      userId,
+      message,
+      type: isBreach ? "covenant_breach" : "covenant_warning",
+      notificationId: notification.id,
+      urgency: isBreach ? "high" : "normal",
+    });
+  } catch (error) {
+    console.error('Failed to send multi-channel notifications:', error);
+    // Don't throw - notification was created in DB, delivery is best-effort
+  }
 }
 
 /**

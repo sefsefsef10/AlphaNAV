@@ -55,6 +55,7 @@ import { navValuationRouter } from "./routes/navValuationRoutes";
 import { healthRouter } from "./routes/healthRoutes";
 import { analyticsRouter } from "./routes/analyticsRoutes";
 import { pipelineRouter } from "./routes/pipelineRoutes";
+import notificationRouter from "./routes/notificationRoutes";
 
 const router = Router();
 
@@ -83,6 +84,9 @@ router.use("/analytics", analyticsRouter);
 
 // Mount pipeline routes
 router.use("/pipeline", pipelineRouter);
+
+// Mount notification routes
+router.use("/notifications", notificationRouter);
 
 // Mount NAV valuation routes
 router.use("/nav-valuation", navValuationRouter);

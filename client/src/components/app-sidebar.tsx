@@ -1,4 +1,4 @@
-import { LayoutDashboard, GitBranch, FileText, Scale, TrendingUp, Activity, DollarSign, GraduationCap, Settings, Users, Target, Building2, BarChart3, Upload, Building, Database, Key, Link as LinkIcon } from "lucide-react";
+import { LayoutDashboard, GitBranch, FileText, Scale, TrendingUp, Activity, DollarSign, GraduationCap, Settings, Users, Target, Building2, BarChart3, Upload, Building, Database, Key, Link as LinkIcon, Bell } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -97,6 +97,16 @@ const operationsNavItems = [
     title: "Legal Templates",
     url: "/legal",
     icon: Scale,
+  },
+  {
+    title: "Notifications",
+    url: "/notifications",
+    icon: Bell,
+  },
+  {
+    title: "Security",
+    url: "/operations/security",
+    icon: Settings,
   },
 ];
 
