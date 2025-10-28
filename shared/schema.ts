@@ -1674,3 +1674,213 @@ export const insertPipelineStageSchema = createInsertSchema(pipelineStages).omit
 });
 
 export type InsertPipelineStage = z.infer<typeof insertPipelineStageSchema>;
+export type PipelineStage = typeof pipelineStages.$inferSelect;
+
+// ============================================================================
+// AI-POWERED UNDERWRITING SYSTEM (Phase 2A)
+// ============================================================================
+
+// Underwriting sessions - Track full AI-powered underwriting workflow
+export const underwritingSessions = pgTable("underwriting_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(), // Who initiated underwriting
+  prospectId: varchar("prospect_id"), // Link to prospect if exists
+  dealId: varchar("deal_id"), // Link to pipeline deal
+  fundName: text("fund_name").notNull(),
+  status: text("status").notNull().default("uploading"), // uploading, extracting, extracted, scoring, scored, calculating, calculated, generating, completed
+  currentStep: integer("current_step").notNull().default(1), // 1-5 (upload, extract, score, calculate, generate)
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_underwriting_sessions_user_id").on(table.userId),
+  index("idx_underwriting_sessions_status").on(table.status),
+]);
+
+export const insertUnderwritingSessionSchema = createInsertSchema(underwritingSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertUnderwritingSession = z.infer<typeof insertUnderwritingSessionSchema>;
+export type UnderwritingSession = typeof underwritingSessions.$inferSelect;
+
+// Extraction data - AI-extracted fund data from documents
+export const extractionData = pgTable("extraction_data", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  
+  // Fund Details (10 fields)
+  fundName: text("fund_name"),
+  fundAum: integer("fund_aum"), // in dollars
+  vintage: integer("vintage"), // year
+  gpEntity: text("gp_entity"),
+  gpFirmName: text("gp_firm_name"),
+  fundStructure: text("fund_structure"), // LP/GP split
+  strategy: text("strategy"),
+  geography: text("geography"),
+  fundType: text("fund_type"), // buyout, growth, venture, etc.
+  fundStatus: text("fund_status"), // active, closed, liquidating
+  
+  // Portfolio (15 fields)
+  portfolioCompanyCount: integer("portfolio_company_count"),
+  portfolioCompanies: jsonb("portfolio_companies"), // [{name, sector, ebitda, debt}]
+  sectorDistribution: jsonb("sector_distribution"), // {healthcare: 30%, tech: 25%}
+  largestHoldingPercent: numeric("largest_holding_percent", { precision: 5, scale: 2 }),
+  topThreeConcentration: numeric("top_three_concentration", { precision: 5, scale: 2 }),
+  
+  // Financial Metrics (12 fields)
+  currentNav: integer("current_nav"),
+  unrealizedValue: integer("unrealized_value"),
+  realizedValue: integer("realized_value"),
+  grossIrr: numeric("gross_irr", { precision: 5, scale: 2 }),
+  netIrr: numeric("net_irr", { precision: 5, scale: 2 }),
+  moic: numeric("moic", { precision: 5, scale: 2 }),
+  dpi: numeric("dpi", { precision: 5, scale: 2 }),
+  rvpi: numeric("rvpi", { precision: 5, scale: 2 }),
+  cashReserves: integer("cash_reserves"),
+  totalDebt: integer("total_debt"),
+  capitalCommitted: integer("capital_committed"),
+  capitalCalled: integer("capital_called"),
+  
+  // GP Track Record (10 fields)
+  priorFundCount: integer("prior_fund_count"),
+  priorFundAum: integer("prior_fund_aum"),
+  priorFundAvgIrr: numeric("prior_fund_avg_irr", { precision: 5, scale: 2 }),
+  priorFundAvgMoic: numeric("prior_fund_avg_moic", { precision: 5, scale: 2 }),
+  yearsOfExperience: integer("years_of_experience"),
+  teamSize: integer("team_size"),
+  
+  // Extraction Metadata
+  extractionConfidence: integer("extraction_confidence"), // 0-100 overall score
+  lowConfidenceFields: jsonb("low_confidence_fields"), // [{field: "moic", confidence: 87}]
+  extractedAt: timestamp("extracted_at").notNull().defaultNow(),
+  extractedBy: text("extracted_by").notNull().default("gemini-2.0-flash"),
+}, (table) => [
+  index("idx_extraction_data_session_id").on(table.sessionId),
+]);
+
+export const insertExtractionDataSchema = createInsertSchema(extractionData).omit({
+  id: true,
+  extractedAt: true,
+});
+
+export type InsertExtractionData = z.infer<typeof insertExtractionDataSchema>;
+export type ExtractionData = typeof extractionData.$inferSelect;
+
+// Eligibility scores - 10-point scoring system for deal assessment
+export const eligibilityScores = pgTable("eligibility_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  
+  // 10-Point Scoring Breakdown
+  trackRecordScore: integer("track_record_score"), // 0-10
+  diversificationScore: integer("diversification_score"), // 0-10
+  liquidityScore: integer("liquidity_score"), // 0-10
+  portfolioQualityScore: integer("portfolio_quality_score"), // 0-10
+  vintageScore: integer("vintage_score"), // 0-10
+  fundSizeScore: integer("fund_size_score"), // 0-10
+  sectorRiskScore: integer("sector_risk_score"), // 0-10
+  geographicRiskScore: integer("geographic_risk_score"), // 0-10
+  gpExperienceScore: integer("gp_experience_score"), // 0-10
+  structureRiskScore: integer("structure_risk_score"), // 0-10
+  
+  // Overall Assessment
+  totalScore: integer("total_score"), // 0-100
+  recommendation: text("recommendation"), // recommended, review_required, decline
+  riskFlags: jsonb("risk_flags"), // [{type: "vintage_concern", severity: "medium", message: "..."}]
+  underwriterNotes: text("underwriter_notes"),
+  
+  scoredAt: timestamp("scored_at").notNull().defaultNow(),
+  scoredBy: varchar("scored_by").notNull(), // userId
+}, (table) => [
+  index("idx_eligibility_scores_session_id").on(table.sessionId),
+  index("idx_eligibility_scores_total").on(table.totalScore, table.recommendation),
+]);
+
+export const insertEligibilityScoreSchema = createInsertSchema(eligibilityScores).omit({
+  id: true,
+  scoredAt: true,
+});
+
+export type InsertEligibilityScore = z.infer<typeof insertEligibilityScoreSchema>;
+export type EligibilityScore = typeof eligibilityScores.$inferSelect;
+
+// LTV calculations - Loan-to-value calculations with stress testing
+export const ltvCalculations = pgTable("ltv_calculations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  
+  // Input Parameters
+  fundNav: integer("fund_nav").notNull(),
+  targetLtv: numeric("target_ltv", { precision: 5, scale: 2 }).notNull().default("15.00"), // 15%
+  maxLtv: numeric("max_ltv", { precision: 5, scale: 2 }).notNull().default("18.00"), // 18% covenant
+  requestedFacilitySize: integer("requested_facility_size"),
+  
+  // Baseline Calculation
+  maxFacilitySize: integer("max_facility_size"), // NAV * targetLtv
+  recommendedFacilitySize: integer("recommended_facility_size"),
+  baselineLtv: numeric("baseline_ltv", { precision: 5, scale: 2 }),
+  
+  // Stress Testing Scenarios
+  scenarios: jsonb("scenarios"), // [{name: "-20% Downturn", navStress: -20, newNav: 158400000, newLtv: 15.8}]
+  breachProbability: numeric("breach_probability", { precision: 5, scale: 2 }), // % chance of LTV breach
+  
+  // Pricing Recommendation
+  recommendedSofr: integer("recommended_sofr"), // basis points (e.g., 600 = SOFR + 600 bps)
+  marketMedianPricing: integer("market_median_pricing"),
+  pricingRationale: text("pricing_rationale"),
+  
+  calculatedAt: timestamp("calculated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_ltv_calculations_session_id").on(table.sessionId),
+]);
+
+export const insertLtvCalculationSchema = createInsertSchema(ltvCalculations).omit({
+  id: true,
+  calculatedAt: true,
+});
+
+export type InsertLtvCalculation = z.infer<typeof insertLtvCalculationSchema>;
+export type LtvCalculation = typeof ltvCalculations.$inferSelect;
+
+// Underwriting term sheets - AI-generated term sheets with secure sharing
+export const underwritingTermSheets = pgTable("underwriting_term_sheets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  dealId: varchar("deal_id"),
+  
+  // Term Sheet Content
+  borrowerName: text("borrower_name").notNull(),
+  commitmentAmount: integer("commitment_amount").notNull(),
+  pricingSpread: integer("pricing_spread").notNull(), // SOFR + X bps
+  covenantLtv: numeric("covenant_ltv", { precision: 5, scale: 2 }),
+  covenantMinNav: integer("covenant_min_nav"),
+  covenantDiversification: numeric("covenant_diversification", { precision: 5, scale: 2 }),
+  covenantLiquidity: integer("covenant_liquidity"),
+  
+  // Document Management
+  pdfUrl: text("pdf_url"), // Storage URL for generated PDF
+  shareToken: varchar("share_token"), // For secure sharing
+  shareExpiresAt: timestamp("share_expires_at"),
+  viewCount: integer("view_count").default(0),
+  
+  // Versioning
+  version: integer("version").notNull().default(1),
+  editedFields: jsonb("edited_fields"), // Track manual edits
+  
+  generatedAt: timestamp("generated_at").notNull().defaultNow(),
+  generatedBy: varchar("generated_by").notNull(), // userId
+}, (table) => [
+  index("idx_underwriting_term_sheets_session_id").on(table.sessionId),
+  index("idx_underwriting_term_sheets_share_token").on(table.shareToken),
+]);
+
+export const insertUnderwritingTermSheetSchema = createInsertSchema(underwritingTermSheets).omit({
+  id: true,
+  generatedAt: true,
+});
+
+export type InsertUnderwritingTermSheet = z.infer<typeof insertUnderwritingTermSheetSchema>;
+export type UnderwritingTermSheet = typeof underwritingTermSheets.$inferSelect;
