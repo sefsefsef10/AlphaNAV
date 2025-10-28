@@ -23,10 +23,12 @@ interface DocumentUploadStepProps {
 }
 
 interface UploadedFile {
+  file: File;
   name: string;
   size: number;
-  status: "uploading" | "completed" | "error";
+  status: "pending" | "uploading" | "completed" | "error";
   progress: number;
+  errorMessage?: string;
 }
 
 export default function DocumentUploadStep({ sessionId, onNext }: DocumentUploadStepProps) {
@@ -41,12 +43,28 @@ export default function DocumentUploadStep({ sessionId, onNext }: DocumentUpload
     mutationFn: async (data: { fundName: string }) => {
       return await apiRequest("POST", "/api/underwriting/sessions", data);
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       toast({
         title: "Session Created",
         description: `Started underwriting for ${fundName}`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/underwriting/sessions"] });
+      
+      // Upload any pending files before navigating
+      const pendingFiles = files.filter(f => f.status === "pending" && !f.errorMessage);
+      if (pendingFiles.length > 0 && data.id) {
+        try {
+          await Promise.all(pendingFiles.map(f => uploadFile(f.file, data.id)));
+          toast({
+            title: "Files Uploaded",
+            description: `${pendingFiles.length} document(s) uploaded successfully`,
+          });
+        } catch (error) {
+          // Error already handled in uploadFile
+          console.error("Upload error:", error);
+        }
+      }
+      
       // Navigate to the new session page
       if (data.id) {
         setLocation(`/operations/underwriting/${data.id}`);
@@ -63,26 +81,6 @@ export default function DocumentUploadStep({ sessionId, onNext }: DocumentUpload
     },
   });
 
-  // Upload documents mutation
-  const uploadMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      return await apiRequest("POST", `/api/underwriting/sessions/${sessionId}/documents`, formData);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Documents Uploaded",
-        description: "AI extraction will begin shortly",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/underwriting/sessions", sessionId] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Upload Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -92,41 +90,114 @@ export default function DocumentUploadStep({ sessionId, onNext }: DocumentUpload
     handleFiles(droppedFiles);
   };
 
-  const handleFiles = (newFiles: File[]) => {
-    const uploadedFiles: UploadedFile[] = newFiles.map(file => ({
-      name: file.name,
-      size: file.size,
-      status: "uploading",
-      progress: 0,
-    }));
-    
-    setFiles(prev => [...prev, ...uploadedFiles]);
+  const validateFile = (file: File): { valid: boolean; error?: string } => {
+    // Check file size (max 50MB)
+    const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+    if (file.size > maxSize) {
+      return { valid: false, error: "File exceeds 50MB limit" };
+    }
 
-    // Simulate upload progress
-    uploadedFiles.forEach((_, index) => {
-      simulateUpload(files.length + index);
-    });
+    // Check file type
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      return { valid: false, error: "Invalid file type. Only PDF, Word, and Excel files are allowed" };
+    }
+
+    return { valid: true };
   };
 
-  const simulateUpload = (index: number) => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-      setFiles(prev => {
-        const updated = [...prev];
-        if (updated[index]) {
-          updated[index].progress = Math.min(progress, 100);
-          if (progress >= 100) {
-            updated[index].status = "completed";
-          }
-        }
-        return updated;
+  const handleFiles = (newFiles: File[]) => {
+    const validatedFiles: UploadedFile[] = newFiles.map(file => {
+      const validation = validateFile(file);
+      return {
+        file,
+        name: file.name,
+        size: file.size,
+        status: validation.valid ? (sessionId ? "pending" : "pending") : "error",
+        progress: 0,
+        errorMessage: validation.error,
+      };
+    });
+    
+    setFiles(prev => [...prev, ...validatedFiles]);
+
+    // If we have a session ID, upload immediately
+    if (sessionId) {
+      validatedFiles
+        .filter(f => f.status === "pending")
+        .forEach((fileData) => {
+          uploadFile(fileData.file);
+        });
+    }
+  };
+
+  const uploadFile = async (file: File, targetSessionId?: string) => {
+    const activeSessionId = targetSessionId || sessionId;
+    if (!activeSessionId) return;
+
+    // Update status to uploading
+    setFiles(prev =>
+      prev.map(f =>
+        f.file === file ? { ...f, status: "uploading" as const, progress: 0 } : f
+      )
+    );
+
+    let progressInterval: NodeJS.Timeout | null = null;
+
+    try {
+      const formData = new FormData();
+      formData.append("documents", file);
+
+      // Simulate progress (real progress tracking would require XMLHttpRequest or fetch with streams)
+      progressInterval = setInterval(() => {
+        setFiles(prev =>
+          prev.map(f =>
+            f.file === file && f.progress < 90
+              ? { ...f, progress: Math.min(f.progress + 10, 90) }
+              : f
+          )
+        );
+      }, 200);
+
+      // Use the active session ID for upload
+      const response = await fetch(`/api/underwriting/sessions/${activeSessionId}/documents`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
       });
-      
-      if (progress >= 100) {
-        clearInterval(interval);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Upload failed");
       }
-    }, 200);
+
+      // Complete the upload
+      if (progressInterval) clearInterval(progressInterval);
+      setFiles(prev =>
+        prev.map(f =>
+          f.file === file ? { ...f, status: "completed" as const, progress: 100 } : f
+        )
+      );
+    } catch (error: any) {
+      // Clear progress interval on error
+      if (progressInterval) clearInterval(progressInterval);
+      
+      setFiles(prev =>
+        prev.map(f =>
+          f.file === file
+            ? { ...f, status: "error" as const, errorMessage: error.message || "Upload failed" }
+            : f
+        )
+      );
+      throw error; // Re-throw to allow caller to handle
+    }
   };
 
   const removeFile = (index: number) => {
@@ -154,14 +225,24 @@ export default function DocumentUploadStep({ sessionId, onNext }: DocumentUpload
 
     if (!sessionId) {
       // Create new session - navigation will happen in onSuccess
+      // After navigation, files will be uploaded automatically
       await createSessionMutation.mutateAsync({ fundName });
     } else {
-      // Existing session - just proceed to next step
+      // Existing session - upload any pending files before proceeding
+      const pendingFiles = files.filter(f => f.status === "pending" && !f.errorMessage);
+      
+      if (pendingFiles.length > 0) {
+        // Upload all pending files
+        await Promise.all(pendingFiles.map(f => uploadFile(f.file)));
+      }
+      
       onNext();
     }
   };
 
   const allFilesCompleted = files.length > 0 && files.every(f => f.status === "completed");
+  const hasErrors = files.some(f => f.status === "error");
+  const isUploading = files.some(f => f.status === "uploading");
 
   return (
     <div className="space-y-6">
@@ -263,8 +344,14 @@ export default function DocumentUploadStep({ sessionId, onNext }: DocumentUpload
                   {file.status === "uploading" && (
                     <Loader2 className="w-5 h-5 text-primary animate-spin flex-shrink-0" />
                   )}
+                  {file.status === "pending" && sessionId && (
+                    <Loader2 className="w-5 h-5 text-muted-foreground animate-spin flex-shrink-0" />
+                  )}
                   {file.status === "error" && (
                     <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                  )}
+                  {file.errorMessage && (
+                    <p className="text-xs text-destructive mt-1">{file.errorMessage}</p>
                   )}
                   <Button
                     variant="ghost"
@@ -280,14 +367,22 @@ export default function DocumentUploadStep({ sessionId, onNext }: DocumentUpload
           )}
 
           {/* Submit Button */}
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex justify-end gap-2">
+            {hasErrors && files.length > 0 && (
+              <p className="text-sm text-destructive flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                Some files failed validation
+              </p>
+            )}
             <Button
               onClick={handleSubmit}
-              disabled={(!sessionId && !fundName) || createSessionMutation.isPending}
+              disabled={(!sessionId && !fundName) || createSessionMutation.isPending || isUploading}
               data-testid="button-continue"
             >
-              {createSessionMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Continue to AI Extraction
+              {(createSessionMutation.isPending || isUploading) && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              {isUploading ? "Uploading..." : "Continue to AI Extraction"}
             </Button>
           </div>
         </CardContent>
