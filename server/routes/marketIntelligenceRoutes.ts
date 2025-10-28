@@ -61,26 +61,33 @@ marketIntelligenceRouter.get("/roi-summary", async (req: Request, res: Response)
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
     const user = req.user as User;
 
-    const analytics = await db.select().from(usageAnalytics)
+    let analytics = await db.select().from(usageAnalytics)
       .where(eq(usageAnalytics.userId, user.id));
 
+    // If no user-specific data, show firm-wide metrics
     if (analytics.length === 0) {
-      return res.json({
-        totalActivities: 0,
-        totalTimeSavedHours: 0,
-        totalLaborCostSaved: 0,
-        avgTimeSavingsPercentage: 0,
-      });
+      analytics = await db.select().from(usageAnalytics);
+      
+      if (analytics.length === 0) {
+        return res.json({
+          totalActivities: 0,
+          totalTimeSavedHours: 0,
+          totalLaborCostSaved: 0,
+          avgTimeSavingsPercentage: 0,
+        });
+      }
     }
 
     const totalTimeSaved = analytics.reduce((sum, a) => sum + (a.timeSavingsSeconds || 0), 0);
     const totalCostSaved = analytics.reduce((sum, a) => sum + (a.estimatedLaborCostSaved || 0), 0);
+    const avgTimeSavings = analytics.reduce((sum, a) => 
+      sum + parseFloat(a.timeSavingsPercentage?.toString() || "0"), 0) / analytics.length;
 
     return res.json({
       totalActivities: analytics.length,
       totalTimeSavedHours: Math.floor(totalTimeSaved / 3600),
       totalLaborCostSaved: totalCostSaved,
-      avgTimeSavingsPercentage: 95,
+      avgTimeSavingsPercentage: Math.round(avgTimeSavings),
     });
   } catch (error) {
     console.error("Error fetching ROI summary:", error);
