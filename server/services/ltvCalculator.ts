@@ -1,258 +1,234 @@
 /**
  * LTV (Loan-to-Value) Calculator with Stress Testing
- * Calculates LTV ratios and performs stress testing under market downturns
+ * Matches schema in shared/schema.ts ltvCalculations table
  */
-
-export interface LTVCalculation {
-  currentLtv: number; // Current LTV percentage
-  requestedLoan: number; // Requested loan amount in dollars
-  currentNav: number; // Current NAV in dollars
-  stressTest: {
-    baseline: StressScenario;
-    moderate: StressScenario; // -20% market downturn
-    severe: StressScenario; // -40% market downturn
-  };
-  recommendation: "approve" | "review" | "decline";
-  maxLoanAmount: number; // Maximum loan we'd approve
-  reasoning: string[];
-}
 
 export interface StressScenario {
-  scenarioName: string;
-  navAdjustment: number; // Percentage change
-  adjustedNav: number; // NAV after adjustment
-  adjustedLtv: number; // LTV under this scenario
-  covenantBreachRisk: "low" | "medium" | "high";
-  passesStressTest: boolean; // LTV stays under 80% even after stress
+  name: string; // Scenario name (e.g., "-20% Downturn")
+  navStress: number; // Percentage change to NAV (e.g., -20)
+  newNav: number; // NAV after stress adjustment
+  newLtv: number; // LTV percentage under this scenario
+  breachRisk: "low" | "medium" | "high";
+  exceedsCovenant: boolean; // Whether scenario breaches max LTV
+}
+
+export interface LTVCalculationResult {
+  fundNav: number;
+  targetLtv: number; // Target LTV percentage (e.g., 15.00)
+  maxLtv: number; // Maximum covenant LTV (e.g., 18.00)
+  requestedFacilitySize: number | null;
+  maxFacilitySize: number; // fundNav * targetLtv
+  recommendedFacilitySize: number;
+  baselineLtv: number; // LTV if using requested facility size
+  scenarios: StressScenario[]; // Array of stress test scenarios
+  breachProbability: number; // Estimated probability of covenant breach
+  recommendedSofr: number; // Recommended SOFR spread in bps
+  marketMedianPricing: number; // Market median pricing in bps
+  pricingRationale: string;
+}
+
+export interface PortfolioMetrics {
+  netIRR?: number | string | null;
+  moic?: number | string | null;
+  portfolioCompanyCount?: number | null;
 }
 
 /**
- * Calculate LTV and stress test scenarios
+ * Calculate LTV with stress testing and pricing recommendations
  */
-export function calculateLTV(params: {
-  requestedLoan: number;
-  currentNav: number;
-  maxLtvThreshold?: number; // Default: 70%
-  stressTestThreshold?: number; // Default: 80% (can't exceed this even under stress)
-}): LTVCalculation {
+export function calculateLTV(
+  params: {
+    fundNAV: number;
+    requestedFacilitySize?: number | null;
+    targetLtv?: number; // Target LTV percentage (default: 15%)
+    maxLtv?: number; // Maximum covenant LTV (default: 18%)
+  },
+  portfolioMetrics?: PortfolioMetrics
+): LTVCalculationResult {
   const {
-    requestedLoan,
-    currentNav,
-    maxLtvThreshold = 70,
-    stressTestThreshold = 80,
+    fundNAV,
+    requestedFacilitySize,
+    targetLtv = 15,
+    maxLtv = 18,
   } = params;
   
-  if (currentNav <= 0) {
-    throw new Error("Current NAV must be greater than zero");
+  if (fundNAV <= 0) {
+    throw new Error("Fund NAV must be greater than zero");
   }
   
-  if (requestedLoan <= 0) {
-    throw new Error("Requested loan must be greater than zero");
+  if (targetLtv <= 0 || targetLtv > 100) {
+    throw new Error("Target LTV must be between 0 and 100");
   }
   
-  // Calculate current LTV
-  const currentLtv = (requestedLoan / currentNav) * 100;
-  
-  // Baseline scenario (no market change)
-  const baseline: StressScenario = {
-    scenarioName: "Baseline (Current Market)",
-    navAdjustment: 0,
-    adjustedNav: currentNav,
-    adjustedLtv: currentLtv,
-    covenantBreachRisk: currentLtv > 65 ? "medium" : "low",
-    passesStressTest: currentLtv <= maxLtvThreshold,
-  };
-  
-  // Moderate stress scenario (-20% market downturn)
-  const moderateNav = currentNav * 0.80; // 20% decrease
-  const moderateLtv = (requestedLoan / moderateNav) * 100;
-  const moderate: StressScenario = {
-    scenarioName: "Moderate Stress (-20% NAV)",
-    navAdjustment: -20,
-    adjustedNav: moderateNav,
-    adjustedLtv: moderateLtv,
-    covenantBreachRisk: moderateLtv > 75 ? "high" : moderateLtv > 65 ? "medium" : "low",
-    passesStressTest: moderateLtv <= stressTestThreshold,
-  };
-  
-  // Severe stress scenario (-40% market downturn)
-  const severeNav = currentNav * 0.60; // 40% decrease
-  const severeLtv = (requestedLoan / severeNav) * 100;
-  const severe: StressScenario = {
-    scenarioName: "Severe Stress (-40% NAV)",
-    navAdjustment: -40,
-    adjustedNav: severeNav,
-    adjustedLtv: severeLtv,
-    covenantBreachRisk: severeLtv > 85 ? "high" : severeLtv > 75 ? "medium" : "low",
-    passesStressTest: severeLtv <= stressTestThreshold,
-  };
-  
-  // Determine maximum loan amount we'd approve
-  // Target: Stay under 70% LTV baseline, 80% under moderate stress
-  const maxLoanBaseline = currentNav * (maxLtvThreshold / 100);
-  const maxLoanStressed = moderateNav * (stressTestThreshold / 100);
-  const maxLoanAmount = Math.min(maxLoanBaseline, maxLoanStressed);
-  
-  // Determine recommendation
-  let recommendation: "approve" | "review" | "decline";
-  const reasoning: string[] = [];
-  
-  if (currentLtv > maxLtvThreshold) {
-    recommendation = "decline";
-    reasoning.push(
-      `Current LTV (${currentLtv.toFixed(1)}%) exceeds maximum threshold (${maxLtvThreshold}%)`
-    );
-  } else if (!moderate.passesStressTest) {
-    recommendation = "decline";
-    reasoning.push(
-      `LTV under moderate stress (${moderateLtv.toFixed(1)}%) exceeds stress test threshold (${stressTestThreshold}%)`
-    );
-  } else if (severe.covenantBreachRisk === "high") {
-    recommendation = "review";
-    reasoning.push(
-      `High covenant breach risk under severe stress scenario (${severeLtv.toFixed(1)}% LTV)`
-    );
-    reasoning.push(
-      `Consider reducing loan amount to ${formatCurrency(maxLoanAmount)} for better stress resilience`
-    );
-  } else if (currentLtv > 60) {
-    recommendation = "review";
-    reasoning.push(
-      `LTV is above 60% (${currentLtv.toFixed(1)}%) - recommend enhanced monitoring`
-    );
-  } else {
-    recommendation = "approve";
-    reasoning.push(
-      `LTV (${currentLtv.toFixed(1)}%) is within acceptable range and passes all stress tests`
-    );
+  if (maxLtv <= 0 || maxLtv > 100) {
+    throw new Error("Max LTV must be between 0 and 100");
   }
   
-  // Add stress test insights to reasoning
-  if (moderate.passesStressTest && severe.passesStressTest) {
-    reasoning.push("Passes both moderate and severe stress tests");
-  } else if (moderate.passesStressTest) {
-    reasoning.push("Passes moderate stress test, but fails severe stress test");
-  }
+  // Calculate maximum facility size based on target LTV
+  const maxFacilitySize = Math.floor(fundNAV * (targetLtv / 100));
   
-  reasoning.push(
-    `Maximum recommended loan: ${formatCurrency(maxLoanAmount)} (${((maxLoanAmount / currentNav) * 100).toFixed(1)}% LTV)`
-  );
+  // Determine recommended facility size
+  // If requested size is within target LTV, use it; otherwise cap at max
+  const recommendedFacilitySize = requestedFacilitySize && requestedFacilitySize <= maxFacilitySize
+    ? requestedFacilitySize
+    : maxFacilitySize;
+  
+  // Calculate baseline LTV based on recommended facility size
+  const baselineLtv = Number(((recommendedFacilitySize / fundNAV) * 100).toFixed(2));
+  
+  // Stress test scenarios
+  const scenarios: StressScenario[] = [
+    createStressScenario("Baseline (Current Market)", 0, fundNAV, recommendedFacilitySize, maxLtv),
+    createStressScenario("-10% NAV Downturn", -10, fundNAV, recommendedFacilitySize, maxLtv),
+    createStressScenario("-20% NAV Downturn", -20, fundNAV, recommendedFacilitySize, maxLtv),
+    createStressScenario("-30% NAV Downturn", -30, fundNAV, recommendedFacilitySize, maxLtv),
+    createStressScenario("-40% NAV Downturn", -40, fundNAV, recommendedFacilitySize, maxLtv),
+  ];
+  
+  // Calculate breach probability based on scenarios
+  const breachingScenarios = scenarios.filter(s => s.exceedsCovenant).length;
+  const breachProbability = Number(((breachingScenarios / scenarios.length) * 100).toFixed(2));
+  
+  // Calculate pricing recommendations based on risk profile
+  const pricing = calculatePricing(baselineLtv, breachProbability, portfolioMetrics);
   
   return {
-    currentLtv,
-    requestedLoan,
-    currentNav,
-    stressTest: {
-      baseline,
-      moderate,
-      severe,
-    },
-    recommendation,
-    maxLoanAmount,
-    reasoning,
+    fundNav: fundNAV,
+    targetLtv,
+    maxLtv,
+    requestedFacilitySize: requestedFacilitySize || null,
+    maxFacilitySize,
+    recommendedFacilitySize,
+    baselineLtv,
+    scenarios,
+    breachProbability,
+    recommendedSofr: pricing.recommendedSofr,
+    marketMedianPricing: pricing.marketMedianPricing,
+    pricingRationale: pricing.pricingRationale,
   };
 }
 
 /**
- * Covenant monitoring - check if facility is within LTV covenant
+ * Create a stress test scenario
  */
-export function checkLtvCovenant(params: {
-  currentLoan: number;
-  currentNav: number;
-  maxLtvCovenant: number; // From facility covenant (e.g., 75%)
-}): {
-  currentLtv: number;
-  covenantLimit: number;
-  compliant: boolean;
-  buffer: number; // How much room before breach (percentage points)
-  bufferAmount: number; // How much NAV can decrease before breach (dollars)
-  status: "compliant" | "warning" | "breach";
+function createStressScenario(
+  name: string,
+  navStressPercent: number,
+  baseNav: number,
+  facilitySize: number,
+  maxLtv: number
+): StressScenario {
+  const newNav = baseNav * (1 + navStressPercent / 100);
+  const newLtv = Number(((facilitySize / newNav) * 100).toFixed(2));
+  const exceedsCovenant = newLtv > maxLtv;
+  
+  let breachRisk: "low" | "medium" | "high";
+  if (newLtv > maxLtv) {
+    breachRisk = "high";
+  } else if (newLtv > maxLtv * 0.9) {
+    breachRisk = "medium";
+  } else {
+    breachRisk = "low";
+  }
+  
+  return {
+    name,
+    navStress: navStressPercent,
+    newNav: Math.floor(newNav),
+    newLtv,
+    breachRisk,
+    exceedsCovenant,
+  };
+}
+
+/**
+ * Calculate pricing recommendations based on LTV and portfolio metrics
+ */
+function calculatePricing(
+  baselineLtv: number,
+  breachProbability: number,
+  portfolioMetrics?: PortfolioMetrics
+): {
+  recommendedSofr: number;
+  marketMedianPricing: number;
+  pricingRationale: string;
 } {
-  const { currentLoan, currentNav, maxLtvCovenant } = params;
+  // Base pricing: SOFR + 600 bps (6.00%) for NAV lending
+  let recommendedSofr = 600;
+  let marketMedianPricing = 600;
   
-  if (currentNav <= 0) {
-    throw new Error("Current NAV must be greater than zero");
+  // Adjust pricing based on LTV
+  if (baselineLtv > 15) {
+    recommendedSofr += 50; // +50 bps for higher LTV
+  }
+  if (baselineLtv > 17) {
+    recommendedSofr += 50; // +50 bps more
   }
   
-  const currentLtv = (currentLoan / currentNav) * 100;
-  const buffer = maxLtvCovenant - currentLtv;
-  
-  // Calculate how much NAV can decrease before breach
-  // LTV = Loan / NAV, so NAV_min = Loan / (MaxLTV/100)
-  const minNavBeforeBreach = currentLoan / (maxLtvCovenant / 100);
-  const bufferAmount = currentNav - minNavBeforeBreach;
-  
-  // Determine status
-  let status: "compliant" | "warning" | "breach";
-  if (currentLtv > maxLtvCovenant) {
-    status = "breach";
-  } else if (currentLtv > maxLtvCovenant * 0.9) {
-    // Within 10% of breach threshold
-    status = "warning";
-  } else {
-    status = "compliant";
+  // Adjust pricing based on breach probability
+  if (breachProbability > 40) {
+    recommendedSofr += 75; // +75 bps for high breach risk
+  } else if (breachProbability > 20) {
+    recommendedSofr += 50; // +50 bps for medium breach risk
   }
   
-  return {
-    currentLtv,
-    covenantLimit: maxLtvCovenant,
-    compliant: currentLtv <= maxLtvCovenant,
-    buffer,
-    bufferAmount,
-    status,
-  };
-}
-
-/**
- * Format currency for display
- */
-function formatCurrency(amount: number): string {
-  if (amount >= 1_000_000) {
-    return `$${(amount / 1_000_000).toFixed(1)}M`;
+  // Adjust pricing based on portfolio performance (if available)
+  if (portfolioMetrics) {
+    const netIRR = typeof portfolioMetrics.netIRR === 'string' 
+      ? parseFloat(portfolioMetrics.netIRR) 
+      : (portfolioMetrics.netIRR || 0);
+    const moic = typeof portfolioMetrics.moic === 'string'
+      ? parseFloat(portfolioMetrics.moic)
+      : (portfolioMetrics.moic || 0);
+    
+    // Strong performance = lower pricing
+    if (netIRR >= 20 && moic >= 2.0) {
+      recommendedSofr -= 50; // -50 bps for strong performance
+    } else if (netIRR < 10 || moic < 1.5) {
+      recommendedSofr += 50; // +50 bps for weak performance
+    }
+    
+    // Diversification discount
+    if (portfolioMetrics.portfolioCompanyCount && portfolioMetrics.portfolioCompanyCount >= 15) {
+      recommendedSofr -= 25; // -25 bps for well-diversified portfolio
+    }
   }
-  if (amount >= 1_000) {
-    return `$${(amount / 1_000).toFixed(0)}K`;
+  
+  // Build pricing rationale
+  const rationale: string[] = [];
+  rationale.push(`Base NAV lending rate: SOFR + ${marketMedianPricing} bps`);
+  
+  if (baselineLtv > 15) {
+    rationale.push(`LTV adjustment: +${baselineLtv > 17 ? 100 : 50} bps (LTV ${baselineLtv}%)`);
   }
-  return `$${amount.toFixed(0)}`;
-}
-
-/**
- * Calculate recommended loan adjustments based on stress testing
- */
-export function recommendLoanAdjustment(params: {
-  requestedLoan: number;
-  currentNav: number;
-  targetLtv?: number; // Target LTV we want to achieve (default: 60%)
-}): {
-  originalLtv: number;
-  recommendedLoan: number;
-  recommendedLtv: number;
-  adjustment: number; // Dollar amount to reduce
-  adjustmentPercent: number; // Percentage reduction
-  reasoning: string;
-} {
-  const { requestedLoan, currentNav, targetLtv = 60 } = params;
   
-  const originalLtv = (requestedLoan / currentNav) * 100;
-  const recommendedLoan = currentNav * (targetLtv / 100);
-  const adjustment = requestedLoan - recommendedLoan;
-  const adjustmentPercent = (adjustment / requestedLoan) * 100;
+  if (breachProbability > 20) {
+    const adjustment = breachProbability > 40 ? 75 : 50;
+    rationale.push(`Breach risk adjustment: +${adjustment} bps (${breachProbability}% probability)`);
+  }
   
-  let reasoning = "";
-  if (adjustment > 0) {
-    reasoning = `Recommend reducing loan by ${formatCurrency(adjustment)} (${adjustmentPercent.toFixed(1)}%) ` +
-      `to achieve ${targetLtv}% LTV and improve stress resilience`;
-  } else {
-    reasoning = `Current request is conservative. Could approve up to ${formatCurrency(recommendedLoan)} ` +
-      `while maintaining ${targetLtv}% LTV`;
+  if (portfolioMetrics) {
+    const netIRR = typeof portfolioMetrics.netIRR === 'string' 
+      ? parseFloat(portfolioMetrics.netIRR) 
+      : (portfolioMetrics.netIRR || 0);
+    const moic = typeof portfolioMetrics.moic === 'string'
+      ? parseFloat(portfolioMetrics.moic)
+      : (portfolioMetrics.moic || 0);
+    
+    if (netIRR >= 20 && moic >= 2.0) {
+      rationale.push(`Performance discount: -50 bps (strong track record)`);
+    } else if (netIRR < 10 || moic < 1.5) {
+      rationale.push(`Performance premium: +50 bps (below-market returns)`);
+    }
+    
+    if (portfolioMetrics.portfolioCompanyCount && portfolioMetrics.portfolioCompanyCount >= 15) {
+      rationale.push(`Diversification discount: -25 bps (${portfolioMetrics.portfolioCompanyCount} companies)`);
+    }
   }
   
   return {
-    originalLtv,
-    recommendedLoan,
-    recommendedLtv: targetLtv,
-    adjustment: Math.max(0, adjustment),
-    adjustmentPercent: Math.max(0, adjustmentPercent),
-    reasoning,
+    recommendedSofr: Math.max(400, Math.min(1200, recommendedSofr)), // Cap between 400-1200 bps
+    marketMedianPricing,
+    pricingRationale: rationale.join("; "),
   };
 }

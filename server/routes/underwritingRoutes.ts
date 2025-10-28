@@ -652,16 +652,16 @@ router.post("/sessions/:id/ltv", async (req: Request, res: Response) => {
 
     // Store LTV calculation
     const [ltvCalculation] = await db.insert(ltvCalculations).values({
-      sessionId,
+      sessionId: sessionId,
       fundNav: ltvResult.fundNav,
-      targetLtv: ltvResult.targetLtv,
-      maxLtv: ltvResult.maxLtv,
+      targetLtv: String(ltvResult.targetLtv),
+      maxLtv: String(ltvResult.maxLtv),
       requestedFacilitySize: ltvResult.requestedFacilitySize,
       maxFacilitySize: ltvResult.maxFacilitySize,
       recommendedFacilitySize: ltvResult.recommendedFacilitySize,
-      baselineLtv: ltvResult.baselineLtv,
-      scenarios: ltvResult.scenarios,
-      breachProbability: ltvResult.breachProbability,
+      baselineLtv: String(ltvResult.baselineLtv),
+      scenarios: ltvResult.scenarios as any,
+      breachProbability: String(ltvResult.breachProbability),
       recommendedSofr: ltvResult.recommendedSofr,
       marketMedianPricing: ltvResult.marketMedianPricing,
       pricingRationale: ltvResult.pricingRationale,
