@@ -26,6 +26,20 @@ AlphaNAV is a comprehensive NAV (Net Asset Value) lending operations platform fo
 - **Security**: Multi-tenant data isolation enforced at query level - all endpoints filter by userId, preventing cross-tenant data exposure
 - **UX Features**: Toast notifications on success/error, deal creation dialog with priority selection, visual priority indicators
 
+### Phase 1D: Slack/SMS Integration (Complete)
+- **Multi-Channel Notification System**: Real-time alerts via SMS (Twilio), Slack webhooks, and in-app notifications
+- **Notification Preferences API**: RESTful endpoints for managing notification channels:
+  - `GET /api/notifications/preferences` - Fetch user's configured channels (multi-tenant scoped)
+  - `POST /api/notifications/preferences` - Create channel with E.164 phone validation for SMS
+  - `PATCH /api/notifications/preferences/:id` - Update channel settings with ownership verification
+  - `DELETE /api/notifications/preferences/:id` - Remove channel with ownership verification
+  - `POST /api/notifications/preferences/:id/test` - Send test notification with configuration checks
+- **Notification Preferences UI**: Full-featured channel management page with add/edit/delete, test functionality, empty states, and loading/error handling
+- **Covenant Monitoring Integration**: Automated breach/warning alerts sent to all configured channels (SMS, Slack, in-app)
+- **Configuration Management**: Pre-flight checks for Twilio credentials and Slack webhook, graceful degradation if services not configured, clear error messages guiding setup
+- **Security**: Multi-tenant data isolation (userId filtering), phone number E.164 validation, quiet hours support for non-urgent notifications
+- **Production Features**: Best-effort delivery (in-app notifications always work), comprehensive error handling, test capability before going live
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 

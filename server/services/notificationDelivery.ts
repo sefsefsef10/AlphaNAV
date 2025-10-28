@@ -64,18 +64,27 @@ class SMSChannel implements DeliveryChannel {
   async send(params: { recipient: string; message: string; metadata?: any }) {
     const { recipient, message } = params;
     
-    // Import SMS service dynamically to avoid issues if Twilio not configured
-    const { sendSMS, isTwilioConfigured } = await import('./smsService');
-    
-    if (!isTwilioConfigured()) {
+    try {
+      // Import SMS service dynamically to avoid issues if Twilio not configured
+      const { sendSMS, isTwilioConfigured } = await import('./smsService');
+      
+      if (!isTwilioConfigured()) {
+        console.warn('Twilio not configured - SMS notifications will be skipped');
+        return {
+          success: false,
+          error: "SMS service not configured. Please add Twilio credentials (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER) to enable SMS notifications.",
+        };
+      }
+      
+      const result = await sendSMS(recipient, message);
+      return result;
+    } catch (error) {
+      console.error('SMS delivery error:', error);
       return {
         success: false,
-        error: "SMS service not configured. Please set up Twilio credentials.",
+        error: error instanceof Error ? error.message : 'Failed to send SMS',
       };
     }
-    
-    const result = await sendSMS(recipient, message);
-    return result;
   }
 }
 
@@ -122,15 +131,16 @@ export async function sendNotification(params: {
   notificationId?: string;
   urgency?: "low" | "normal" | "high";
   metadata?: any;
+  preferenceIds?: string[]; // Optional: restrict to specific preferences (for testing)
 }): Promise<{
   sent: number;
   failed: number;
   deliveries: string[];
 }> {
-  const { userId, message, type, notificationId, urgency = "normal", metadata } = params;
+  const { userId, message, type, notificationId, urgency = "normal", metadata, preferenceIds } = params;
 
   // Get user's notification preferences
-  const preferences = await db.select()
+  let query = db.select()
     .from(notificationPreferences)
     .where(
       and(
@@ -138,6 +148,13 @@ export async function sendNotification(params: {
         eq(notificationPreferences.enabled, true)
       )
     );
+
+  const allPreferences = await query;
+
+  // Filter by specific preference IDs if provided (for testing specific channels)
+  const preferences = preferenceIds && preferenceIds.length > 0
+    ? allPreferences.filter(p => preferenceIds.includes(p.id))
+    : allPreferences;
 
   // Default to in-app if no preferences
   const channelsToUse = preferences.length > 0
@@ -154,14 +171,14 @@ export async function sendNotification(params: {
 
   for (const pref of channelsToUse) {
     const channel = pref.channel || "in_app";
-    const recipient = pref.contactInfo || userId;
+    const recipient = (pref as any).contactInfo || userId;
 
     // Skip if urgency is low and we're in quiet hours
-    if (urgency === "low" && pref.quietHoursStart && pref.quietHoursEnd) {
+    if (urgency === "low" && (pref as any).quietHoursStart && (pref as any).quietHoursEnd) {
       const now = new Date();
       const hour = now.getHours();
-      const quietStart = parseInt(pref.quietHoursStart?.split(":")[0] || "22");
-      const quietEnd = parseInt(pref.quietHoursEnd?.split(":")[0] || "8");
+      const quietStart = parseInt((pref as any).quietHoursStart?.split(":")[0] || "22");
+      const quietEnd = parseInt((pref as any).quietHoursEnd?.split(":")[0] || "8");
       
       if (hour >= quietStart || hour < quietEnd) {
         continue; // Skip during quiet hours

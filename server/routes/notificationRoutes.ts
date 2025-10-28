@@ -168,7 +168,29 @@ router.post("/preferences/:id/test", async (req, res) => {
       return res.status(404).json({ error: "Notification preference not found" });
     }
 
-    // Send test notification
+    // Check if required services are configured
+    if (preference.channel === 'sms') {
+      const { isTwilioConfigured } = await import("../services/smsService");
+      if (!isTwilioConfigured()) {
+        return res.status(400).json({
+          success: false,
+          sent: 0,
+          failed: 1,
+          message: "SMS service not configured. Please add Twilio credentials to enable SMS notifications.",
+        });
+      }
+    }
+
+    if (preference.channel === 'slack' && !process.env.SLACK_WEBHOOK_URL) {
+      return res.status(400).json({
+        success: false,
+        sent: 0,
+        failed: 1,
+        message: "Slack webhook URL not configured. Please add SLACK_WEBHOOK_URL to enable Slack notifications.",
+      });
+    }
+
+    // Send test notification only to this specific preference
     const { sendNotification } = await import("../services/notificationDelivery");
     
     const result = await sendNotification({
@@ -176,6 +198,7 @@ router.post("/preferences/:id/test", async (req, res) => {
       message: `Test notification from AlphaNAV. Your ${preference.channel} notifications are configured correctly!`,
       type: "system_test",
       urgency: "normal",
+      preferenceIds: [id], // Only send to the specific preference being tested
     });
 
     res.json({
@@ -184,7 +207,7 @@ router.post("/preferences/:id/test", async (req, res) => {
       failed: result.failed,
       message: result.sent > 0 
         ? "Test notification sent successfully!" 
-        : "Failed to send test notification. Please check your settings.",
+        : "Failed to send test notification. Please check your settings and service configuration.",
     });
   } catch (error) {
     console.error("Error sending test notification:", error);

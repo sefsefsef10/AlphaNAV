@@ -54,10 +54,7 @@ export default function NotificationPreferences() {
 
   const createPreferenceMutation = useMutation({
     mutationFn: async (pref: typeof newPreference) => {
-      return apiRequest('/api/notifications/preferences', {
-        method: 'POST',
-        body: JSON.stringify(pref),
-      });
+      return apiRequest('POST', '/api/notifications/preferences', pref);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/preferences'] });
@@ -79,10 +76,7 @@ export default function NotificationPreferences() {
 
   const togglePreferenceMutation = useMutation({
     mutationFn: async ({ id, enabled }: { id: string; enabled: boolean }) => {
-      return apiRequest(`/api/notifications/preferences/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ enabled }),
-      });
+      return apiRequest('PATCH', `/api/notifications/preferences/${id}`, { enabled });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/preferences'] });
@@ -102,9 +96,7 @@ export default function NotificationPreferences() {
 
   const deletePreferenceMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/notifications/preferences/${id}`, {
-        method: 'DELETE',
-      });
+      return apiRequest('DELETE', `/api/notifications/preferences/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications/preferences'] });
@@ -124,9 +116,8 @@ export default function NotificationPreferences() {
 
   const testNotificationMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/notifications/preferences/${id}/test`, {
-        method: 'POST',
-      });
+      const res = await apiRequest('POST', `/api/notifications/preferences/${id}/test`);
+      return res.json();
     },
     onSuccess: (data: any) => {
       toast({
