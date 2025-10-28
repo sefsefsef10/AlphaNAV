@@ -120,11 +120,16 @@ export default function UnderwritingDashboardPage() {
   return (
     <div className="container max-w-7xl mx-auto py-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold" data-testid="text-page-title">Underwriting Dashboard</h1>
-        <p className="text-muted-foreground mt-2">
-          Review and assess prospects for NAV financing
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold" data-testid="text-page-title">Underwriting Dashboard</h1>
+          <p className="text-muted-foreground mt-2">
+            Review and assess prospects for NAV financing
+          </p>
+        </div>
+        <Button onClick={() => setLocation("/operations/underwriting/new")} data-testid="button-new-underwriting">
+          Start New Underwriting
+        </Button>
       </div>
 
       {/* Stats Cards */}
