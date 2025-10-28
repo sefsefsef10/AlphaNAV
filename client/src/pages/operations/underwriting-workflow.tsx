@@ -89,15 +89,37 @@ export default function UnderwritingWorkflowPage() {
 
   const progressPercentage = ((currentStep - 1) / (steps.length - 1)) * 100;
 
+  // Mutation to update session step
+  const updateStepMutation = useMutation({
+    mutationFn: async (newStep: number) => {
+      if (!sessionId) return;
+      return await apiRequest(`/api/underwriting/sessions/${sessionId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ currentStep: newStep }),
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/underwriting/sessions", sessionId] });
+    },
+    onError: (error: any) => {
+      console.error("Error updating session step:", error);
+    },
+  });
+
   const handleNext = () => {
     if (currentStep < steps.length) {
-      setCurrentStep(currentStep + 1);
+      const nextStep = currentStep + 1;
+      setCurrentStep(nextStep);
+      updateStepMutation.mutate(nextStep);
     }
   };
 
   const handleBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      const prevStep = currentStep - 1;
+      setCurrentStep(prevStep);
+      updateStepMutation.mutate(prevStep);
     }
   };
 
@@ -213,38 +235,17 @@ export default function UnderwritingWorkflowPage() {
         )}
       </div>
 
-      {/* Navigation Footer */}
+      {/* Workflow Status Footer */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStep === 1}
-              data-testid="button-back"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-
-            <div className="text-sm text-muted-foreground">
-              {currentStep === steps.length ? (
-                <span className="text-green-500 font-medium">Ready to complete</span>
-              ) : (
-                <span>Continue to next step</span>
-              )}
-            </div>
-
-            {currentStep < steps.length ? (
-              <Button onClick={handleNext} data-testid="button-next">
-                Next Step
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
+          <div className="flex items-center justify-center text-sm text-muted-foreground">
+            {currentStep === steps.length ? (
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                <span className="text-green-500 font-medium">All steps complete - ready to finalize underwriting</span>
+              </div>
             ) : (
-              <Button onClick={handleComplete} data-testid="button-complete">
-                Complete Underwriting
-                <CheckCircle2 className="w-4 h-4 ml-2" />
-              </Button>
+              <span>Complete each step to proceed through the underwriting workflow</span>
             )}
           </div>
         </CardContent>
