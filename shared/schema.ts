@@ -1481,3 +1481,191 @@ export type InsertValidationRun = z.infer<typeof insertValidationRunSchema>;
 export type ValidationRun = typeof validationRuns.$inferSelect;
 export type InsertAccuracyMetric = z.infer<typeof insertAccuracyMetricSchema>;
 export type AccuracyMetric = typeof accuracyMetrics.$inferSelect;
+
+// ==================== Market Intelligence & Analytics ====================
+
+// Market transactions - anonymized completed deals for benchmarking
+export const marketTransactions = pgTable("market_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Deal characteristics (anonymized)
+  dealType: varchar("deal_type").notNull(), // 'nav_facility', 'subscription_line', 'hybrid'
+  facilitySize: integer("facility_size").notNull(), // In dollars
+  loanToValue: numeric("loan_to_value", { precision: 5, scale: 2 }).notNull(), // As percentage
+  pricingSpread: integer("pricing_spread").notNull(), // Basis points over SOFR
+  commitmentPeriod: integer("commitment_period"), // Months
+  
+  // Fund characteristics (anonymized, no identifiable info)
+  fundAum: integer("fund_aum").notNull(),
+  fundVintage: integer("fund_vintage").notNull(),
+  fundStrategy: varchar("fund_strategy"), // 'buyout', 'growth', 'venture', 'distressed'
+  primarySector: varchar("primary_sector"), // 'healthcare', 'technology', 'industrials', 'consumer', 'financial_services', 'energy'
+  geography: varchar("geography"), // 'north_america', 'europe', 'asia', 'global'
+  portfolioCompanyCount: integer("portfolio_company_count"),
+  
+  // Covenant package (standard terms)
+  maxLtvCovenant: numeric("max_ltv_covenant", { precision: 5, scale: 2 }),
+  minNavCovenant: integer("min_nav_covenant"), // Percentage of closing NAV
+  diversificationCovenant: numeric("diversification_covenant", { precision: 5, scale: 2 }), // Max single holding %
+  liquidityCovenant: numeric("liquidity_covenant", { precision: 5, scale: 2 }), // Min cash as % of NAV
+  
+  // Transaction metadata
+  closeDate: timestamp("close_date").notNull(),
+  advisorInvolved: boolean("advisor_involved").notNull().default(false),
+  timeToClose: integer("time_to_close"), // Days from RFP to close
+  competitiveBids: integer("competitive_bids"), // Number of lenders who bid
+  
+  // Source (how this data entered system)
+  sourceType: varchar("source_type").notNull(), // 'platform_deal', 'manual_entry', 'industry_data'
+  sourceFacilityId: varchar("source_facility_id"), // Reference to actual facility if from platform
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_market_trans_close_date").on(table.closeDate),
+  index("idx_market_trans_sector_vintage").on(table.primarySector, table.fundVintage),
+  index("idx_market_trans_aum_size").on(table.fundAum, table.facilitySize),
+]);
+
+export const insertMarketTransactionSchema = createInsertSchema(marketTransactions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertMarketTransaction = z.infer<typeof insertMarketTransactionSchema>;
+export type MarketTransaction = typeof marketTransactions.$inferSelect;
+
+// Market benchmarks - pre-aggregated metrics by segment
+export const marketBenchmarks = pgTable("market_benchmarks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Segment definition
+  segmentType: varchar("segment_type").notNull(), // 'overall', 'by_vintage', 'by_sector', 'by_aum_range', 'by_strategy'
+  segmentValue: varchar("segment_value"), // e.g., '2021', 'healthcare', '100M-500M'
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  
+  // Pricing benchmarks
+  medianLtv: numeric("median_ltv", { precision: 5, scale: 2 }),
+  medianPricingSpread: integer("median_pricing_spread"), // Basis points
+  p25PricingSpread: integer("p25_pricing_spread"),
+  p75PricingSpread: integer("p75_pricing_spread"),
+  
+  // Facility size benchmarks
+  medianFacilitySize: integer("median_facility_size"),
+  avgFacilitySize: integer("avg_facility_size"),
+  
+  // Covenant benchmarks
+  medianMaxLtv: numeric("median_max_ltv", { precision: 5, scale: 2 }),
+  medianMinNav: numeric("median_min_nav", { precision: 5, scale: 2 }), // As % of closing NAV
+  medianDiversification: numeric("median_diversification", { precision: 5, scale: 2 }),
+  
+  // Market activity
+  dealCount: integer("deal_count").notNull(),
+  totalVolume: integer("total_volume"), // Sum of all facility sizes
+  avgTimeToClose: integer("avg_time_to_close"), // Days
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_market_bench_segment").on(table.segmentType, table.segmentValue),
+  index("idx_market_bench_period").on(table.periodStart, table.periodEnd),
+]);
+
+export const insertMarketBenchmarkSchema = createInsertSchema(marketBenchmarks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMarketBenchmark = z.infer<typeof insertMarketBenchmarkSchema>;
+export type MarketBenchmark = typeof marketBenchmarks.$inferSelect;
+
+// Platform usage analytics - track time savings and ROI
+export const usageAnalytics = pgTable("usage_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // User/organization identifier
+  userId: varchar("user_id").notNull(),
+  organizationType: varchar("organization_type").notNull(), // 'lender', 'advisor', 'gp'
+  
+  // Activity tracking
+  activityType: varchar("activity_type").notNull(), // 'underwriting', 'covenant_check', 'rfp_creation', 'draw_request', etc.
+  activityId: varchar("activity_id"), // Reference to specific deal/facility/RFP
+  
+  // Time metrics
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  durationSeconds: integer("duration_seconds"),
+  
+  // Efficiency benchmarks (compare to manual process)
+  estimatedManualTimeSeconds: integer("estimated_manual_time_seconds"), // How long this would take manually
+  timeSavingsSeconds: integer("time_savings_seconds"), // Calculated field
+  timeSavingsPercentage: numeric("time_savings_percentage", { precision: 5, scale: 2 }),
+  
+  // Outcome tracking
+  completed: boolean("completed").notNull().default(false),
+  automationLevel: varchar("automation_level"), // 'fully_automated', 'ai_assisted', 'manual_with_tools'
+  
+  // Value metrics (for ROI calculation)
+  estimatedLaborCostSaved: integer("estimated_labor_cost_saved"), // Dollars saved vs. manual
+  
+  metadata: jsonb("metadata"), // Additional context
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_usage_analytics_user").on(table.userId, table.createdAt),
+  index("idx_usage_analytics_activity").on(table.activityType, table.completed),
+]);
+
+export const insertUsageAnalyticSchema = createInsertSchema(usageAnalytics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertUsageAnalytic = z.infer<typeof insertUsageAnalyticSchema>;
+export type UsageAnalytic = typeof usageAnalytics.$inferSelect;
+
+// Deal pipeline stages - track deals through Kanban board
+export const pipelineStages = pgTable("pipeline_stages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Stage definition
+  userId: varchar("user_id").notNull(), // Owner of this pipeline
+  dealId: varchar("deal_id"), // Reference to deals or advisorDeals table
+  prospectId: varchar("prospect_id"),
+  facilityId: varchar("facility_id"),
+  
+  // Stage tracking
+  stageName: varchar("stage_name").notNull(), // 'prospect', 'rfp', 'underwriting', 'term_sheet', 'due_diligence', 'closed', 'lost'
+  enteredStageAt: timestamp("entered_stage_at").notNull().defaultNow(),
+  exitedStageAt: timestamp("exited_stage_at"),
+  daysInStage: integer("days_in_stage"),
+  
+  // Status and health
+  stageStatus: varchar("stage_status").notNull().default("on_track"), // 'on_track', 'delayed', 'at_risk', 'blocked'
+  priority: varchar("priority").notNull().default("medium"), // 'low', 'medium', 'high', 'urgent'
+  
+  // Activity tracking
+  lastActivityAt: timestamp("last_activity_at"),
+  lastActivityType: varchar("last_activity_type"), // 'document_uploaded', 'message_sent', 'covenant_checked', etc.
+  assignedTo: varchar("assigned_to"), // User ID responsible for this stage
+  
+  // Metadata
+  notes: text("notes"),
+  tags: jsonb("tags"), // Array of tags for filtering
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_pipeline_user_stage").on(table.userId, table.stageName),
+  index("idx_pipeline_deal_id").on(table.dealId),
+  index("idx_pipeline_status").on(table.stageStatus, table.priority),
+]);
+
+export const insertPipelineStageSchema = createInsertSchema(pipelineStages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPipelineStage = z.infer<typeof insertPipelineStageSchema>;
+export type PipelineStage = typeof pipelineStages.$inferSelect;
