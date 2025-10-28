@@ -1337,8 +1337,7 @@ export type Lead = typeof leads.$inferSelect;
 // Ground truth datasets for AI validation testing
 export const groundTruthDatasets = pgTable("ground_truth_datasets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(), // e.g., "Test Fund Alpha Capital 2020"
-  description: text("description"),
+  datasetName: text("dataset_name").notNull(), // e.g., "Test Fund Alpha Capital 2020"
   documentPath: text("document_path").notNull(), // Path to test document
   documentType: varchar("document_type").notNull(), // pdf, docx, etc.
   
