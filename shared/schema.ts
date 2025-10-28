@@ -416,17 +416,23 @@ export type ClauseOccurrence = typeof clauseOccurrences.$inferSelect;
 
 export const deals = pgTable("deals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id"), // For Kanban board ownership
   prospectId: varchar("prospect_id"),
   fundName: text("fund_name").notNull(),
   status: text("status").notNull(),
   amount: integer("amount"),
   stage: text("stage").notNull(),
+  priority: varchar("priority"), // For Kanban board: 'low', 'medium', 'high', 'critical'
+  advisorName: text("advisor_name"), // For Kanban board
+  gpName: text("gp_name"), // For Kanban board
+  notes: text("notes"), // For Kanban board
   riskScore: integer("risk_score"),
   lastUpdate: timestamp("last_update").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_deals_prospect_id").on(table.prospectId),
+  index("idx_deals_user_id").on(table.userId),
 ]);
 
 export const insertDealSchema = createInsertSchema(deals).omit({
@@ -1668,4 +1674,3 @@ export const insertPipelineStageSchema = createInsertSchema(pipelineStages).omit
 });
 
 export type InsertPipelineStage = z.infer<typeof insertPipelineStageSchema>;
-export type PipelineStage = typeof pipelineStages.$inferSelect;

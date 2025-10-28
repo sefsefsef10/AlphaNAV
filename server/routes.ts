@@ -53,6 +53,8 @@ import { mfaRouter } from "./routes/mfaRoutes";
 import { marketIntelligenceRouter } from "./routes/marketIntelligenceRoutes";
 import { navValuationRouter } from "./routes/navValuationRoutes";
 import { healthRouter } from "./routes/healthRoutes";
+import { analyticsRouter } from "./routes/analyticsRoutes";
+import { pipelineRouter } from "./routes/pipelineRoutes";
 
 const router = Router();
 
@@ -75,6 +77,12 @@ router.use("/mfa", mfaRouter);
 
 // Mount market intelligence routes
 router.use("/market-intelligence", marketIntelligenceRouter);
+
+// Mount analytics routes
+router.use("/analytics", analyticsRouter);
+
+// Mount pipeline routes
+router.use("/pipeline", pipelineRouter);
 
 // Mount NAV valuation routes
 router.use("/nav-valuation", navValuationRouter);

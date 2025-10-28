@@ -49,6 +49,16 @@ const operationsNavItems = [
     icon: BarChart3,
   },
   {
+    title: "Advanced Analytics",
+    url: "/operations/advanced-analytics",
+    icon: TrendingUp,
+  },
+  {
+    title: "Pipeline Board",
+    url: "/operations/pipeline",
+    icon: LayoutDashboard,
+  },
+  {
     title: "Batch Upload",
     url: "/operations/batch-upload",
     icon: Upload,

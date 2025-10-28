@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { advisors, facilities, marketTransactions, marketBenchmarks } from "@shared/schema";
+import { advisors, facilities, marketTransactions, marketBenchmarks, usageAnalytics } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
 
 async function seedMarketIntelligence() {
@@ -201,11 +201,11 @@ export async function seedDatabase() {
           await db.insert(facilities).values({
             ...testFacility,
             principalAmount: 10000000,
-            currentOutstanding: 8000000,
+            outstandingBalance: 8000000,
             interestRate: 850,
             ltvRatio: 65,
             maturityDate: new Date("2026-12-31"),
-            closingDate: new Date("2024-01-01"),
+            originationDate: new Date("2024-01-01"),
           });
         }
       }

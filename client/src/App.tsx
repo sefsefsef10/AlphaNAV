@@ -37,6 +37,8 @@ import GPDashboard from "@/pages/gp-dashboard";
 import GPFacility from "@/pages/gp-facility";
 import OperationsDashboard from "@/pages/operations-dashboard";
 import AnalyticsPage from "@/pages/analytics";
+import AdvancedAnalyticsPage from "@/pages/operations/advanced-analytics";
+import PipelineBoardPage from "@/pages/operations/pipeline-board";
 import NotificationPreferences from "@/pages/notification-preferences";
 import ProspectsPage from "@/pages/operations/prospects";
 import ProspectsUploadPage from "@/pages/operations/prospects-upload";
@@ -214,6 +216,8 @@ function AppContent() {
             <Switch>
               <Route path="/operations" component={OperationsDashboard} />
               <Route path="/analytics" component={AnalyticsPage} />
+              <Route path="/operations/advanced-analytics" component={AdvancedAnalyticsPage} />
+              <Route path="/operations/pipeline" component={PipelineBoardPage} />
               <Route path="/reports" component={ReportsPage} />
               <Route path="/legal" component={LegalPage} />
               <Route path="/lp-enablement" component={LPEnablementPage} />
