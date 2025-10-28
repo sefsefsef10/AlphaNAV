@@ -56,6 +56,7 @@ import { healthRouter } from "./routes/healthRoutes";
 import { analyticsRouter } from "./routes/analyticsRoutes";
 import { pipelineRouter } from "./routes/pipelineRoutes";
 import notificationRouter from "./routes/notificationRoutes";
+import underwritingRouter from "./routes/underwritingRoutes";
 
 const router = Router();
 
@@ -90,6 +91,9 @@ router.use("/notifications", notificationRouter);
 
 // Mount NAV valuation routes
 router.use("/nav-valuation", navValuationRouter);
+
+// Mount underwriting routes
+router.use("/underwriting", underwritingRouter);
 
 // ========================================
 // NEW FEATURE ENDPOINTS (10-Feature Expansion)
