@@ -59,19 +59,23 @@ class SlackChannel implements DeliveryChannel {
   }
 }
 
-// SMS via Twilio (placeholder - requires Twilio integration)
+// SMS via Twilio
 class SMSChannel implements DeliveryChannel {
   async send(params: { recipient: string; message: string; metadata?: any }) {
     const { recipient, message } = params;
     
-    // This would use Twilio integration when set up
-    // For now, just log and mark as pending
-    console.log(`SMS to ${recipient}: ${message}`);
+    // Import SMS service dynamically to avoid issues if Twilio not configured
+    const { sendSMS, isTwilioConfigured } = await import('./smsService');
     
-    return {
-      success: true,
-      messageId: `sms-placeholder-${Date.now()}`,
-    };
+    if (!isTwilioConfigured()) {
+      return {
+        success: false,
+        error: "SMS service not configured. Please set up Twilio credentials.",
+      };
+    }
+    
+    const result = await sendSMS(recipient, message);
+    return result;
   }
 }
 
